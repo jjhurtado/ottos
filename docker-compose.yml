@@ -1,0 +1,22 @@
+# Local development database: docker compose up -d
+# Credentials come from .env (see .env.example).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ottos-postgres
+    environment:
+      POSTGRES_DB: ottos
+      POSTGRES_USER: ${DB_USER:?Set DB_USER in .env (see .env.example)}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env (see .env.example)}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ottos-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  ottos-pgdata:

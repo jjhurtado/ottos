@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: ottos-backend
+  # Local credentials live in .env (see .env.example); real environment variables take precedence.
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ottos}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+ottos:
+  security:
+    jwt-secret: ${OTTOS_JWT_SECRET:}
+    access-token-ttl: 15m
+    issuer: ottos
+  admin:
+    email: ${OTTOS_ADMIN_EMAIL:}
+    password: ${OTTOS_ADMIN_PASSWORD:}

@@ -1,0 +1,9 @@
+# Local development only: SPRING_PROFILES_ACTIVE=dev
+# Credentials come from .env (see .env.example), never from this file.
+ottos:
+  security:
+    access-token-ttl: 8h
+
+logging:
+  level:
+    org.jobits.ottos: DEBUG
