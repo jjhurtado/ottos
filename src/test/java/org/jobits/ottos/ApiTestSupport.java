@@ -34,6 +34,9 @@ public abstract class ApiTestSupport {
     protected static final String PASSWORD = "test-password-123";
 
     private static final List<String> RESET = List.of(
+            "DELETE FROM customer_beneficiaries",
+            "DELETE FROM beneficiaries",
+            "DELETE FROM customers",
             "DELETE FROM refresh_tokens",
             "DELETE FROM user_roles",
             "DELETE FROM users",

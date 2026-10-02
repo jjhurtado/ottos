@@ -31,7 +31,7 @@ class RoleAdministrationTest extends ApiTestSupport {
         mvc.perform(get("/api/v1/permissions").header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].code", hasItem("users:read")))
-                .andExpect(jsonPath("$[0].module").value("identity"));
+                .andExpect(jsonPath("$[*].module", hasItem("identity")));
     }
 
     @Test
