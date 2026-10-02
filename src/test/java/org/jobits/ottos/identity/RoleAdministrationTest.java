@@ -1,5 +1,7 @@
 package org.jobits.ottos.identity;
 
+import org.jobits.ottos.ApiTestSupport;
+
 import com.jayway.jsonpath.JsonPath;
 import org.jobits.ottos.identity.domain.Role;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,7 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-class RoleAdministrationTest extends IdentityTestSupport {
+class RoleAdministrationTest extends ApiTestSupport {
 
     private String adminToken;
 

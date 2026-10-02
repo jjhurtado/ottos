@@ -1,4 +1,4 @@
-package org.jobits.ottos.identity;
+package org.jobits.ottos;
 
 import com.jayway.jsonpath.JsonPath;
 import org.jobits.ottos.identity.domain.PermissionRepository;
@@ -12,78 +12,96 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Shared fixtures: every test starts with only the roles seeded by the migrations and no users. */
+/**
+ * Base for API tests. Every test starts with only the data seeded by the migrations: no users, no custom roles,
+ * no rates beyond the seeded ones. Add each new table to {@link #RESET} in foreign-key order.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
-abstract class IdentityTestSupport {
+public abstract class ApiTestSupport {
 
-    static final String PASSWORD = "test-password-123";
-    private static final Set<String> SEEDED_ROLES = Set.of("ADMIN", "SALES", "DELIVERY");
+    protected static final String PASSWORD = "test-password-123";
 
-    @Autowired
-    MockMvc mvc;
-
-    @Autowired
-    UserRepository users;
-
-    @Autowired
-    RoleRepository roles;
-
-    @Autowired
-    PermissionRepository permissions;
+    private static final List<String> RESET = List.of(
+            "DELETE FROM refresh_tokens",
+            "DELETE FROM user_roles",
+            "DELETE FROM users",
+            "DELETE FROM role_permissions WHERE role_id IN (SELECT id FROM roles WHERE code NOT IN ('ADMIN', 'SALES', 'DELIVERY'))",
+            "DELETE FROM roles WHERE code NOT IN ('ADMIN', 'SALES', 'DELIVERY')",
+            "DELETE FROM exchange_rates WHERE id <> '00000000-0000-0000-0001-000000000001'",
+            "DELETE FROM fee_rules WHERE id NOT IN ('00000000-0000-0000-0002-000000000001', '00000000-0000-0000-0002-000000000002')");
 
     @Autowired
-    RefreshTokenRepository refreshTokens;
+    protected MockMvc mvc;
 
     @Autowired
-    PasswordEncoder passwordEncoder;
+    protected JdbcTemplate jdbc;
+
+    @Autowired
+    protected UserRepository users;
+
+    @Autowired
+    protected RoleRepository roles;
+
+    @Autowired
+    protected PermissionRepository permissions;
+
+    @Autowired
+    protected RefreshTokenRepository refreshTokens;
+
+    @Autowired
+    protected PasswordEncoder passwordEncoder;
 
     @BeforeEach
-    void resetIdentityData() {
-        refreshTokens.deleteAll();
-        users.deleteAll();
-        roles.findAll().stream().filter(r -> !SEEDED_ROLES.contains(r.getCode())).forEach(roles::delete);
+    void resetDatabase() {
+        RESET.forEach(jdbc::update);
     }
 
-    User createUser(String email, String... roleCodes) {
+    protected User createUser(String email, String... roleCodes) {
         User user = new User(email, passwordEncoder.encode(PASSWORD), "User " + email);
         user.replaceRoles(Arrays.stream(roleCodes).map(this::role).toList());
         return users.save(user);
     }
 
-    Role createRole(String code, String... permissionCodes) {
+    protected Role createRole(String code, String... permissionCodes) {
         Role role = new Role(code, "Role " + code, null);
         role.replacePermissions(permissions.findAllById(List.of(permissionCodes)));
         return roles.save(role);
     }
 
-    Role role(String code) {
+    protected Role role(String code) {
         return roles.findByCode(code).orElseThrow();
     }
 
     /** Logs in and returns the raw JSON response (accessToken, refreshToken…). */
-    String loginResponse(String email) throws Exception {
+    protected String loginResponse(String email) throws Exception {
         return login(email, PASSWORD)
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
     }
 
-    String accessToken(String email) throws Exception {
+    protected String accessToken(String email) throws Exception {
         return JsonPath.read(loginResponse(email), "$.accessToken");
     }
 
-    ResultActions login(String email, String password) throws Exception {
+    /** Creates a user with the given roles and returns an access token for them. */
+    protected String tokenFor(String email, String... roleCodes) throws Exception {
+        createUser(email, roleCodes);
+        return accessToken(email);
+    }
+
+    protected ResultActions login(String email, String password) throws Exception {
         return mvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -91,7 +109,7 @@ abstract class IdentityTestSupport {
                         """.formatted(email, password)));
     }
 
-    ResultActions refresh(String refreshToken) throws Exception {
+    protected ResultActions refresh(String refreshToken) throws Exception {
         return mvc.perform(post("/api/v1/auth/refresh")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -99,7 +117,7 @@ abstract class IdentityTestSupport {
                         """.formatted(refreshToken)));
     }
 
-    static String bearer(String token) {
+    protected static String bearer(String token) {
         return "Bearer " + token;
     }
 }

@@ -1,5 +1,7 @@
 package org.jobits.ottos.identity;
 
+import org.jobits.ottos.ApiTestSupport;
+
 import com.jayway.jsonpath.JsonPath;
 import org.jobits.ottos.identity.domain.Role;
 import org.jobits.ottos.identity.domain.User;
@@ -15,7 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-class AuthenticationTest extends IdentityTestSupport {
+class AuthenticationTest extends ApiTestSupport {
 
     @BeforeEach
     void setUp() {

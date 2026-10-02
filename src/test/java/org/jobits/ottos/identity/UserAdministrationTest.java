@@ -1,5 +1,7 @@
 package org.jobits.ottos.identity;
 
+import org.jobits.ottos.ApiTestSupport;
+
 import com.jayway.jsonpath.JsonPath;
 import org.jobits.ottos.identity.domain.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,7 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-class UserAdministrationTest extends IdentityTestSupport {
+class UserAdministrationTest extends ApiTestSupport {
 
     private User admin;
     private String adminToken;
@@ -111,21 +113,22 @@ class UserAdministrationTest extends IdentityTestSupport {
     void cannotHandOutPermissionsYouDoNotHold() throws Exception {
         createRole("USER_MANAGER", "users:read", "users:write");
         createUser("manager@ottos.test", "USER_MANAGER");
-        User sales = createUser("sales@ottos.test", "SALES");
+        User newcomer = createUser("newcomer@ottos.test");
+        createRole("TRAINEE");
         String managerToken = accessToken("manager@ottos.test");
 
-        mvc.perform(put("/api/v1/users/{id}/roles", sales.getId())
+        mvc.perform(put("/api/v1/users/{id}/roles", newcomer.getId())
                         .header("Authorization", bearer(managerToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"roleIds\": [\"%s\"]}".formatted(role("ADMIN").getId())))
                 .andExpect(status().isForbidden());
 
-        mvc.perform(put("/api/v1/users/{id}/roles", sales.getId())
+        mvc.perform(put("/api/v1/users/{id}/roles", newcomer.getId())
                         .header("Authorization", bearer(managerToken))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"roleIds\": [\"%s\"]}".formatted(role("DELIVERY").getId())))
+                        .content("{\"roleIds\": [\"%s\"]}".formatted(role("TRAINEE").getId())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.roles[0].code").value("DELIVERY"));
+                .andExpect(jsonPath("$.roles[0].code").value("TRAINEE"));
     }
 
     @Test

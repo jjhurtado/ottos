@@ -1,5 +1,7 @@
 package org.jobits.ottos.identity;
 
+import org.jobits.ottos.ApiTestSupport;
+
 import org.jobits.ottos.identity.domain.Permission;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -21,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Keeps code and catalog in sync: every permission an endpoint checks must exist in the permissions table
  * (added by a migration), and ADMIN must hold all of them.
  */
-class PermissionCatalogTest extends IdentityTestSupport {
+class PermissionCatalogTest extends ApiTestSupport {
 
     private static final Pattern PERMISSION = Pattern.compile("'([a-z][a-z0-9-]*:[a-z0-9:-]+)'");
 
