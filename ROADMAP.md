@@ -13,7 +13,7 @@ La plataforma gestiona el envío de remesas de punta a punta para cuatro actores
 | Delivery | Ve sus remesas asignadas, entrega el dinero al beneficiario, confirma con firma o código, reporta incidencias, rinde el efectivo | App móvil |
 | Cliente | Cotiza, envía remesas, guarda beneficiarios, sigue el estado, recibe notificaciones, consulta su historial | App móvil |
 
-Supuestos: Ventas es personal interno (agentes o sucursales) y Delivery entrega la remesa en efectivo en el domicilio del beneficiario.
+Supuestos: Ventas es personal interno (agentes o sucursales). Delivery entrega la remesa en efectivo en el domicilio del beneficiario o, en las remesas de recogida, recoge USD del beneficiario. Por ahora solo La Habana.
 
 ## Arquitectura propuesta
 
@@ -48,7 +48,7 @@ Cada módulo es un paquete de Spring con su propio dominio, servicios, repositor
 | Notificaciones | Push (Firebase Cloud Messaging), correo, SMS ante cambios de estado | Cliente, Delivery | 2 |
 | Reportes y auditoría | Indicadores, exportes, registro de quién hizo qué | Admin | 4 |
 
-Estados sugeridos de una remesa: **Creada → Pagada → Asignada → En entrega → Entregada**, con salidas a **Incidencia** y **Cancelada** (con reembolso).
+Estados de una remesa (configurables en la base de datos): **Pagada → Asignada → Entregada**. Una remesa está atrasada si no se ha entregado y pasó su fecha prevista (2 días tras el pago); se puede atrasar con motivo. Sin cancelaciones por ahora.
 
 ## Estructura del frontend en Flutter
 
@@ -95,17 +95,17 @@ Cinco fases: la Fase 1 ya entrega valor real (remesas registradas por Ventas y e
 | Fase | Contenido | Hito de salida |
 | --- | --- | --- |
 | **0 · Fundamentos** | Repos y CI/CD · Auth y roles · Modelo de datos · Entornos y Docker | **Base lista** — API con login por rol |
-| **1 · MVP de remesas** | Tasas y comisiones · Registro y cobro · Beneficiarios · Asignar repartidor · Entrega con firma | **Primera remesa real** — flujo de punta a punta |
+| **1 · MVP de remesas** | Tasas y comisiones · Clientes y beneficiarios · Entregas y recogidas · Asignar y atrasar · Flujo de efectivo | **Primera remesa real** — flujo de punta a punta |
 | **2 · App Cliente** | Cotizar y enviar · Pago en línea · Estado de la remesa · Notificaciones push · Historial | **Clientes autónomos** — app en tiendas |
-| **3 · Caja y control** | Cierre de caja · Efectivo por ruta · Conciliación · Verificar identidad · Devoluciones | **Caja cuadrada** — conciliación correcta |
+| **3 · Caja y control** | Cierre de caja · Conciliación · Prueba de entrega con foto o firma · Verificar identidad · Devoluciones | **Caja cuadrada** — conciliación correcta |
 | **4 · Consolidación** | Reportes y KPIs · Auditoría · Seguridad y carga · Lanzamiento | — |
 
 | Fase | Objetivo | Actores que reciben valor | Duración estimada |
 | --- | --- | --- | --- |
 | 0 · Fundamentos | Esqueleto del sistema desplegable, con seguridad por rol | Equipo de desarrollo | Por definir |
-| 1 · MVP de remesas | Registrar y cobrar una remesa, asignarla y entregarla al beneficiario con prueba de entrega | Admin, Ventas, Delivery | Por definir |
+| 1 · MVP de remesas | Registrar remesas pagadas y recogidas, asignarlas, atrasarlas y entregarlas; llevar el efectivo del negocio y de cada mensajero | Admin, Ventas, Delivery | En curso |
 | 2 · App Cliente | El remitente cotiza, paga y sigue sus remesas sin pasar por Ventas | Cliente | Por definir |
-| 3 · Caja y control | Cuadrar el efectivo de sucursales y repartidores, verificar identidad, gestionar devoluciones | Admin, Ventas, Delivery | Por definir |
+| 3 · Caja y control | Cerrar y conciliar la caja, probar la entrega con foto o firma, verificar identidad, gestionar devoluciones | Admin, Ventas, Delivery | Por definir |
 | 4 · Consolidación | Medir, auditar, reforzar seguridad y lanzar al público | Admin, todos | Por definir |
 
 Fuera del roadmap (futuro): todo lo relacionado con mapas — ubicación del repartidor en tiempo real, rutas optimizadas y seguimiento de la entrega sobre un mapa. Mientras tanto, la asignación se hace por zona o municipio, sin geolocalización.
@@ -172,5 +172,5 @@ Definición de terminado para cada historia, en todas las fases:
 - [ ] Confirmar el orden de las fases 2 y 3 (¿App Cliente o Caja y control primero?)
 - [ ] Confirmar tres apps Flutter o una sola
 - [ ] Definir tamaño del equipo y fechas de la Fase 0
-- [ ] Dibujar el modelo de datos inicial (remesa, beneficiario, usuario, sucursal, caja)
-- [ ] Crear el repositorio y el pipeline de CI
+- [x] Modelo de datos inicial (remesa, cliente, beneficiario, usuario, tasas, caja)
+- [x] Repositorio (github.com/jjhurtado/ottos) y pipeline de CI

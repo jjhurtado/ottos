@@ -238,11 +238,12 @@ class RemittancesTest extends ApiTestSupport {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("DELIVERED"));
         } finally {
+            jdbc.update("INSERT INTO remittance_transitions VALUES ('ASSIGNED', 'DELIVERED', 'remittances:deliver')");
+            jdbc.update("DELETE FROM remittance_transitions WHERE 'ON_THE_WAY' IN (from_status, to_status)");
+            jdbc.update("DELETE FROM cash_movements");
             jdbc.update("DELETE FROM remittance_events");
             jdbc.update("DELETE FROM remittances");
-            jdbc.update("DELETE FROM remittance_transitions WHERE 'ON_THE_WAY' IN (from_status, to_status)");
             jdbc.update("DELETE FROM remittance_statuses WHERE code = 'ON_THE_WAY'");
-            jdbc.update("INSERT INTO remittance_transitions VALUES ('ASSIGNED', 'DELIVERED', 'remittances:deliver')");
         }
     }
 

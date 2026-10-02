@@ -59,13 +59,13 @@ package are its public API; sub-packages are internal.
 | Module | Package | Phase |
 | --- | --- | --- |
 | Identity and access (staff users, roles, permissions) | `identity` | 0 (implemented) |
-| Branches and zones | `branches` | 0–1 |
-| Customers (remittance senders, no login yet) | `customers` | 1 (table and entity) |
-| Rates and fees | `rates` | 1 |
-| Beneficiaries | `beneficiaries` | 1 |
-| Remittances | `remittances` | 1 |
-| Dispatch and deliveries | `dispatch` | 1 |
-| Payments and cash | `payments` | 1 and 3 |
+| Branches and zones (provinces, municipalities) | `branches` | 1 (zones implemented; branches later) |
+| Customers (senders, no login yet) | `customers` | 1 (implemented) |
+| Rates and fees | `rates` | 1 (implemented) |
+| Beneficiaries | `beneficiaries` | 1 (implemented) |
+| Remittances (deliveries and pickups) | `remittances` | 1 (implemented) |
+| Dispatch and deliveries (routes, proof photos) | `dispatch` | later; assignment lives in `remittances` for now |
+| Payments and cash (cash ledger) | `payments` | 1 (ledger implemented); closing and reconciliation in 3 |
 | Notifications | `notifications` | 2 |
 | Reporting and audit | `reporting` | 4 |
 
@@ -111,23 +111,48 @@ lifetime (15 minutes). Deactivating a user or changing their password revokes th
 
 ## Endpoints
 
-| Method | Path | Access |
-| --- | --- | --- |
-| POST | `/api/v1/auth/login` | Public |
-| POST | `/api/v1/auth/refresh` | Public (refresh token, single use) |
-| POST | `/api/v1/auth/logout` | Public (refresh token) |
-| GET | `/api/v1/auth/me` | Authenticated |
-| POST | `/api/v1/auth/change-password` | Authenticated |
-| GET | `/api/v1/users`, `/api/v1/users/{id}` | `users:read` |
-| POST | `/api/v1/users` | `users:write` |
-| PUT | `/api/v1/users/{id}`, `/api/v1/users/{id}/roles`, `/api/v1/users/{id}/password` | `users:write` |
-| POST | `/api/v1/users/{id}/activate`, `/api/v1/users/{id}/deactivate` | `users:write` |
-| GET | `/api/v1/permissions`, `/api/v1/roles`, `/api/v1/roles/{id}` | `roles:read` |
-| POST | `/api/v1/roles` | `roles:write` |
-| PUT | `/api/v1/roles/{id}`, `/api/v1/roles/{id}/permissions` | `roles:write` |
-| DELETE | `/api/v1/roles/{id}` | `roles:write` |
+Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the permission each needs:
 
-## Still to do in Phase 0
+| Area | Main endpoints | Permissions |
+| --- | --- | --- |
+| Auth | `POST /auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/change-password`; `GET /auth/me` | public / authenticated |
+| Staff users | `GET/POST /users`, `PUT /users/{id}`, `/users/{id}/roles`, `/users/{id}/password`, `POST /users/{id}/activate`, `/deactivate` | `users:read`, `users:write` |
+| Roles | `GET /permissions`, `GET/POST /roles`, `PUT /roles/{id}`, `/roles/{id}/permissions`, `DELETE /roles/{id}` | `roles:read`, `roles:write` |
+| Zones | `GET /provinces`, `GET /municipalities?province=` | authenticated |
+| Rates and fees | `GET /corridors`, `GET/POST /corridors/{code}/rates`, `GET/POST /corridors/{code}/fee-rules`, `POST /quotes` | `rates:read`, `rates:write` |
+| Customers | `GET/POST /customers?q=`, `GET/PUT /customers/{id}` | `customers:read`, `customers:write` |
+| Beneficiaries | `GET /beneficiaries?q=`, `GET/PUT /beneficiaries/{id}`, `GET/POST /customers/{id}/beneficiaries`, `PUT/DELETE /customers/{id}/beneficiaries/{beneficiaryId}` | `customers:read`, `customers:write` |
+| Remittances | `POST /remittances` (header `Idempotency-Key`), `GET /remittances?status=&type=&late=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/{id}`, `/remittances/code/{code}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:create`, `remittances:read` |
+| Courier work | `GET /remittances/assigned`, `POST /remittances/{id}/deliver`, `/deliver-with-pin` | `remittances:read-assigned`, `remittances:deliver` |
+| Workflow | `POST /remittances/{id}/assign`, `/transitions`, `/postpone` | `remittances:assign`, the transition's permission, `remittances:postpone` |
+| Statistics | `GET /customers/{id}/stats`, `GET /beneficiaries/{id}/stats` | `remittances:read` |
+| Cash | `GET /cash/business`, `/cash/business/movements`, `/cash/couriers`, `/cash/couriers/{id}`, `/cash/remittances/{id}/movements`; `POST /cash/couriers/{id}/funding`, `/returns` | `cash:read`, `cash:write` |
+| Own cash | `GET /cash/me` | `cash:read-own` |
+| Business box | `POST /cash/business/deposits`, `/withdrawals` | `cash:adjust` |
+
+All paths start with `/api/v1`. Initial grants: ADMIN has everything; SALES manages customers, rates (read),
+remittances (read, create, assign, postpone) and courier cash; DELIVERY sees and completes its own remittances,
+postpones them and sees its own cash. Administrators can change this through the roles API.
+
+## Remittance rules
+
+- **Quote:** fee = 10 % of the amount, at least 10 USD (a fee rule per corridor, versioned in `fee_rules`);
+  total charged = amount + fee; amount to deliver = amount × rate, rounded down to 50 CUP (no rounding for USD-USD).
+  Rates (`exchange_rates`) and fee rules are never edited: a change inserts a new row. Each remittance keeps a copy
+  of what it used, and of the beneficiary's data.
+- **Types:** DELIVERY (the courier hands cash over) and PICKUP (the courier collects USD). Pickup fee, rate and
+  totals are visible only with `remittances:read-financials`.
+- **Workflow:** statuses and transitions are rows in `remittance_statuses` and `remittance_transitions`; the code
+  relies only on the flags `is_initial`, `requires_courier` and `is_final`. Seeded: Paid → Assigned → Delivered.
+- **Due date and delays:** expected date = registration day + `default_delivery_days` (2, in `remittance_settings`),
+  in Cuba's timezone (`ottos.timezone`). A remittance is late when it is not final and its expected date has
+  passed; postponing moves the date with a required reason and is kept in the history.
+- **Cash:** a double-entry ledger (`cash_accounts`, `cash_movements`). Registering a delivery adds the total
+  charged to the business box; completing it moves the cash out of the courier; completing a pickup moves the
+  collected USD into the courier. Couriers may go negative.
+
+## Still to do
 
 - Published Docker image and staging environment
 - Scheduled cleanup of expired refresh tokens
+- Cash closing and reconciliation (Phase 3)
