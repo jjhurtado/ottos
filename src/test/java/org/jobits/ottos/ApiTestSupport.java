@@ -11,12 +11,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 
@@ -29,11 +34,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(ApiTestSupport.TestClockConfig.class)
 public abstract class ApiTestSupport {
 
     protected static final String PASSWORD = "test-password-123";
 
     private static final List<String> RESET = List.of(
+            "DELETE FROM remittance_events",
+            "DELETE FROM remittances",
             "DELETE FROM customer_beneficiaries",
             "DELETE FROM beneficiaries",
             "DELETE FROM customers",
@@ -47,6 +55,9 @@ public abstract class ApiTestSupport {
 
     @Autowired
     protected MockMvc mvc;
+
+    @Autowired
+    protected MutableClock clock;
 
     @Autowired
     protected JdbcTemplate jdbc;
@@ -67,8 +78,9 @@ public abstract class ApiTestSupport {
     protected PasswordEncoder passwordEncoder;
 
     @BeforeEach
-    void resetDatabase() {
+    void resetDatabaseAndClock() {
         RESET.forEach(jdbc::update);
+        clock.reset();
     }
 
     protected User createUser(String email, String... roleCodes) {
@@ -122,5 +134,15 @@ public abstract class ApiTestSupport {
 
     protected static String bearer(String token) {
         return "Bearer " + token;
+    }
+
+    @TestConfiguration
+    static class TestClockConfig {
+
+        @Bean
+        @Primary
+        MutableClock mutableClock() {
+            return new MutableClock(ZoneId.of("America/Havana"));
+        }
     }
 }
