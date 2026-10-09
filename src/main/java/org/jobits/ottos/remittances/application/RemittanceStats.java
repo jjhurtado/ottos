@@ -1,15 +1,14 @@
 package org.jobits.ottos.remittances.application;
 
+import org.jobits.ottos.ApiException;
 import org.jobits.ottos.beneficiaries.Beneficiaries;
 import org.jobits.ottos.branches.Zones;
 import org.jobits.ottos.customers.Customers;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.jobits.ottos.remittances.domain.Remittance;
 import org.jobits.ottos.remittances.domain.RemittanceRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -57,7 +56,7 @@ public class RemittanceStats {
     @Transactional(readOnly = true)
     public CustomerStats forCustomer(UUID customerId) {
         if (customers.find(customerId).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found");
+            throw ApiException.notFound("CUSTOMER_NOT_FOUND", "Customer not found");
         }
         List<Remittance> all = remittances.findByCustomerIdOrderByCreatedAtDesc(customerId);
         List<Remittance> deliveries = ofType(all, RemittanceType.DELIVERY);
@@ -79,7 +78,7 @@ public class RemittanceStats {
     @Transactional(readOnly = true)
     public BeneficiaryStats forBeneficiary(UUID beneficiaryId) {
         if (beneficiaries.find(beneficiaryId).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Beneficiary not found");
+            throw ApiException.notFound("BENEFICIARY_NOT_FOUND", "Beneficiary not found");
         }
         List<Remittance> all = remittances.findByBeneficiaryIdOrderByCreatedAtDesc(beneficiaryId);
         Set<String> finals = Set.copyOf(workflow.finalCodes());

@@ -1,5 +1,6 @@
 package org.jobits.ottos.beneficiaries;
 
+import org.jobits.ottos.ApiException;
 import org.jobits.ottos.Phones;
 import org.jobits.ottos.beneficiaries.domain.Beneficiary;
 import org.jobits.ottos.beneficiaries.domain.BeneficiaryRepository;
@@ -10,7 +11,6 @@ import org.jobits.ottos.branches.Zones.MunicipalityInfo;
 import org.jobits.ottos.customers.Customers;
 import org.jobits.ottos.customers.Customers.CustomerInfo;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -123,10 +123,10 @@ public class Beneficiaries {
     private Beneficiary.Details validate(Beneficiary.Details d) {
         String phone = Phones.normalize(d.phone());
         if (phone == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phone must contain digits");
+            throw ApiException.badRequest("INVALID_PHONE", "Phone must contain digits");
         }
         if (zones.findMunicipality(d.municipalityCode()).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown municipality " + d.municipalityCode());
+            throw ApiException.badRequest("UNKNOWN_MUNICIPALITY", "Unknown municipality " + d.municipalityCode());
         }
         return new Beneficiary.Details(d.fullName().trim(), phone, Phones.normalize(d.alternatePhone()),
                 d.street().trim(), blankToNull(d.houseNumber()), blankToNull(d.betweenStreets()),
@@ -152,7 +152,7 @@ public class Beneficiaries {
     }
 
     private static ResponseStatusException notFound() {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Beneficiary not found");
+        return ApiException.notFound("BENEFICIARY_NOT_FOUND", "Beneficiary not found");
     }
 
     public record BeneficiaryInfo(UUID id, String fullName, String phone, String alternatePhone, String street,

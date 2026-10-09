@@ -1,5 +1,6 @@
 package org.jobits.ottos.rates.management;
 
+import org.jobits.ottos.ApiException;
 import org.jobits.ottos.rates.domain.Corridor;
 import org.jobits.ottos.rates.domain.CorridorRepository;
 import org.jobits.ottos.rates.domain.ExchangeRate;
@@ -7,10 +8,8 @@ import org.jobits.ottos.rates.domain.ExchangeRateRepository;
 import org.jobits.ottos.rates.domain.FeeRule;
 import org.jobits.ottos.rates.domain.FeeRuleRepository;
 import org.jobits.ottos.rates.domain.FeeType;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -59,7 +58,7 @@ public class RateAdministration {
     public RateView setRate(String corridorCode, BigDecimal rate, UUID actorId) {
         Corridor corridor = find(corridorCode);
         if (corridor.isSameCurrency() && rate.compareTo(BigDecimal.ONE) != 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The rate of " + corridorCode + " is always 1");
+            throw ApiException.badRequest("FIXED_RATE", "The rate of " + corridorCode + " is always 1");
         }
         return RateView.of(rates.save(new ExchangeRate(corridorCode, rate, clock.instant(), actorId)));
     }
@@ -75,10 +74,10 @@ public class RateAdministration {
                                   BigDecimal maxFee, UUID actorId) {
         find(corridorCode);
         if (type == FeeType.PERCENTAGE && value.compareTo(HUNDRED) > 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A percentage fee cannot exceed 100");
+            throw ApiException.badRequest("FEE_PERCENTAGE_TOO_HIGH", "A percentage fee cannot exceed 100");
         }
         if (minFee != null && maxFee != null && minFee.compareTo(maxFee) > 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "minFee cannot be greater than maxFee");
+            throw ApiException.badRequest("INVALID_FEE_RANGE", "minFee cannot be greater than maxFee");
         }
         FeeRule rule = new FeeRule(corridorCode, type, value, minFee, maxFee, clock.instant(), actorId);
         return FeeRuleView.of(feeRules.save(rule));
@@ -86,7 +85,7 @@ public class RateAdministration {
 
     private Corridor find(String code) {
         return corridors.findById(code)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Corridor not found"));
+                .orElseThrow(() -> ApiException.notFound("CORRIDOR_NOT_FOUND", "Corridor not found"));
     }
 
     public record CorridorView(String code, String sourceCurrency, String targetCurrency, BigDecimal deliveryRounding,

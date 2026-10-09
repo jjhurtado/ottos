@@ -1,7 +1,6 @@
 package org.jobits.ottos.identity.management;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
+import org.jobits.ottos.ApiException;
 
 import java.util.Collection;
 import java.util.Set;
@@ -22,7 +21,7 @@ public record Actor(UUID userId, Set<String> permissions) {
         TreeSet<String> missing = new TreeSet<>(required);
         missing.removeAll(permissions);
         if (!missing.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+            throw ApiException.forbidden("PERMISSION_ESCALATION",
                     "You cannot grant or revoke permissions you don't hold: " + String.join(", ", missing));
         }
     }

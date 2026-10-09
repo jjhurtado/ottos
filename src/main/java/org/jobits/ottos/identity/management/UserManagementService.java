@@ -1,5 +1,6 @@
 package org.jobits.ottos.identity.management;
 
+import org.jobits.ottos.ApiException;
 import org.jobits.ottos.identity.domain.Permission;
 import org.jobits.ottos.identity.domain.Role;
 import org.jobits.ottos.identity.domain.RoleRepository;
@@ -7,11 +8,9 @@ import org.jobits.ottos.identity.domain.User;
 import org.jobits.ottos.identity.domain.UserRepository;
 import org.jobits.ottos.identity.management.Views.UserView;
 import org.jobits.ottos.identity.security.RefreshTokenService;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashSet;
 import java.util.List;
@@ -51,7 +50,7 @@ public class UserManagementService {
     @Transactional
     public UserView create(String email, String name, String password, Set<UUID> roleIds, Actor actor) {
         if (users.existsByEmail(User.normalizeEmail(email))) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "A user with that email already exists");
+            throw ApiException.conflict("EMAIL_TAKEN", "A user with that email already exists");
         }
         List<Role> assigned = resolve(roleIds);
         actor.requireAll(permissionsOf(assigned));
@@ -92,7 +91,7 @@ public class UserManagementService {
     public UserView deactivate(UUID id, Actor actor) {
         User user = find(id);
         if (user.getId().equals(actor.userId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "You cannot deactivate your own account");
+            throw ApiException.conflict("CANNOT_DEACTIVATE_SELF", "You cannot deactivate your own account");
         }
         if (user.isActive() && user.hasRole(Role.ADMIN)) {
             requireAnotherActiveAdmin(user);
@@ -119,12 +118,12 @@ public class UserManagementService {
 
     private User find(UUID id) {
         return users.findWithRolesById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> ApiException.notFound("USER_NOT_FOUND", "User not found"));
     }
 
     private void requireAnotherActiveAdmin(User user) {
         if (users.countActiveWithRoleExcluding(Role.ADMIN, user.getId()) == 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "At least one active administrator must remain");
+            throw ApiException.conflict("LAST_ADMIN", "At least one active administrator must remain");
         }
     }
 
@@ -134,7 +133,7 @@ public class UserManagementService {
             TreeSet<String> unknown = new TreeSet<>();
             ids.forEach(id -> unknown.add(id.toString()));
             found.forEach(r -> unknown.remove(r.getId().toString()));
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown roles: " + String.join(", ", unknown));
+            throw ApiException.badRequest("UNKNOWN_ROLES", "Unknown roles: " + String.join(", ", unknown));
         }
         return found;
     }

@@ -1,5 +1,6 @@
 package org.jobits.ottos.identity.management;
 
+import org.jobits.ottos.ApiException;
 import org.jobits.ottos.identity.domain.Permission;
 import org.jobits.ottos.identity.domain.PermissionRepository;
 import org.jobits.ottos.identity.domain.Role;
@@ -7,10 +8,8 @@ import org.jobits.ottos.identity.domain.RoleRepository;
 import org.jobits.ottos.identity.domain.UserRepository;
 import org.jobits.ottos.identity.management.Views.PermissionView;
 import org.jobits.ottos.identity.management.Views.RoleView;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashSet;
 import java.util.List;
@@ -53,7 +52,7 @@ public class RoleManagementService {
     @Transactional
     public RoleView create(String code, String name, String description, Set<String> permissionCodes, Actor actor) {
         if (roles.existsByCode(code)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "A role with code " + code + " already exists");
+            throw ApiException.conflict("ROLE_CODE_TAKEN", "A role with code " + code + " already exists");
         }
         List<Permission> granted = resolve(permissionCodes);
         actor.requireAll(permissionCodes);
@@ -89,7 +88,7 @@ public class RoleManagementService {
         Role role = findEditable(id);
         long holders = users.countByRoles_Id(id);
         if (holders > 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw ApiException.conflict("ROLE_IN_USE",
                     "Role " + role.getCode() + " is assigned to " + holders + " user(s); remove it from them first");
         }
         roles.delete(role);
@@ -97,13 +96,13 @@ public class RoleManagementService {
 
     private Role find(UUID id) {
         return roles.findWithPermissionsById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+                .orElseThrow(() -> ApiException.notFound("ROLE_NOT_FOUND", "Role not found"));
     }
 
     private Role findEditable(UUID id) {
         Role role = find(id);
         if (role.isBuiltIn()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Built-in role " + role.getCode() + " cannot be modified");
+            throw ApiException.conflict("BUILT_IN_ROLE", "Built-in role " + role.getCode() + " cannot be modified");
         }
         return role;
     }
@@ -113,7 +112,7 @@ public class RoleManagementService {
         if (found.size() != codes.size()) {
             TreeSet<String> unknown = new TreeSet<>(codes);
             found.forEach(p -> unknown.remove(p.getCode()));
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown permissions: " + String.join(", ", unknown));
+            throw ApiException.badRequest("UNKNOWN_PERMISSIONS", "Unknown permissions: " + String.join(", ", unknown));
         }
         return found;
     }

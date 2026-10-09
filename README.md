@@ -134,6 +134,29 @@ All paths start with `/api/v1`. Initial grants: ADMIN has everything; SALES mana
 remittances (read, create, assign, postpone) and courier cash; DELIVERY sees and completes its own remittances,
 postpones them and sees its own cash. Administrators can change this through the roles API.
 
+## Errors
+
+Every error is a ProblemDetail (`application/problem+json`) with a stable `code`; the English `detail` is for people
+reading logs. Clients branch on and translate `code`. Codes are part of the contract: never rename one, add a new one.
+
+```json
+{"type": "about:blank", "title": "Bad Request", "status": 400, "detail": "Amount too small: it rounds down to 0 CUP to deliver",
+ "instance": "/api/v1/remittances", "code": "AMOUNT_TOO_SMALL"}
+```
+
+Throw `ApiException.badRequest("SOME_CODE", "English detail")` (or `conflict`, `notFound`, `forbidden`,
+`unauthorized`); `ApiErrors` gives codes to the errors Spring raises.
+
+| Status | Codes |
+| --- | --- |
+| 400 | `VALIDATION_FAILED` (with `errors: [{field, constraint}]`, e.g. `{"field": "email", "constraint": "NotBlank"}`), `MALFORMED_REQUEST`, `INVALID_PARAMETER`, `AMOUNT_TOO_SMALL`, `BENEFICIARY_NOT_LINKED`, `BENEFICIARY_UNAVAILABLE`, `COURIER_REQUIRED`, `CUSTOMER_UNAVAILABLE`, `FEE_PERCENTAGE_TOO_HIGH`, `FIXED_RATE`, `INCORRECT_CURRENT_PASSWORD`, `INCORRECT_PIN`, `INVALID_AMOUNT`, `INVALID_COURIER`, `INVALID_FEE_RANGE`, `INVALID_PHONE`, `INVALID_POSTPONE_DATE`, `NO_ACTIVE_CORRIDOR`, `NO_BUSINESS_CASH`, `UNKNOWN_MUNICIPALITY`, `UNKNOWN_PERMISSIONS`, `UNKNOWN_ROLES` |
+| 401 | `AUTHENTICATION_REQUIRED` (no token, or account no longer active), `INVALID_TOKEN` (malformed or expired: refresh or log in again), `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
+| 403 | `FORBIDDEN` (missing permission), `PERMISSION_ESCALATION`, `TRANSITION_FORBIDDEN` |
+| 404 | `NOT_FOUND` (unknown route), `BENEFICIARY_NOT_FOUND`, `CORRIDOR_NOT_FOUND`, `CUSTOMER_NOT_FOUND`, `REMITTANCE_NOT_FOUND`, `ROLE_NOT_FOUND`, `USER_NOT_FOUND` |
+| 409 | `CONCURRENT_UPDATE` (retry), `BUILT_IN_ROLE`, `CANNOT_DEACTIVATE_SELF`, `COURIER_NOT_ASSIGNED`, `EMAIL_TAKEN`, `LAST_ADMIN`, `NO_EXCHANGE_RATE`, `NO_FEE_RULE`, `PHONE_ALREADY_REGISTERED`, `REMITTANCE_ALREADY_COMPLETED`, `REMITTANCE_NOT_ASSIGNABLE`, `REMITTANCE_NOT_COMPLETABLE`, `ROLE_CODE_TAKEN`, `ROLE_IN_USE`, `TRANSITION_NOT_ALLOWED` |
+
+Other framework errors get the status name as code (e.g. `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE`).
+
 ## Remittance rules
 
 - **Quote:** fee = 10 % of the amount, at least 10 USD (a fee rule per corridor, versioned in `fee_rules`);

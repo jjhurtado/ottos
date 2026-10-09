@@ -1,5 +1,6 @@
 package org.jobits.ottos.payments.application;
 
+import org.jobits.ottos.ApiException;
 import org.jobits.ottos.identity.StaffDirectory;
 import org.jobits.ottos.payments.domain.AccountType;
 import org.jobits.ottos.payments.domain.CashAccount;
@@ -12,10 +13,8 @@ import org.jobits.ottos.remittances.RemittanceEvents.RemittanceRegistered;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -160,14 +159,14 @@ public class CashLedger {
     private CashMovement record(MovementType type, CashAccount from, CashAccount to, BigDecimal amount,
                                 UUID remittanceId, String note, UUID actorId, Instant at) {
         if (amount == null || amount.signum() <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be positive");
+            throw ApiException.badRequest("INVALID_AMOUNT", "Amount must be positive");
         }
         return movements.save(new CashMovement(type, from, to, amount, remittanceId, note, actorId, at));
     }
 
     private CashAccount business(String currency) {
         return accounts.findByKey(CashAccount.keyOf(AccountType.BUSINESS, null, currency))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "The business has no " + currency + " cash"));
+                .orElseThrow(() -> ApiException.badRequest("NO_BUSINESS_CASH", "The business has no " + currency + " cash"));
     }
 
     private CashAccount external(String currency) {
@@ -189,7 +188,7 @@ public class CashLedger {
     private void requireCourier(UUID courierId) {
         boolean eligible = staff.find(courierId).map(m -> m.can(COURIER_PERMISSION)).orElse(false);
         if (!eligible) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+            throw ApiException.badRequest("INVALID_COURIER",
                     "The courier must be an active user with permission " + COURIER_PERMISSION);
         }
     }

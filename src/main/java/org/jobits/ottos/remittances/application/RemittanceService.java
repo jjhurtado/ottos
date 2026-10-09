@@ -1,6 +1,7 @@
 package org.jobits.ottos.remittances.application;
 
 import jakarta.persistence.criteria.Predicate;
+import org.jobits.ottos.ApiException;
 import org.jobits.ottos.beneficiaries.Beneficiaries;
 import org.jobits.ottos.beneficiaries.Beneficiaries.BeneficiaryInfo;
 import org.jobits.ottos.customers.Customers;
@@ -23,10 +24,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
@@ -96,12 +95,12 @@ public class RemittanceService {
         }
         CustomerInfo customer = customers.find(request.customerId())
                 .filter(CustomerInfo::active)
-                .orElseThrow(() -> badRequest("Unknown or inactive customer"));
+                .orElseThrow(() -> badRequest("CUSTOMER_UNAVAILABLE", "Unknown or inactive customer"));
         BeneficiaryInfo beneficiary = beneficiaries.find(request.beneficiaryId())
                 .filter(BeneficiaryInfo::active)
-                .orElseThrow(() -> badRequest("Unknown or inactive beneficiary"));
+                .orElseThrow(() -> badRequest("BENEFICIARY_UNAVAILABLE", "Unknown or inactive beneficiary"));
         if (!beneficiaries.isLinked(customer.id(), beneficiary.id())) {
-            throw badRequest("The beneficiary is not linked to this customer; link them first");
+            throw badRequest("BENEFICIARY_NOT_LINKED", "The beneficiary is not linked to this customer; link them first");
         }
         Quotes.Quote quote = quotes.quote(SOURCE_CURRENCY, request.targetCurrency(), request.amount());
 
@@ -129,7 +128,7 @@ public class RemittanceService {
     public RemittanceView assign(UUID id, UUID courierId, String note, Viewer viewer) {
         Remittance r = findVisible(id, viewer);
         RemittanceTransition t = workflow.firstTransition(r.getStatus(), RemittanceStatus::isRequiresCourier)
-                .orElseThrow(() -> conflict("Remittance " + r.getCode() + " cannot be assigned in status " + r.getStatus()));
+                .orElseThrow(() -> conflict("REMITTANCE_NOT_ASSIGNABLE", "Remittance " + r.getCode() + " cannot be assigned in status " + r.getStatus()));
         return apply(r, t, courierId, note, viewer);
     }
 
@@ -145,7 +144,7 @@ public class RemittanceService {
     public RemittanceView completeWithPin(UUID id, String pin, String note, Viewer viewer) {
         Remittance r = findVisible(id, viewer);
         if (!r.getPin().equals(pin)) {
-            throw badRequest("Incorrect PIN");
+            throw badRequest("INCORRECT_PIN", "Incorrect PIN");
         }
         return apply(r, finalTransition(r), null, note, viewer);
     }
@@ -155,7 +154,7 @@ public class RemittanceService {
     public RemittanceView transition(UUID id, String toStatus, UUID courierId, String note, Viewer viewer) {
         Remittance r = findVisible(id, viewer);
         RemittanceTransition t = workflow.transition(r.getStatus(), toStatus)
-                .orElseThrow(() -> conflict("Cannot move " + r.getCode() + " from " + r.getStatus() + " to " + toStatus));
+                .orElseThrow(() -> conflict("TRANSITION_NOT_ALLOWED", "Cannot move " + r.getCode() + " from " + r.getStatus() + " to " + toStatus));
         return apply(r, t, courierId, note, viewer);
     }
 
@@ -164,10 +163,10 @@ public class RemittanceService {
     public RemittanceView postpone(UUID id, LocalDate newDate, String reason, Viewer viewer) {
         Remittance r = findVisible(id, viewer);
         if (workflow.status(r.getStatus()).isFinalStatus()) {
-            throw conflict("Remittance " + r.getCode() + " is already completed");
+            throw conflict("REMITTANCE_ALREADY_COMPLETED", "Remittance " + r.getCode() + " is already completed");
         }
         if (!newDate.isAfter(r.getExpectedDate()) || newDate.isBefore(today())) {
-            throw badRequest("The new date must be after " + r.getExpectedDate() + " and not in the past");
+            throw badRequest("INVALID_POSTPONE_DATE", "The new date must be after " + r.getExpectedDate() + " and not in the past");
         }
         LocalDate previous = r.getExpectedDate();
         r.postpone(newDate);
@@ -177,23 +176,23 @@ public class RemittanceService {
 
     private RemittanceView apply(Remittance r, RemittanceTransition t, UUID courierId, String note, Viewer viewer) {
         if (!viewer.has(t.getPermissionCode())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Moving to " + t.getToStatus() + " requires " + t.getPermissionCode());
+            throw ApiException.forbidden("TRANSITION_FORBIDDEN", "Moving to " + t.getToStatus() + " requires " + t.getPermissionCode());
         }
         RemittanceStatus target = workflow.status(t.getToStatus());
         if (target.isRequiresCourier()) {
             if (courierId == null) {
-                throw badRequest("Status " + target.getCode() + " requires a courier");
+                throw badRequest("COURIER_REQUIRED", "Status " + target.getCode() + " requires a courier");
             }
             boolean eligible = staff.find(courierId).map(m -> m.can(COURIER_PERMISSION)).orElse(false);
             if (!eligible) {
-                throw badRequest("The courier must be an active user with permission " + COURIER_PERMISSION);
+                throw badRequest("INVALID_COURIER", "The courier must be an active user with permission " + COURIER_PERMISSION);
             }
             r.assignTo(courierId);
         }
         Instant now = clock.instant();
         if (target.isFinalStatus()) {
             if (r.getCourierId() == null) {
-                throw conflict("Assign a courier before completing " + r.getCode());
+                throw conflict("COURIER_NOT_ASSIGNED", "Assign a courier before completing " + r.getCode());
             }
             r.complete(now, viewer.userId());
             publisher.publishEvent(new RemittanceCompleted(r.getId(), r.getCode(), r.getType(), r.getCourierId(),
@@ -207,7 +206,7 @@ public class RemittanceService {
 
     private RemittanceTransition finalTransition(Remittance r) {
         return workflow.firstTransition(r.getStatus(), RemittanceStatus::isFinalStatus)
-                .orElseThrow(() -> conflict("Remittance " + r.getCode() + " cannot be completed in status " + r.getStatus()));
+                .orElseThrow(() -> conflict("REMITTANCE_NOT_COMPLETABLE", "Remittance " + r.getCode() + " cannot be completed in status " + r.getStatus()));
     }
 
     // ---------------------------------------------------------------- queries
@@ -337,16 +336,16 @@ public class RemittanceService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private static ResponseStatusException badRequest(String message) {
-        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    private static ApiException badRequest(String code, String message) {
+        return ApiException.badRequest(code, message);
     }
 
-    private static ResponseStatusException conflict(String message) {
-        return new ResponseStatusException(HttpStatus.CONFLICT, message);
+    private static ApiException conflict(String code, String message) {
+        return ApiException.conflict(code, message);
     }
 
-    private static ResponseStatusException notFound() {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Remittance not found");
+    private static ApiException notFound() {
+        return ApiException.notFound("REMITTANCE_NOT_FOUND", "Remittance not found");
     }
 
     public record NewRemittance(RemittanceType type, UUID customerId, UUID beneficiaryId, BigDecimal amount,

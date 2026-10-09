@@ -1,15 +1,14 @@
 package org.jobits.ottos.rates;
 
+import org.jobits.ottos.ApiException;
 import org.jobits.ottos.rates.domain.Corridor;
 import org.jobits.ottos.rates.domain.CorridorRepository;
 import org.jobits.ottos.rates.domain.ExchangeRate;
 import org.jobits.ottos.rates.domain.ExchangeRateRepository;
 import org.jobits.ottos.rates.domain.FeeRule;
 import org.jobits.ottos.rates.domain.FeeRuleRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -43,24 +42,24 @@ public class Quotes {
     @Transactional(readOnly = true)
     public Quote quote(String sourceCurrency, String targetCurrency, BigDecimal amount) {
         if (amount == null || amount.signum() <= 0 || amount.stripTrailingZeros().scale() > 2) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Amount must be positive with at most 2 decimals");
+            throw ApiException.badRequest("INVALID_AMOUNT", "Amount must be positive with at most 2 decimals");
         }
         Corridor corridor = corridors.findBySourceCurrencyAndTargetCurrencyAndActiveTrue(sourceCurrency, targetCurrency)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                .orElseThrow(() -> ApiException.badRequest("NO_ACTIVE_CORRIDOR",
                         "No active corridor " + sourceCurrency + "-" + targetCurrency));
         Instant now = clock.instant();
         ExchangeRate rate = rates.findFirstByCorridorCodeAndValidFromLessThanEqualOrderByValidFromDesc(corridor.getCode(), now)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                .orElseThrow(() -> ApiException.conflict("NO_EXCHANGE_RATE",
                         "No exchange rate set for " + corridor.getCode()));
         FeeRule feeRule = feeRules.findFirstByCorridorCodeAndValidFromLessThanEqualOrderByValidFromDesc(corridor.getCode(), now)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                .orElseThrow(() -> ApiException.conflict("NO_FEE_RULE",
                         "No fee rule set for " + corridor.getCode()));
 
         BigDecimal sent = amount.setScale(2, RoundingMode.UNNECESSARY);
         BigDecimal fee = feeRule.feeFor(sent);
         BigDecimal toDeliver = corridor.roundForDelivery(sent.multiply(rate.getRate()));
         if (toDeliver.signum() <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+            throw ApiException.badRequest("AMOUNT_TOO_SMALL",
                     "Amount too small: it rounds down to 0 " + corridor.getTargetCurrency() + " to deliver");
         }
         return new Quote(corridor.getCode(), corridor.getSourceCurrency(), corridor.getTargetCurrency(),

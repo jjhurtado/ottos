@@ -1,9 +1,9 @@
 package org.jobits.ottos.identity.security;
 
+import org.jobits.ottos.ApiException;
 import org.jobits.ottos.identity.domain.RefreshToken;
 import org.jobits.ottos.identity.domain.User;
 import org.jobits.ottos.identity.domain.UserRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,9 +80,9 @@ public class AuthenticationService {
     public void changePassword(UUID userId, String currentPassword, String newPassword) {
         User user = users.findById(userId)
                 .filter(User::isActive)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+                .orElseThrow(() -> ApiException.unauthorized("AUTHENTICATION_REQUIRED", "Your account is no longer active"));
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+            throw ApiException.badRequest("INCORRECT_CURRENT_PASSWORD", "Current password is incorrect");
         }
         user.changePasswordHash(passwordEncoder.encode(newPassword));
         refreshTokens.revokeAll(userId);
@@ -93,11 +93,11 @@ public class AuthenticationService {
     }
 
     private static ResponseStatusException invalidCredentials() {
-        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        return ApiException.unauthorized("INVALID_CREDENTIALS", "Invalid credentials");
     }
 
     private static ResponseStatusException invalidRefreshToken() {
-        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+        return ApiException.unauthorized("INVALID_REFRESH_TOKEN", "Invalid refresh token");
     }
 
     public record Session(User user, TokenService.IssuedToken accessToken,

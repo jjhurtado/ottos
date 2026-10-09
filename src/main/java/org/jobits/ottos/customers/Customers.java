@@ -1,10 +1,10 @@
 package org.jobits.ottos.customers;
 
+import org.jobits.ottos.ApiException;
 import org.jobits.ottos.Phones;
 import org.jobits.ottos.customers.domain.Customer;
 import org.jobits.ottos.customers.domain.CustomerRepository;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -76,7 +76,7 @@ public class Customers {
         customers.findByPhone(phone)
                 .filter(other -> !other.getId().equals(exceptId))
                 .ifPresent(other -> {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    throw ApiException.conflict("PHONE_ALREADY_REGISTERED",
                             "Phone " + phone + " already belongs to customer " + other.getId());
                 });
     }
@@ -84,7 +84,7 @@ public class Customers {
     private static Customer.Details normalize(Customer.Details d) {
         String phone = Phones.normalize(d.phone());
         if (phone == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phone must contain digits");
+            throw ApiException.badRequest("INVALID_PHONE", "Phone must contain digits");
         }
         return new Customer.Details(d.fullName().trim(), phone, blankToNull(d.email()), blankToNull(d.documentType()),
                 blankToNull(d.documentNumber()), blankToNull(d.address()), blankToNull(d.notes()));
@@ -95,7 +95,7 @@ public class Customers {
     }
 
     private static ResponseStatusException notFound() {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found");
+        return ApiException.notFound("CUSTOMER_NOT_FOUND", "Customer not found");
     }
 
     public record CustomerInfo(UUID id, String fullName, String phone, String email, String documentType,
