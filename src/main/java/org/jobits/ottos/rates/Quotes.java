@@ -58,10 +58,13 @@ public class Quotes {
 
         BigDecimal sent = amount.setScale(2, RoundingMode.UNNECESSARY);
         BigDecimal fee = feeRule.feeFor(sent);
-        BigDecimal converted = sent.multiply(rate.getRate());
+        BigDecimal toDeliver = corridor.roundForDelivery(sent.multiply(rate.getRate()));
+        if (toDeliver.signum() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Amount too small: it rounds down to 0 " + corridor.getTargetCurrency() + " to deliver");
+        }
         return new Quote(corridor.getCode(), corridor.getSourceCurrency(), corridor.getTargetCurrency(),
-                sent, fee, sent.add(fee), rate.getRate(), corridor.roundForDelivery(converted),
-                rate.getId(), feeRule.getId());
+                sent, fee, sent.add(fee), rate.getRate(), toDeliver, rate.getId(), feeRule.getId());
     }
 
     /**

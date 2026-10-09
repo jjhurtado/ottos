@@ -179,8 +179,11 @@ public class CashLedger {
     }
 
     private CashAccount findOrCreate(AccountType type, UUID ownerId, String currency) {
-        return accounts.findByKey(CashAccount.keyOf(type, ownerId, currency))
-                .orElseGet(() -> accounts.save(new CashAccount(type, ownerId, currency, clock.instant())));
+        String key = CashAccount.keyOf(type, ownerId, currency);
+        return accounts.findByKey(key).orElseGet(() -> {
+            accounts.insertIfAbsent(UUID.randomUUID(), key, type.name(), ownerId, currency, clock.instant());
+            return accounts.findByKey(key).orElseThrow();
+        });
     }
 
     private void requireCourier(UUID courierId) {

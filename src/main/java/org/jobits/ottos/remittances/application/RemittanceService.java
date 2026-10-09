@@ -36,6 +36,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -79,7 +80,9 @@ public class RemittanceService {
 
     /**
      * Registers a remittance, already paid: the sender pays before it is registered (pickups are paid through
-     * the courier). Repeating a request with the same idempotency key returns the first remittance.
+     * the courier). Repeating a request with the same idempotency key returns the first remittance; when two such
+     * requests run at the same time, the second fails with DataIntegrityViolationException and the caller looks the
+     * first one up with {@link #findByIdempotencyKey}.
      */
     @Transactional
     public RemittanceView register(NewRemittance request, Viewer viewer) {
@@ -111,7 +114,7 @@ public class RemittanceService {
                         quote.exchangeRateId(), quote.feeRuleId()),
                 newPin(), today().plusDays(defaultDeliveryDays()), blankToNull(request.notes()),
                 request.idempotencyKey(), now, viewer.userId());
-        remittances.save(remittance);
+        remittances.saveAndFlush(remittance);
         events.save(RemittanceEvent.created(remittance, viewer.userId(), now));
         BigDecimal charged = remittance.getType() == RemittanceType.DELIVERY ? remittance.getTotal() : BigDecimal.ZERO;
         publisher.publishEvent(new RemittanceRegistered(remittance.getId(), remittance.getCode(), remittance.getType(),
@@ -210,6 +213,11 @@ public class RemittanceService {
     @Transactional(readOnly = true)
     public RemittanceView get(UUID id, Viewer viewer) {
         return views.of(findVisible(id, viewer), viewer);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<RemittanceView> findByIdempotencyKey(String idempotencyKey, Viewer viewer) {
+        return remittances.findByIdempotencyKey(idempotencyKey).map(r -> views.of(r, viewer));
     }
 
     @Transactional(readOnly = true)

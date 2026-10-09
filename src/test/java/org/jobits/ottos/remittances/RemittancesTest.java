@@ -172,6 +172,14 @@ class RemittancesTest extends ApiTestSupport {
     }
 
     @Test
+    void anAmountThatRoundsToNothingIsRejected() throws Exception {
+        // 0.10 USD × 410 = 41 CUP, rounded down to the 50 CUP step: nothing to deliver
+        register("DELIVERY", "0.10", "CUP").andExpect(status().isBadRequest());
+        register("DELIVERY", "0.13", "CUP").andExpect(status().isCreated())
+                .andExpect(jsonPath("$.amountToDeliver").value(50.00));
+    }
+
+    @Test
     void pickupFinancialsAreOnlyForAdmins() throws Exception {
         String id = id(register("PICKUP", "200", "CUP"));
         assign(id, courier.getId().toString());
