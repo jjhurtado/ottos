@@ -35,7 +35,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -241,6 +243,16 @@ public class RemittanceService {
                 workflow.finalCodes()), viewer);
     }
 
+    /** Staff who can be assigned remittances (active, with remittances:deliver), with how many open ones they hold. */
+    @Transactional(readOnly = true)
+    public List<CourierView> couriers() {
+        Map<UUID, Long> open = new HashMap<>();
+        remittances.countOpenByCourier(workflow.finalCodes()).forEach(row -> open.put((UUID) row[0], (Long) row[1]));
+        return staff.activeWith(COURIER_PERMISSION).stream()
+                .map(m -> new CourierView(m.id(), m.name(), m.email(), open.getOrDefault(m.id(), 0L)))
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public PageView search(RemittanceFilter filter, int page, int size, Viewer viewer) {
         Page<Remittance> found = remittances.findAll(specification(filter),
@@ -339,6 +351,9 @@ public class RemittanceService {
 
     public record NewRemittance(RemittanceType type, UUID customerId, UUID beneficiaryId, BigDecimal amount,
                                 String targetCurrency, String notes, String idempotencyKey) {
+    }
+
+    public record CourierView(UUID id, String name, String email, long openRemittances) {
     }
 
     public record PageView(List<RemittanceView> items, int page, int size, long totalItems) {

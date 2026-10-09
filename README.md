@@ -124,7 +124,7 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Beneficiaries | `GET /beneficiaries?q=`, `GET/PUT /beneficiaries/{id}`, `GET/POST /customers/{id}/beneficiaries`, `PUT/DELETE /customers/{id}/beneficiaries/{beneficiaryId}` | `customers:read`, `customers:write` |
 | Remittances | `POST /remittances` (header `Idempotency-Key`), `GET /remittances?status=&type=&late=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/{id}`, `/remittances/code/{code}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:create`, `remittances:read` |
 | Courier work | `GET /remittances/assigned`, `POST /remittances/{id}/deliver`, `/deliver-with-pin` | `remittances:read-assigned`, `remittances:deliver` |
-| Workflow | `POST /remittances/{id}/assign`, `/transitions`, `/postpone` | `remittances:assign`, the transition's permission, `remittances:postpone` |
+| Workflow | `GET /couriers` (assignable staff and their open remittances), `POST /remittances/{id}/assign`, `/transitions`, `/postpone` | `remittances:assign`, the transition's permission, `remittances:postpone` |
 | Statistics | `GET /customers/{id}/stats`, `GET /beneficiaries/{id}/stats` | `remittances:read` |
 | Cash | `GET /cash/business`, `/cash/business/movements`, `/cash/couriers`, `/cash/couriers/{id}`, `/cash/remittances/{id}/movements`; `POST /cash/couriers/{id}/funding`, `/returns` | `cash:read`, `cash:write` |
 | Own cash | `GET /cash/me` | `cash:read-own` |

@@ -172,6 +172,33 @@ class RemittancesTest extends ApiTestSupport {
     }
 
     @Test
+    void assignersListTheCouriersWithTheirOpenRemittances() throws Exception {
+        User idle = createUser("idle.courier@ottos.test", "DELIVERY");
+        User inactive = createUser("inactive.courier@ottos.test", "DELIVERY");
+        inactive.deactivate();
+        users.save(inactive);
+        String open = id(register("DELIVERY", "100", "CUP"));
+        String delivered = id(register("DELIVERY", "100", "CUP"));
+        assign(open, courier.getId().toString());
+        assign(delivered, courier.getId().toString());
+        mvc.perform(post("/api/v1/remittances/{id}/deliver", delivered).header("Authorization", bearer(courierToken)))
+                .andExpect(status().isOk());
+
+        // Same rule as assigning: active with remittances:deliver, so ADMIN (who holds every permission) is listed too
+        mvc.perform(get("/api/v1/couriers").header("Authorization", bearer(salesToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].name").value("User admin@ottos.test"))
+                .andExpect(jsonPath("$[1].id").value(courier.getId().toString()))
+                .andExpect(jsonPath("$[1].name").value("User courier@ottos.test"))
+                .andExpect(jsonPath("$[1].openRemittances").value(1))
+                .andExpect(jsonPath("$[2].id").value(idle.getId().toString()))
+                .andExpect(jsonPath("$[2].openRemittances").value(0));
+        mvc.perform(get("/api/v1/couriers").header("Authorization", bearer(courierToken)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void anAmountThatRoundsToNothingIsRejected() throws Exception {
         // 0.10 USD × 410 = 41 CUP, rounded down to the 50 CUP step: nothing to deliver
         register("DELIVERY", "0.10", "CUP").andExpect(status().isBadRequest());

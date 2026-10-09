@@ -99,6 +99,13 @@ class RemittanceController {
         return remittances.search(filter, page, size, Viewers.from(jwt));
     }
 
+    @GetMapping("/couriers")
+    @PreAuthorize("hasAuthority('remittances:assign')")
+    @Operation(summary = "Staff who can be assigned remittances, by name, with their open remittances")
+    List<RemittanceService.CourierView> couriers() {
+        return remittances.couriers();
+    }
+
     @GetMapping("/remittances/assigned")
     @PreAuthorize("hasAuthority('remittances:read-assigned')")
     @Operation(summary = "My open remittances (as courier), soonest expected date first")

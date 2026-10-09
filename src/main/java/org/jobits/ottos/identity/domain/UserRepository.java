@@ -19,6 +19,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @EntityGraph(attributePaths = "roles")
     List<User> findAllByOrderByNameAsc();
 
+    @Query("""
+            select distinct u from User u join u.roles r join r.permissions p
+            where u.active = true and p.code = :permissionCode
+            order by u.name""")
+    List<User> findActiveWithPermission(String permissionCode);
+
     boolean existsByEmail(String email);
 
     boolean existsByRoles_Code(String roleCode);
