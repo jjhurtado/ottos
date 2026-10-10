@@ -111,6 +111,39 @@ class RatesTest extends ApiTestSupport {
     }
 
     @Test
+    void pickupsHaveTheirOwnRateAndFeeRule() throws Exception {
+        setRate("USD-CUP", "410").andExpect(status().isCreated());
+
+        quote("USD", "CUP", "100", "PICKUP")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.remittanceType").value("PICKUP"))
+                .andExpect(jsonPath("$.rate").value(1))
+                .andExpect(jsonPath("$.fee").value(10.00))
+                .andExpect(jsonPath("$.amountToDeliver").value(100.00));
+
+        mvc.perform(post("/api/v1/configuration/corridors/USD-CUP/rates")
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rate\": 2, \"remittanceType\": \"PICKUP\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.remittanceType").value("PICKUP"));
+        mvc.perform(post("/api/v1/configuration/corridors/USD-CUP/fee-rules")
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\": \"FIXED\", \"value\": 5, \"remittanceType\": \"PICKUP\"}"))
+                .andExpect(status().isCreated());
+
+        quote("USD", "CUP", "100", "PICKUP")
+                .andExpect(jsonPath("$.rate").value(2))
+                .andExpect(jsonPath("$.fee").value(5.00))
+                .andExpect(jsonPath("$.amountToDeliver").value(200.00));
+        quote("USD", "CUP", "100")
+                .andExpect(jsonPath("$.remittanceType").value("DELIVERY"))
+                .andExpect(jsonPath("$.rate").value(410))
+                .andExpect(jsonPath("$.fee").value(10.00));
+    }
+
+    @Test
     void sameCurrencyRateMustBeOne() throws Exception {
         setRate("USD-USD", "1.5").andExpect(status().isBadRequest());
     }
@@ -132,11 +165,16 @@ class RatesTest extends ApiTestSupport {
     }
 
     private ResultActions quote(String source, String target, String amount) throws Exception {
+        return quote(source, target, amount, null);
+    }
+
+    private ResultActions quote(String source, String target, String amount, String remittanceType) throws Exception {
+        String type = remittanceType == null ? "" : ", \"remittanceType\": \"" + remittanceType + "\"";
         return mvc.perform(post("/api/v1/quotes")
                 .header("Authorization", bearer(salesToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"sourceCurrency": "%s", "targetCurrency": "%s", "amount": %s}
-                        """.formatted(source, target, amount)));
+                        {"sourceCurrency": "%s", "targetCurrency": "%s", "amount": %s%s}
+                        """.formatted(source, target, amount, type)));
     }
 }

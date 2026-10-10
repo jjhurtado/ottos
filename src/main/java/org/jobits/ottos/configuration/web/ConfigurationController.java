@@ -16,6 +16,7 @@ import org.jobits.ottos.configuration.ConfigurationService.FeeRuleView;
 import org.jobits.ottos.configuration.ConfigurationService.RateView;
 import org.jobits.ottos.configuration.ConfigurationService.SettingsView;
 import org.jobits.ottos.configuration.FeeType;
+import org.jobits.ottos.configuration.ServiceType;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -76,46 +78,55 @@ class ConfigurationController {
 
     @GetMapping("/corridors/{code}/rates")
     @PreAuthorize("hasAuthority('configuration:read')")
-    @Operation(summary = "Exchange-rate history of a corridor, newest first")
-    List<RateView> rateHistory(@PathVariable String code) {
-        return configuration.rateHistory(code);
+    @Operation(summary = "Exchange-rate history of a corridor, newest first; remittanceType=DELIVERY|PICKUP narrows it")
+    List<RateView> rateHistory(@PathVariable String code, @RequestParam(required = false) ServiceType remittanceType) {
+        return configuration.rateHistory(code, remittanceType);
     }
 
     @PostMapping("/corridors/{code}/rates")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('configuration:write')")
-    @Operation(summary = "Set a new exchange rate; it applies from now on")
+    @Operation(summary = "Set a new exchange rate for deliveries, or for pickups with remittanceType=PICKUP; it applies from now on")
     RateView setRate(@PathVariable String code, @Valid @RequestBody RateRequest request, @AuthenticationPrincipal Jwt jwt) {
-        return configuration.setRate(code, request.rate(), UUID.fromString(jwt.getSubject()));
+        return configuration.setRate(code, typeOrDelivery(request.remittanceType()), request.rate(),
+                UUID.fromString(jwt.getSubject()));
     }
 
     @GetMapping("/corridors/{code}/fee-rules")
     @PreAuthorize("hasAuthority('configuration:read')")
-    @Operation(summary = "Fee-rule history of a corridor, newest first")
-    List<FeeRuleView> feeRuleHistory(@PathVariable String code) {
-        return configuration.feeRuleHistory(code);
+    @Operation(summary = "Fee-rule history of a corridor, newest first; remittanceType=DELIVERY|PICKUP narrows it")
+    List<FeeRuleView> feeRuleHistory(@PathVariable String code,
+                                     @RequestParam(required = false) ServiceType remittanceType) {
+        return configuration.feeRuleHistory(code, remittanceType);
     }
 
     @PostMapping("/corridors/{code}/fee-rules")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('configuration:write')")
-    @Operation(summary = "Set a new fee rule; it applies from now on")
+    @Operation(summary = "Set a new fee rule for deliveries, or for pickups with remittanceType=PICKUP; it applies from now on")
     FeeRuleView setFeeRule(@PathVariable String code, @Valid @RequestBody FeeRuleRequest request,
                            @AuthenticationPrincipal Jwt jwt) {
-        return configuration.setFeeRule(code, request.type(), request.value(), request.minFee(), request.maxFee(),
-                UUID.fromString(jwt.getSubject()));
+        return configuration.setFeeRule(code, typeOrDelivery(request.remittanceType()), request.type(), request.value(),
+                request.minFee(), request.maxFee(), UUID.fromString(jwt.getSubject()));
+    }
+
+    /** Requests without remittanceType keep meaning deliveries, as before pickups had their own rates. */
+    private static ServiceType typeOrDelivery(ServiceType remittanceType) {
+        return remittanceType == null ? ServiceType.DELIVERY : remittanceType;
     }
 
     record SettingsRequest(@DecimalMin("0") @Digits(integer = 15, fraction = 2) BigDecimal minimumAmount,
                            @Min(1) @Max(60) Integer defaultDeliveryDays) {
     }
 
-    record RateRequest(@NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate) {
+    record RateRequest(@NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate,
+                       ServiceType remittanceType) {
     }
 
     record FeeRuleRequest(@NotNull FeeType type,
                           @NotNull @DecimalMin("0") @Digits(integer = 15, fraction = 4) BigDecimal value,
                           @DecimalMin("0") @Digits(integer = 17, fraction = 2) BigDecimal minFee,
-                          @DecimalMin("0") @Digits(integer = 17, fraction = 2) BigDecimal maxFee) {
+                          @DecimalMin("0") @Digits(integer = 17, fraction = 2) BigDecimal maxFee,
+                          ServiceType remittanceType) {
     }
 }

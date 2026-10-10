@@ -124,8 +124,8 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Staff users | `GET/POST /users`, `PUT /users/{id}`, `/users/{id}/roles`, `/users/{id}/password`, `POST /users/{id}/activate`, `/deactivate` | `users:read`, `users:write` |
 | Roles | `GET /permissions`, `GET/POST /roles`, `PUT /roles/{id}`, `/roles/{id}/permissions`, `DELETE /roles/{id}` | `roles:read`, `roles:write` |
 | Zones | `GET /provinces`, `GET /municipalities?province=` | authenticated |
-| Configuration | `GET /configuration` (everything at once), `GET/PUT /configuration/settings`, `GET /configuration/corridors`, `GET/POST /configuration/corridors/{code}/rates`, `GET/POST /configuration/corridors/{code}/fee-rules` | `configuration:read`, `configuration:write` |
-| Quotes | `POST /quotes` | `rates:read` |
+| Configuration | `GET /configuration` (everything at once), `GET/PUT /configuration/settings`, `GET /configuration/corridors`, `GET/POST /configuration/corridors/{code}/rates`, `GET/POST /configuration/corridors/{code}/fee-rules` (`remittanceType=DELIVERY|PICKUP`) | `configuration:read`, `configuration:write` |
+| Quotes | `POST /quotes` (`remittanceType` defaults to `DELIVERY`) | `rates:read` |
 | Customers | `GET/POST /customers?q=`, `GET/PUT /customers/{id}` | `customers:read`, `customers:write` |
 | Beneficiaries | `GET /beneficiaries?q=`, `GET/PUT/DELETE /beneficiaries/{id}` (delete deactivates it for every customer), `POST /beneficiaries/{id}/restore`, `GET/POST /customers/{id}/beneficiaries`, `PUT/DELETE /customers/{id}/beneficiaries/{beneficiaryId}` | `customers:read`, `customers:write` |
 | Remittances | `POST /remittances` (header `Idempotency-Key`), `GET /remittances?status=&type=&late=&incident=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/{id}`, `/remittances/code/{code}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:create`, `remittances:read` |
@@ -168,9 +168,11 @@ Other framework errors get the status name as code (e.g. `METHOD_NOT_ALLOWED`, `
 
 - **Configuration:** every configurable value lives in the `configuration` module and is managed from one place
   (`GET /configuration`): `minimum_amount` (USD, 0 = no minimum) and `default_delivery_days` in `settings`, and per
-  corridor its exchange rates and fee rules.
+  corridor its exchange rates and fee rules, one history for deliveries and another for pickups (`remittance_type`).
+  Requests without `remittanceType` mean deliveries. The pickup rate started at 1 (1x1).
 - **Quote:** amount ≥ the configured minimum amount, otherwise `AMOUNT_BELOW_MINIMUM` (with `minimumAmount` and
-  `currency`); fee = 10 % of the amount, at least 10 USD (a fee rule per corridor, versioned in `fee_rules`);
+  `currency`); rate and fee rule are those of the corridor for the remittance's kind (delivery or pickup);
+  fee = 10 % of the amount, at least 10 USD (a fee rule per corridor and kind, versioned in `fee_rules`);
   total charged = amount + fee; amount to deliver = amount × rate, rounded down to 50 CUP (no rounding for USD-USD).
   Rates (`exchange_rates`) and fee rules are never edited: a change inserts a new row. Each remittance keeps a copy
   of what it used, and of the beneficiary's data.

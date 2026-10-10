@@ -53,8 +53,8 @@ public abstract class ApiTestSupport {
             "DELETE FROM users",
             "DELETE FROM role_permissions WHERE role_id IN (SELECT id FROM roles WHERE code NOT IN ('ADMIN', 'SALES', 'DELIVERY'))",
             "DELETE FROM roles WHERE code NOT IN ('ADMIN', 'SALES', 'DELIVERY')",
-            "DELETE FROM exchange_rates WHERE id <> '00000000-0000-0000-0001-000000000001'",
-            "DELETE FROM fee_rules WHERE id NOT IN ('00000000-0000-0000-0002-000000000001', '00000000-0000-0000-0002-000000000002')",
+            "DELETE FROM exchange_rates WHERE id NOT IN ('00000000-0000-0000-0001-000000000001', '00000000-0000-0000-0001-000000000002', '00000000-0000-0000-0001-000000000003')",
+            "DELETE FROM fee_rules WHERE id NOT IN ('00000000-0000-0000-0002-000000000001', '00000000-0000-0000-0002-000000000002', '00000000-0000-0000-0002-000000000003', '00000000-0000-0000-0002-000000000004')",
             "UPDATE settings SET setting_value = '0', updated_at = NULL, updated_by = NULL WHERE setting_key = 'minimum_amount'",
             "UPDATE settings SET setting_value = '2', updated_at = NULL, updated_by = NULL WHERE setting_key = 'default_delivery_days'");
 

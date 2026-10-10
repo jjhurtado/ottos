@@ -9,12 +9,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.jobits.ottos.configuration.FeeType;
+import org.jobits.ottos.configuration.ServiceType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-/** How the fee of a corridor is calculated, from validFrom on. Never edited: a change inserts a new rule. */
+/**
+ * How the fee of a corridor is calculated for one kind of remittance, from validFrom on. Never edited: a change
+ * inserts a new rule.
+ */
 @Entity
 @Table(name = "fee_rules")
 public class FeeRule {
@@ -25,6 +29,10 @@ public class FeeRule {
 
     @Column(name = "corridor_code", nullable = false, length = 7)
     private String corridorCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "remittance_type", nullable = false, length = 20)
+    private ServiceType remittanceType;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -49,9 +57,10 @@ public class FeeRule {
         // required by JPA
     }
 
-    public FeeRule(String corridorCode, FeeType type, BigDecimal value, BigDecimal minFee, BigDecimal maxFee,
-                   Instant validFrom, UUID createdBy) {
+    public FeeRule(String corridorCode, ServiceType remittanceType, FeeType type, BigDecimal value, BigDecimal minFee,
+                   BigDecimal maxFee, Instant validFrom, UUID createdBy) {
         this.corridorCode = corridorCode;
+        this.remittanceType = remittanceType;
         this.type = type;
         this.value = value;
         this.minFee = minFee;
@@ -66,6 +75,10 @@ public class FeeRule {
 
     public String getCorridorCode() {
         return corridorCode;
+    }
+
+    public ServiceType getRemittanceType() {
+        return remittanceType;
     }
 
     public FeeType getType() {

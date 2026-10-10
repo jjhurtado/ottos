@@ -5,6 +5,7 @@ import org.jobits.ottos.configuration.ConfigurationService;
 import org.jobits.ottos.configuration.ConfigurationService.CorridorView;
 import org.jobits.ottos.configuration.ConfigurationService.FeeRuleView;
 import org.jobits.ottos.configuration.ConfigurationService.RateView;
+import org.jobits.ottos.configuration.ServiceType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +26,7 @@ class QuoteServiceImpl implements QuoteService {
 
     @Override
     @Transactional(readOnly = true)
-    public Quote quote(String sourceCurrency, String targetCurrency, BigDecimal amount) {
+    public Quote quote(ServiceType remittanceType, String sourceCurrency, String targetCurrency, BigDecimal amount) {
         if (amount == null || amount.signum() <= 0 || amount.stripTrailingZeros().scale() > 2) {
             throw ApiException.badRequest("INVALID_AMOUNT", "Amount must be positive with at most 2 decimals");
         }
@@ -34,13 +35,14 @@ class QuoteServiceImpl implements QuoteService {
                         "No active corridor " + sourceCurrency + "-" + targetCurrency));
         BigDecimal sent = amount.setScale(2, RoundingMode.UNNECESSARY);
         requireMinimum(sent, corridor.sourceCurrency());
-        RateView rate = corridor.currentRate();
+        RateView rate = corridor.rate(remittanceType);
         if (rate == null) {
-            throw ApiException.conflict("NO_EXCHANGE_RATE", "No exchange rate set for " + corridor.code());
+            throw ApiException.conflict("NO_EXCHANGE_RATE",
+                    "No " + remittanceType + " exchange rate set for " + corridor.code());
         }
-        FeeRuleView feeRule = corridor.currentFeeRule();
+        FeeRuleView feeRule = corridor.feeRule(remittanceType);
         if (feeRule == null) {
-            throw ApiException.conflict("NO_FEE_RULE", "No fee rule set for " + corridor.code());
+            throw ApiException.conflict("NO_FEE_RULE", "No " + remittanceType + " fee rule set for " + corridor.code());
         }
 
         BigDecimal fee = feeFor(feeRule, sent);
@@ -49,7 +51,7 @@ class QuoteServiceImpl implements QuoteService {
             throw ApiException.badRequest("AMOUNT_TOO_SMALL",
                     "Amount too small: it rounds down to 0 " + corridor.targetCurrency() + " to deliver");
         }
-        return new Quote(corridor.code(), corridor.sourceCurrency(), corridor.targetCurrency(),
+        return new Quote(remittanceType, corridor.code(), corridor.sourceCurrency(), corridor.targetCurrency(),
                 sent, fee, sent.add(fee), rate.rate(), toDeliver, rate.id(), feeRule.id());
     }
 
