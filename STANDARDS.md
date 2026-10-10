@@ -218,6 +218,18 @@ migración), una constante en `Setting`, un método tipado en `ConfigurationServ
 - Los códigos (`AMOUNT_TOO_SMALL`, `REMITTANCE_NOT_FOUND`…) son contrato con el frontend: no se renombran; se añaden.
 - El catálogo de códigos está en el README (sección *Errors*).
 
+### Idioma y traducción
+
+- El backend no traduce: todo texto que devuelve (`detail` de los errores, descripciones de permisos, nombres y
+  descripciones de los roles semilla) está en inglés.
+- El frontend traduce por **código**, nunca por el texto: códigos de error (`AMOUNT_BELOW_MINIMUM`), de rol (`ADMIN`,
+  `SALES`, `DELIVERY`) y de permiso (`remittances:assign`). Si llega un código sin traducción, muestra el texto en
+  inglés del backend como respaldo.
+- Los datos que crean los usuarios (roles personalizados, nombres de clientes, notas…) se muestran tal cual.
+- Por eso los códigos son contrato: no se renombran. Al añadir un código nuevo (error, permiso o rol semilla) se avisa
+  al frontend para que añada su traducción.
+- No se crean migraciones para traducir textos a un idioma.
+
 ### Seguridad
 
 - RBAC dinámico: los permisos se crean solo por migración y se conceden a ADMIN en la misma migración;
