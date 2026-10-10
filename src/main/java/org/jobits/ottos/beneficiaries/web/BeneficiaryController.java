@@ -61,6 +61,21 @@ class BeneficiaryController {
         return beneficiaries.update(id, request.toDetails());
     }
 
+    @DeleteMapping("/beneficiaries/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('customers:write')")
+    @Operation(summary = "Delete a beneficiary for every customer (it is deactivated; past and open remittances are kept)")
+    void delete(@PathVariable UUID id) {
+        beneficiaries.delete(id);
+    }
+
+    @PostMapping("/beneficiaries/{id}/restore")
+    @PreAuthorize("hasAuthority('customers:write')")
+    @Operation(summary = "Restore a deleted beneficiary, with the customers it was linked to")
+    BeneficiaryInfo restore(@PathVariable UUID id) {
+        return beneficiaries.restore(id);
+    }
+
     @GetMapping("/customers/{customerId}/beneficiaries")
     @PreAuthorize("hasAuthority('customers:read')")
     @Operation(summary = "Beneficiaries a customer sends to")

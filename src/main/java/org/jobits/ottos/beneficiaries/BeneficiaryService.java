@@ -11,7 +11,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/** BeneficiaryService and their links to customers. Other modules use {@link #find(UUID)} and {@link #isLinked}. */
+/** Beneficiaries and their links to customers. Other modules use {@link #find(UUID)} and {@link #isLinked}. */
 public interface BeneficiaryService {
 
     Optional<BeneficiaryInfo> find(UUID id);
@@ -34,6 +34,16 @@ public interface BeneficiaryService {
     void link(UUID customerId, UUID beneficiaryId);
 
     void unlink(UUID customerId, UUID beneficiaryId);
+
+    /**
+     * Deletes the beneficiary for every customer: it is deactivated, disappears from searches and customer lists, and
+     * can no longer receive remittances or be linked. Past and open remittances keep their copy of its data.
+     * Deleting twice is harmless.
+     */
+    void delete(UUID id);
+
+    /** Undoes {@link #delete}: the beneficiary is active again, with the links to customers it had. */
+    BeneficiaryInfo restore(UUID id);
 
     record BeneficiaryInfo(UUID id, String fullName, String phone, String alternatePhone, String street,
                     String houseNumber, String betweenStreets, String neighborhood,

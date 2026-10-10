@@ -70,6 +70,15 @@ public class Beneficiary {
         this.createdBy = createdBy;
     }
 
+    /** Deleting a beneficiary only deactivates it: remittances keep pointing at it. */
+    public void deactivate() {
+        this.active = false;
+    }
+
+    public void activate() {
+        this.active = true;
+    }
+
     public void update(Details d) {
         this.fullName = d.fullName();
         this.phone = d.phone();

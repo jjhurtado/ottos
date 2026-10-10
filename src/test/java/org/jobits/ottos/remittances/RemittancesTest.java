@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -196,6 +197,16 @@ class RemittancesTest extends ApiTestSupport {
                 .andExpect(jsonPath("$[2].openRemittances").value(0));
         mvc.perform(get("/api/v1/couriers").header("Authorization", bearer(courierToken)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void aDeletedBeneficiaryCannotReceiveRemittances() throws Exception {
+        mvc.perform(delete("/api/v1/beneficiaries/{id}", beneficiaryId).header("Authorization", bearer(salesToken)))
+                .andExpect(status().isNoContent());
+
+        register("DELIVERY", "100", "CUP")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BENEFICIARY_UNAVAILABLE"));
     }
 
     @Test

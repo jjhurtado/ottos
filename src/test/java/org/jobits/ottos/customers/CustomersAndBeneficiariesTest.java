@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.util.UUID;
+
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -79,6 +81,62 @@ class CustomersAndBeneficiariesTest extends ApiTestSupport {
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/v1/beneficiaries/{id}", rosa).header("Authorization", bearer(salesToken)))
                 .andExpect(jsonPath("$.customers", hasSize(1)));
+    }
+
+    @Test
+    void deletingABeneficiaryHidesItForEveryCustomerButKeepsIt() throws Exception {
+        String ana = id(registerCustomer("Ana Pérez", "+13055550101"));
+        String luis = id(registerCustomer("Luis Gómez", "+13055550202"));
+        String rosa = id(createBeneficiary(ana, "2309"));
+        mvc.perform(put("/api/v1/customers/{c}/beneficiaries/{b}", luis, rosa).header("Authorization", bearer(salesToken)));
+
+        mvc.perform(delete("/api/v1/beneficiaries/{id}", rosa).header("Authorization", bearer(salesToken)))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/v1/customers/{c}/beneficiaries", ana).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(get("/api/v1/beneficiaries").param("q", "rosa").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(get("/api/v1/beneficiaries").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(get("/api/v1/beneficiaries/{id}", rosa).header("Authorization", bearer(salesToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.beneficiary.active").value(false));
+        mvc.perform(put("/api/v1/customers/{c}/beneficiaries/{b}", luis, rosa).header("Authorization", bearer(salesToken)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("BENEFICIARY_INACTIVE"));
+
+        mvc.perform(delete("/api/v1/beneficiaries/{id}", rosa).header("Authorization", bearer(salesToken)))
+                .andExpect(status().isNoContent());
+        mvc.perform(delete("/api/v1/beneficiaries/{id}", UUID.randomUUID()).header("Authorization", bearer(salesToken)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("BENEFICIARY_NOT_FOUND"));
+    }
+
+    @Test
+    void aDeletedBeneficiaryCanBeRestoredWithItsCustomers() throws Exception {
+        String ana = id(registerCustomer("Ana Pérez", "+13055550101"));
+        String rosa = id(createBeneficiary(ana, "2309"));
+        mvc.perform(delete("/api/v1/beneficiaries/{id}", rosa).header("Authorization", bearer(salesToken)));
+
+        mvc.perform(post("/api/v1/beneficiaries/{id}/restore", rosa).header("Authorization", bearer(salesToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true));
+
+        mvc.perform(get("/api/v1/customers/{c}/beneficiaries", ana).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(rosa));
+        mvc.perform(post("/api/v1/beneficiaries/{id}/restore", UUID.randomUUID()).header("Authorization", bearer(salesToken)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deliveryCannotDeleteBeneficiaries() throws Exception {
+        String rosa = id(createBeneficiary(id(registerCustomer("Ana Pérez", "+13055550101")), "2309"));
+        String deliveryToken = tokenFor("delivery@ottos.test", "DELIVERY");
+
+        mvc.perform(delete("/api/v1/beneficiaries/{id}", rosa).header("Authorization", bearer(deliveryToken)))
+                .andExpect(status().isForbidden());
     }
 
     @Test

@@ -19,6 +19,10 @@ Usamos Git Flow tal como lo inicializa GitKraken (Preferences → Gitflow), con 
 | Hotfixes | `hotfix/` | Arreglo urgente de producción; sale de `main`, se fusiona en `main` y en `develop` |
 | Prefijo de tag | *(vacío)* | Los tags son la versión tal cual: `1.0.0-beta.1`, `1.0.0` |
 
+**Hasta la versión `1.0.0`, `develop` y `main` van juntas:** cada feature terminada se fusiona en `develop` y, a
+continuación, `develop` se lleva a `main` (fast-forward), de modo que las dos ramas apuntan siempre al mismo commit.
+Desde `1.0.0`, `main` solo recibe ramas `release/` y `hotfix/` como se describe abajo.
+
 Reglas:
 
 - Nunca se hace commit directo en `main` ni en `develop`: todo entra por una rama `feature/`, `release/` o `hotfix/`.
