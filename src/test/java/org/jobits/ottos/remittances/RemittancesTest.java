@@ -224,6 +224,85 @@ class RemittancesTest extends ApiTestSupport {
     }
 
     @Test
+    void anIncidentStaysOpenUntilSomeonePostponesTheRemittance() throws Exception {
+        String id = id(register("DELIVERY", "100", "CUP"));
+        assign(id, courier.getId().toString());
+
+        reportIncident(id, "NOT_HOME", "Nadie abrió; vecina dice que vuelve el lunes", courierToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ASSIGNED"))
+                .andExpect(jsonPath("$.incident.reason").value("NOT_HOME"))
+                .andExpect(jsonPath("$.incident.note").value("Nadie abrió; vecina dice que vuelve el lunes"))
+                .andExpect(jsonPath("$.incident.reportedBy").value(courier.getId().toString()));
+
+        mvc.perform(get("/api/v1/remittances").param("incident", "true").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].incident.reason").value("NOT_HOME"));
+        mvc.perform(get("/api/v1/remittances/assigned").header("Authorization", bearer(courierToken)))
+                .andExpect(jsonPath("$[0].incident.reason").value("NOT_HOME"));
+
+        postpone(id, LocalDate.now(clock).plusDays(4), salesToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.incident").doesNotExist());
+        mvc.perform(get("/api/v1/remittances").param("incident", "true").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.totalItems").value(0));
+        mvc.perform(get("/api/v1/remittances/{id}/events", id).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$[2].type").value("INCIDENT_REPORTED"))
+                .andExpect(jsonPath("$[2].incidentReason").value("NOT_HOME"))
+                .andExpect(jsonPath("$[3].type").value("POSTPONED"));
+    }
+
+    @Test
+    void reassigningOrCompletingClosesTheIncident() throws Exception {
+        String id = id(register("DELIVERY", "100", "CUP"));
+        assign(id, courier.getId().toString());
+        reportIncident(id, "WRONG_ADDRESS", null, courierToken).andExpect(status().isOk());
+
+        assign(id, courier.getId().toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.incident").doesNotExist());
+
+        reportIncident(id, "UNREACHABLE", null, courierToken).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/remittances/{id}/deliver", id).header("Authorization", bearer(courierToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DELIVERED"))
+                .andExpect(jsonPath("$.incident").doesNotExist());
+    }
+
+    @Test
+    void otherNeedsANote() throws Exception {
+        String id = id(register("DELIVERY", "100", "CUP"));
+        assign(id, courier.getId().toString());
+
+        reportIncident(id, "OTHER", "  ", courierToken)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INCIDENT_NOTE_REQUIRED"));
+        reportIncident(id, "OTHER", "El perro no deja pasar", courierToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.incident.reason").value("OTHER"));
+    }
+
+    @Test
+    void incidentsNeedAnOpenAssignedRemittanceOfTheCourier() throws Exception {
+        String unassigned = id(register("DELIVERY", "100", "CUP"));
+        reportIncident(unassigned, "NOT_HOME", null, salesToken)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("COURIER_NOT_ASSIGNED"));
+
+        String id = id(register("DELIVERY", "100", "CUP"));
+        assign(id, courier.getId().toString());
+        createUser("other.courier@ottos.test", "DELIVERY");
+        reportIncident(id, "NOT_HOME", null, accessToken("other.courier@ottos.test"))
+                .andExpect(status().isNotFound());
+        reportIncident(id, "LOST", null, courierToken).andExpect(status().isBadRequest());
+
+        mvc.perform(post("/api/v1/remittances/{id}/deliver", id).header("Authorization", bearer(courierToken)));
+        reportIncident(id, "NOT_HOME", null, courierToken)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REMITTANCE_ALREADY_COMPLETED"));
+    }
+
+    @Test
     void anAmountThatRoundsToNothingIsRejected() throws Exception {
         // 0.10 USD × 410 = 41 CUP, rounded down to the 50 CUP step: nothing to deliver
         register("DELIVERY", "0.10", "CUP").andExpect(status().isBadRequest());
@@ -367,6 +446,14 @@ class RemittancesTest extends ApiTestSupport {
                 .header("Authorization", bearer(courierToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"pin\": \"" + pin + "\"}"));
+    }
+
+    private ResultActions reportIncident(String id, String reason, String note, String token) throws Exception {
+        String noteJson = note == null ? "" : ", \"note\": \"" + note + "\"";
+        return mvc.perform(post("/api/v1/remittances/{id}/incidents", id)
+                .header("Authorization", bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\": \"" + reason + "\"" + noteJson + "}"));
     }
 
     private ResultActions postpone(String id, LocalDate date, String token) throws Exception {

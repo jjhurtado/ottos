@@ -1,5 +1,6 @@
 package org.jobits.ottos.remittances.application;
 
+import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceType;
 
 import java.math.BigDecimal;
@@ -10,7 +11,7 @@ import java.util.UUID;
 /**
  * A remittance as a given viewer may see it. Fields the viewer is not allowed to see are null:
  * fee, total, rate and amountToDeliver (financials) and pin. cashAmount and cashCurrency are always present:
- * what the courier hands over (delivery) or collects (pickup).
+ * what the courier hands over (delivery) or collects (pickup). incident is the open incident, null when there is none.
  */
 public record RemittanceView(
         UUID id,
@@ -44,8 +45,13 @@ public record RemittanceView(
         LocalDate expectedDate,
         boolean late,
         int postponements,
+        OpenIncident incident,
         String notes,
         Instant createdAt,
         UUID createdBy,
         Instant completedAt) {
+
+    /** A delivery attempt that failed and nobody has acted on yet. */
+    public record OpenIncident(IncidentReason reason, String note, Instant reportedAt, UUID reportedBy) {
+    }
 }

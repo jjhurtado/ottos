@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceType;
 
 import java.math.BigDecimal;
@@ -104,6 +105,20 @@ public class Remittance {
     @Column(nullable = false)
     private int postponements;
 
+    /** The latest incident reported and not yet acted on; null when there is none. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "open_incident_reason", length = 30)
+    private IncidentReason openIncidentReason;
+
+    @Column(name = "open_incident_note", length = 1000)
+    private String openIncidentNote;
+
+    @Column(name = "open_incident_at")
+    private Instant openIncidentAt;
+
+    @Column(name = "open_incident_by")
+    private UUID openIncidentBy;
+
     @Column(length = 1000)
     private String notes;
 
@@ -161,8 +176,10 @@ public class Remittance {
         this.createdBy = createdBy;
     }
 
+    /** Any status change (assign, reassign, complete, custom transition) acts on the open incident and closes it. */
     public void moveTo(String status) {
         this.status = status;
+        closeIncident();
     }
 
     public void assignTo(UUID courierId) {
@@ -174,9 +191,26 @@ public class Remittance {
         this.completedBy = by;
     }
 
+    /** Postponing acts on the open incident and closes it. */
     public void postpone(LocalDate newDate) {
         this.expectedDate = newDate;
         this.postponements++;
+        closeIncident();
+    }
+
+    /** Records a delivery attempt that failed; a newer incident replaces the open one. */
+    public void reportIncident(IncidentReason reason, String note, Instant at, UUID by) {
+        this.openIncidentReason = reason;
+        this.openIncidentNote = note;
+        this.openIncidentAt = at;
+        this.openIncidentBy = by;
+    }
+
+    private void closeIncident() {
+        this.openIncidentReason = null;
+        this.openIncidentNote = null;
+        this.openIncidentAt = null;
+        this.openIncidentBy = null;
     }
 
     /** Cash that changes hands when the courier completes it: handed over for deliveries, collected for pickups. */
@@ -186,6 +220,22 @@ public class Remittance {
 
     public String cashCurrency() {
         return type == RemittanceType.DELIVERY ? targetCurrency : sourceCurrency;
+    }
+
+    public IncidentReason getOpenIncidentReason() {
+        return openIncidentReason;
+    }
+
+    public String getOpenIncidentNote() {
+        return openIncidentNote;
+    }
+
+    public Instant getOpenIncidentAt() {
+        return openIncidentAt;
+    }
+
+    public UUID getOpenIncidentBy() {
+        return openIncidentBy;
     }
 
     public UUID getId() {

@@ -126,8 +126,9 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Quotes | `POST /quotes` | `rates:read` |
 | Customers | `GET/POST /customers?q=`, `GET/PUT /customers/{id}` | `customers:read`, `customers:write` |
 | Beneficiaries | `GET /beneficiaries?q=`, `GET/PUT/DELETE /beneficiaries/{id}` (delete deactivates it for every customer), `POST /beneficiaries/{id}/restore`, `GET/POST /customers/{id}/beneficiaries`, `PUT/DELETE /customers/{id}/beneficiaries/{beneficiaryId}` | `customers:read`, `customers:write` |
-| Remittances | `POST /remittances` (header `Idempotency-Key`), `GET /remittances?status=&type=&late=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/{id}`, `/remittances/code/{code}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:create`, `remittances:read` |
+| Remittances | `POST /remittances` (header `Idempotency-Key`), `GET /remittances?status=&type=&late=&incident=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/{id}`, `/remittances/code/{code}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:create`, `remittances:read` |
 | Courier work | `GET /remittances/assigned`, `POST /remittances/{id}/deliver`, `/deliver-with-pin` | `remittances:read-assigned`, `remittances:deliver` |
+| Incidents | `POST /remittances/{id}/incidents` (`{reason, note}`) | `remittances:report-incident` |
 | Workflow | `GET /couriers` (assignable staff and their open remittances), `POST /remittances/{id}/assign`, `/transitions`, `/postpone` | `remittances:assign`, the transition's permission, `remittances:postpone` |
 | Statistics | `GET /customers/{id}/stats`, `GET /beneficiaries/{id}/stats` | `remittances:read` |
 | Cash | `GET /cash/business`, `/cash/business/movements`, `/cash/couriers`, `/cash/couriers/{id}`, `/cash/remittances/{id}/movements`; `POST /cash/couriers/{id}/funding`, `/returns` | `cash:read`, `cash:write` |
@@ -135,8 +136,8 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Business box | `POST /cash/business/deposits`, `/withdrawals` | `cash:adjust` |
 
 All paths start with `/api/v1`. Initial grants: ADMIN has everything; SALES manages customers, reads the configuration, quotes,
-remittances (read, create, assign, postpone) and courier cash; DELIVERY sees and completes its own remittances,
-postpones them and sees its own cash. Administrators can change this through the roles API.
+remittances (read, create, assign, postpone, report incidents) and courier cash; DELIVERY sees and completes its own
+remittances, postpones them, reports incidents on them and sees its own cash. Administrators can change this through the roles API.
 
 ## Errors
 
@@ -153,7 +154,7 @@ Throw `ApiException.badRequest("SOME_CODE", "English detail")` (or `conflict`, `
 
 | Status | Codes |
 | --- | --- |
-| 400 | `AMOUNT_BELOW_MINIMUM` (with `minimumAmount`, `currency`), `VALIDATION_FAILED` (with `errors: [{field, constraint}]`, e.g. `{"field": "email", "constraint": "NotBlank"}`), `MALFORMED_REQUEST`, `INVALID_PARAMETER`, `AMOUNT_TOO_SMALL`, `BENEFICIARY_NOT_LINKED`, `BENEFICIARY_UNAVAILABLE`, `COURIER_REQUIRED`, `CUSTOMER_UNAVAILABLE`, `FEE_PERCENTAGE_TOO_HIGH`, `FIXED_RATE`, `INCORRECT_CURRENT_PASSWORD`, `INCORRECT_PIN`, `INVALID_AMOUNT`, `INVALID_COURIER`, `INVALID_FEE_RANGE`, `INVALID_PHONE`, `INVALID_POSTPONE_DATE`, `NO_ACTIVE_CORRIDOR`, `NO_BUSINESS_CASH`, `UNKNOWN_MUNICIPALITY`, `UNKNOWN_PERMISSIONS`, `UNKNOWN_ROLES` |
+| 400 | `AMOUNT_BELOW_MINIMUM` (with `minimumAmount`, `currency`), `INCIDENT_NOTE_REQUIRED`, `VALIDATION_FAILED` (with `errors: [{field, constraint}]`, e.g. `{"field": "email", "constraint": "NotBlank"}`), `MALFORMED_REQUEST`, `INVALID_PARAMETER`, `AMOUNT_TOO_SMALL`, `BENEFICIARY_NOT_LINKED`, `BENEFICIARY_UNAVAILABLE`, `COURIER_REQUIRED`, `CUSTOMER_UNAVAILABLE`, `FEE_PERCENTAGE_TOO_HIGH`, `FIXED_RATE`, `INCORRECT_CURRENT_PASSWORD`, `INCORRECT_PIN`, `INVALID_AMOUNT`, `INVALID_COURIER`, `INVALID_FEE_RANGE`, `INVALID_PHONE`, `INVALID_POSTPONE_DATE`, `NO_ACTIVE_CORRIDOR`, `NO_BUSINESS_CASH`, `UNKNOWN_MUNICIPALITY`, `UNKNOWN_PERMISSIONS`, `UNKNOWN_ROLES` |
 | 401 | `AUTHENTICATION_REQUIRED` (no token, or account no longer active), `INVALID_TOKEN` (malformed or expired: refresh or log in again), `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
 | 403 | `FORBIDDEN` (missing permission), `PERMISSION_ESCALATION`, `TRANSITION_FORBIDDEN` |
 | 404 | `NOT_FOUND` (unknown route), `BENEFICIARY_NOT_FOUND`, `CORRIDOR_NOT_FOUND`, `CUSTOMER_NOT_FOUND`, `REMITTANCE_NOT_FOUND`, `ROLE_NOT_FOUND`, `USER_NOT_FOUND` |
@@ -178,6 +179,10 @@ Other framework errors get the status name as code (e.g. `METHOD_NOT_ALLOWED`, `
 - **Due date and delays:** expected date = registration day + `default_delivery_days` (2, a configuration setting),
   in Cuba's timezone (`ottos.timezone`). A remittance is late when it is not final and its expected date has
   passed; postponing moves the date with a required reason and is kept in the history.
+- **Incidents:** when a delivery or pickup cannot be done, the courier (or Sales) reports a reason — `NOT_HOME`,
+  `WRONG_ADDRESS`, `UNREACHABLE`, `REFUSED` or `OTHER` (needs a note). The remittance keeps its status and shows the
+  open `incident` (listed with `incident=true`) until someone acts on it: reassign, postpone, complete or any status
+  change. Every incident stays in the history (`INCIDENT_REPORTED`).
 - **Cash:** a double-entry ledger (`cash_accounts`, `cash_movements`). Registering a delivery adds the total
   charged to the business box; completing it moves the cash out of the courier; completing a pickup moves the
   collected USD into the courier. Couriers may go negative.
