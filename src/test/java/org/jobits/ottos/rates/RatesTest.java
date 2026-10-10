@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -71,7 +72,7 @@ class RatesTest extends ApiTestSupport {
     void theNewestRateAndFeeRuleWin() throws Exception {
         setRate("USD-CUP", "400").andExpect(status().isCreated());
         setRate("USD-CUP", "420").andExpect(status().isCreated());
-        mvc.perform(post("/api/v1/corridors/USD-CUP/fee-rules")
+        mvc.perform(post("/api/v1/configuration/corridors/USD-CUP/fee-rules")
                         .header("Authorization", bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\": \"FIXED\", \"value\": 12}"))
@@ -82,15 +83,31 @@ class RatesTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.fee").value(12.00))
                 .andExpect(jsonPath("$.amountToDeliver").value(42000.00));
 
-        mvc.perform(get("/api/v1/corridors/USD-CUP/rates").header("Authorization", bearer(adminToken)))
+        mvc.perform(get("/api/v1/configuration/corridors/USD-CUP/rates").header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].rate").value(420))
                 .andExpect(jsonPath("$[1].rate").value(400));
-        mvc.perform(get("/api/v1/corridors").header("Authorization", bearer(salesToken)))
+        mvc.perform(get("/api/v1/configuration/corridors").header("Authorization", bearer(salesToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].code").value("USD-CUP"))
                 .andExpect(jsonPath("$[0].currentRate.rate").value(420))
                 .andExpect(jsonPath("$[0].currentFeeRule.type").value("FIXED"));
+    }
+
+    @Test
+    void theConfiguredMinimumAmountApplies() throws Exception {
+        mvc.perform(put("/api/v1/configuration/settings")
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"minimumAmount\": 20}"))
+                .andExpect(status().isOk());
+
+        quote("USD", "USD", "19.99")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("AMOUNT_BELOW_MINIMUM"))
+                .andExpect(jsonPath("$.minimumAmount").value(20.00))
+                .andExpect(jsonPath("$.currency").value("USD"));
+        quote("USD", "USD", "20").andExpect(status().isOk());
     }
 
     @Test
@@ -100,7 +117,7 @@ class RatesTest extends ApiTestSupport {
 
     @Test
     void salesCanQuoteButNotSetRates() throws Exception {
-        mvc.perform(post("/api/v1/corridors/USD-CUP/rates")
+        mvc.perform(post("/api/v1/configuration/corridors/USD-CUP/rates")
                         .header("Authorization", bearer(salesToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rate\": 500}"))
@@ -108,7 +125,7 @@ class RatesTest extends ApiTestSupport {
     }
 
     private ResultActions setRate(String corridor, String rate) throws Exception {
-        return mvc.perform(post("/api/v1/corridors/{code}/rates", corridor)
+        return mvc.perform(post("/api/v1/configuration/corridors/{code}/rates", corridor)
                 .header("Authorization", bearer(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"rate\": " + rate + "}"));

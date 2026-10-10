@@ -1,4 +1,4 @@
-package org.jobits.ottos.rates.domain;
+package org.jobits.ottos.configuration.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -8,9 +8,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.jobits.ottos.configuration.FeeType;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -18,8 +18,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "fee_rules")
 public class FeeRule {
-
-    private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -60,21 +58,6 @@ public class FeeRule {
         this.maxFee = maxFee;
         this.validFrom = validFrom;
         this.createdBy = createdBy;
-    }
-
-    /** Fee for an amount in the source currency, rounded to cents and kept within [minFee, maxFee]. */
-    public BigDecimal feeFor(BigDecimal amount) {
-        BigDecimal fee = switch (type) {
-            case PERCENTAGE -> amount.multiply(value).divide(HUNDRED, 2, RoundingMode.HALF_UP);
-            case FIXED -> value.setScale(2, RoundingMode.HALF_UP);
-        };
-        if (minFee != null && fee.compareTo(minFee) < 0) {
-            fee = minFee.setScale(2, RoundingMode.HALF_UP);
-        }
-        if (maxFee != null && fee.compareTo(maxFee) > 0) {
-            fee = maxFee.setScale(2, RoundingMode.HALF_UP);
-        }
-        return fee;
     }
 
     public UUID getId() {

@@ -30,7 +30,7 @@ class CashFlowTest extends ApiTestSupport {
         courier = createUser("courier@ottos.test", "DELIVERY");
         courierToken = accessToken("courier@ottos.test");
 
-        mvc.perform(post("/api/v1/corridors/USD-CUP/rates")
+        mvc.perform(post("/api/v1/configuration/corridors/USD-CUP/rates")
                 .header("Authorization", bearer(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"rate\": 410}"));

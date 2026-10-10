@@ -1,4 +1,4 @@
-package org.jobits.ottos.rates.domain;
+package org.jobits.ottos.configuration.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -4,6 +4,7 @@ import jakarta.persistence.criteria.Predicate;
 import org.jobits.ottos.ApiException;
 import org.jobits.ottos.beneficiaries.BeneficiaryService;
 import org.jobits.ottos.beneficiaries.BeneficiaryService.BeneficiaryInfo;
+import org.jobits.ottos.configuration.ConfigurationService;
 import org.jobits.ottos.customers.CustomerService;
 import org.jobits.ottos.customers.CustomerService.CustomerInfo;
 import org.jobits.ottos.identity.StaffDirectoryService;
@@ -15,8 +16,6 @@ import org.jobits.ottos.remittances.domain.Remittance;
 import org.jobits.ottos.remittances.domain.RemittanceEvent;
 import org.jobits.ottos.remittances.domain.RemittanceEventRepository;
 import org.jobits.ottos.remittances.domain.RemittanceRepository;
-import org.jobits.ottos.remittances.domain.RemittanceSetting;
-import org.jobits.ottos.remittances.domain.RemittanceSettingRepository;
 import org.jobits.ottos.remittances.domain.RemittanceStatus;
 import org.jobits.ottos.remittances.domain.RemittanceTransition;
 import org.springframework.context.ApplicationEventPublisher;
@@ -51,7 +50,7 @@ class RemittanceServiceImpl implements RemittanceService {
 
     private final RemittanceRepository remittances;
     private final RemittanceEventRepository events;
-    private final RemittanceSettingRepository settings;
+    private final ConfigurationService configuration;
     private final Workflow workflow;
     private final RemittanceViews views;
     private final CustomerService customers;
@@ -62,12 +61,12 @@ class RemittanceServiceImpl implements RemittanceService {
     private final Clock clock;
 
     RemittanceServiceImpl(RemittanceRepository remittances, RemittanceEventRepository events,
-                      RemittanceSettingRepository settings, Workflow workflow, RemittanceViews views,
+                      ConfigurationService configuration, Workflow workflow, RemittanceViews views,
                       CustomerService customers, BeneficiaryService beneficiaries, QuoteService quotes, StaffDirectoryService staff,
                       ApplicationEventPublisher publisher, Clock clock) {
         this.remittances = remittances;
         this.events = events;
-        this.settings = settings;
+        this.configuration = configuration;
         this.workflow = workflow;
         this.views = views;
         this.customers = customers;
@@ -109,7 +108,7 @@ class RemittanceServiceImpl implements RemittanceService {
                 new Remittance.QuoteSnapshot(quote.corridor(), quote.sourceCurrency(), quote.targetCurrency(),
                         quote.amount(), quote.fee(), quote.total(), quote.rate(), quote.amountToDeliver(),
                         quote.exchangeRateId(), quote.feeRuleId()),
-                newPin(), today().plusDays(defaultDeliveryDays()), blankToNull(request.notes()),
+                newPin(), today().plusDays(configuration.defaultDeliveryDays()), blankToNull(request.notes()),
                 request.idempotencyKey(), now, viewer.userId());
         remittances.saveAndFlush(remittance);
         events.save(RemittanceEvent.created(remittance, viewer.userId(), now));
@@ -314,12 +313,6 @@ class RemittanceServiceImpl implements RemittanceService {
 
     private LocalDate today() {
         return LocalDate.now(clock);
-    }
-
-    private int defaultDeliveryDays() {
-        return settings.findById(RemittanceSetting.DEFAULT_DELIVERY_DAYS)
-                .map(s -> Integer.parseInt(s.getValue().trim()))
-                .orElse(2);
     }
 
     private String newCode() {

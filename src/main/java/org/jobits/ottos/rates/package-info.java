@@ -1,9 +1,9 @@
 /**
- * Rates and fees: corridors (currency pairs such as USD-CUP), exchange-rate history, fee rules
- * (percentage with min/max, or fixed) and the quote calculator.
+ * Quotes: calculates what a remittance costs and what gets delivered, with the minimum amount, exchange rate and fee
+ * rule configured in the configuration module.
  * <p>
- * Public API: {@link org.jobits.ottos.rates.QuoteService}. Everything in sub-packages is internal.
+ * Public API: {@link org.jobits.ottos.rates.QuoteService}.
  * Phase 1.
  */
-@org.springframework.modulith.ApplicationModule(displayName = "Rates and fees")
+@org.springframework.modulith.ApplicationModule(displayName = "Quotes")
 package org.jobits.ottos.rates;
