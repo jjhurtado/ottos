@@ -4,8 +4,9 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Calculates what a remittance costs and what gets delivered, with the rate and fee rule in force now:
+ * Calculates what a remittance costs and what gets delivered, with the configuration in force now:
  * <pre>
+ * amount           ≥ configured minimum amount (USD), otherwise AMOUNT_BELOW_MINIMUM
  * fee              = fee rule applied to the amount (e.g. 10 %, at least 10 USD)
  * total            = amount + fee                     (charged to the sender)
  * amount to deliver = amount × rate, rounded down to the corridor's delivery rounding (e.g. 50 CUP)

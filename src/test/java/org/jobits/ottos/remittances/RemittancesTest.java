@@ -17,6 +17,7 @@ import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,7 +37,7 @@ class RemittancesTest extends ApiTestSupport {
         courier = createUser("courier@ottos.test", "DELIVERY");
         courierToken = accessToken("courier@ottos.test");
 
-        mvc.perform(post("/api/v1/corridors/USD-CUP/rates")
+        mvc.perform(post("/api/v1/configuration/corridors/USD-CUP/rates")
                         .header("Authorization", bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rate\": 410}"))
@@ -72,6 +73,19 @@ class RemittancesTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.pin").value(matchesPattern("\\d{6}")))
                 .andExpect(jsonPath("$.expectedDate").value(LocalDate.now(clock).plusDays(2).toString()))
                 .andExpect(jsonPath("$.late").value(false));
+    }
+
+    @Test
+    void theExpectedDateUsesTheConfiguredDeliveryDays() throws Exception {
+        mvc.perform(put("/api/v1/configuration/settings")
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"defaultDeliveryDays\": 5}"))
+                .andExpect(status().isOk());
+
+        register("DELIVERY", "100", "CUP")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.expectedDate").value(LocalDate.now(clock).plusDays(5).toString()));
     }
 
     @Test

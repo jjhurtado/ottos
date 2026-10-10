@@ -40,6 +40,12 @@ public class ApiException extends ResponseStatusException {
         return new ApiException(HttpStatus.CONFLICT, code, detail);
     }
 
+    /** Adds a value the client can use to explain the error, e.g. {@code with("minimumAmount", 20)}. */
+    public ApiException with(String property, Object value) {
+        getBody().setProperty(property, value);
+        return this;
+    }
+
     public String getCode() {
         return code;
     }

@@ -1,4 +1,4 @@
-package org.jobits.ottos.rates.domain;
+package org.jobits.ottos.configuration.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -6,9 +6,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
-/** A currency pair money is sent through, e.g. USD-CUP. */
+/** A currency pair money is sent through, e.g. USD-CUP; the amount to deliver is rounded down to deliveryRounding. */
 @Entity
 @Table(name = "corridors")
 public class Corridor {
@@ -31,13 +30,6 @@ public class Corridor {
 
     protected Corridor() {
         // required by JPA
-    }
-
-    /** Rounds an amount in the target currency down to a multiple of the delivery rounding (e.g. 50 CUP). */
-    public BigDecimal roundForDelivery(BigDecimal amount) {
-        return amount.divide(deliveryRounding, 0, RoundingMode.FLOOR)
-                .multiply(deliveryRounding)
-                .setScale(2, RoundingMode.UNNECESSARY);
     }
 
     public boolean isSameCurrency() {
