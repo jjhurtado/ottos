@@ -18,6 +18,14 @@ public interface RefreshTokenService {
     /** Signs the user out of every device: no refresh token issued so far will work again. */
     void revokeAll(UUID userId);
 
+    /**
+     * Deletes the tokens that have expired, which can no longer be used. Revoked tokens that have not expired yet are
+     * kept: presenting one again must still be detected as reuse and sign the user out everywhere.
+     *
+     * @return how many tokens were deleted
+     */
+    int deleteExpired();
+
     record IssuedRefreshToken(String value, long expiresInSeconds) {
     }
 }

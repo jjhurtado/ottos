@@ -59,13 +59,13 @@ package are its public API; sub-packages are internal.
 | Module | Package | Phase |
 | --- | --- | --- |
 | Identity and access (staff users, roles, permissions) | `identity` | 0 (implemented) |
-| Branches and zones (provinces, municipalities) | `branches` | 1 (zones implemented; branches later) |
+| Branches and zones (provinces, municipalities) | `branches` | 1 (zones implemented; a single branch in 1.0, so no branch management yet) |
 | Customers (senders, no login yet) | `customers` | 1 (implemented) |
 | Configuration (minimum amount, delivery days, corridors, exchange rates, fee rules) | `configuration` | 1 (implemented) |
 | Quotes (calculator over the configuration) | `rates` | 1 (implemented) |
 | Beneficiaries | `beneficiaries` | 1 (implemented) |
 | Remittances (deliveries and pickups) | `remittances` | 1 (implemented) |
-| Dispatch and deliveries (routes, proof photos) | `dispatch` | later; assignment lives in `remittances` for now |
+| Dispatch and deliveries (routes, proof photos, assignment by zone) | `dispatch` | after 1.0; manual assignment lives in `remittances` |
 | Payments and cash (cash ledger) | `payments` | 1 (ledger implemented); closing and reconciliation in 3 |
 | Notifications | `notifications` | 2 |
 | Reporting and audit | `reporting` | 4 |
@@ -84,7 +84,9 @@ services: [STANDARDS.md](STANDARDS.md). Versions: [ROADMAP.md](ROADMAP.md#versio
 | `OTTOS_ADMIN_EMAIL` / `OTTOS_ADMIN_PASSWORD` | Creates the first ADMIN if none exists | empty |
 | `PORT` | HTTP port | `8080` |
 
-Token lifetimes: `ottos.security.access-token-ttl` (15m) and `ottos.security.refresh-token-ttl` (30d).
+Token lifetimes: `ottos.security.access-token-ttl` (15m) and `ottos.security.refresh-token-ttl` (30d). Expired refresh
+tokens are deleted daily at `ottos.security.refresh-token-cleanup-cron` (Spring cron, default `0 30 3 * * *`, in
+`ottos.timezone`); revoked ones are kept until they expire so reuse is still detected.
 
 ## Roles and permissions
 
@@ -190,5 +192,4 @@ Other framework errors get the status name as code (e.g. `METHOD_NOT_ALLOWED`, `
 ## Still to do
 
 - Published Docker image and staging environment
-- Scheduled cleanup of expired refresh tokens
 - Cash closing and reconciliation (Phase 3)

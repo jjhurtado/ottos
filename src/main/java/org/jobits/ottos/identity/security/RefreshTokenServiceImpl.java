@@ -51,6 +51,12 @@ class RefreshTokenServiceImpl implements RefreshTokenService {
         tokens.revokeAllForUser(userId, Instant.now());
     }
 
+    @Override
+    @Transactional
+    public int deleteExpired() {
+        return tokens.deleteExpired(Instant.now());
+    }
+
     private static String hash(String value) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));

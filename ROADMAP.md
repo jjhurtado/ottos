@@ -136,6 +136,17 @@ Correspondencia prevista con las fases:
 
 **Versión actual: `1.0.0-beta.1`** (Fase 1 en curso).
 
+### Alcance de la versión 1.0
+
+Decisiones tomadas para llegar antes a la primera remesa real; lo que queda fuera vuelve a evaluarse después de `1.0.0`.
+
+| Tema | Decisión para 1.0 | Por qué |
+| --- | --- | --- |
+| Asignación por zona | Fuera de 1.0. Ventas asigna a mano desde la lista de repartidores (`GET /couriers`) | Una sola ciudad y pocos repartidores; el módulo `dispatch` queda para después |
+| Sucursales | Una sola sucursal en 1.0; no hay gestión de sucursales | La caja del negocio es única; las cajas por sucursal se añaden cuando haya más de una |
+| Vencimiento de la cotización | Fuera de 1.0 | El cliente no usa el sistema en 1.0: Ventas cotiza y registra en el momento, y la remesa ya cobrada guarda la tasa y la comisión con que se registró. Se retoma con la App Cliente (Fase 2) |
+| Límites de monto | Solo un monto mínimo global en USD, configurable | Mantener la aplicación simple; los acumulados por cliente esperan a la revisión legal |
+
 ## Plantilla de fase
 
 Copia este bloque una vez por fase y rellénalo antes de empezarla; se cierra solo cuando se cumplen sus criterios de salida.
