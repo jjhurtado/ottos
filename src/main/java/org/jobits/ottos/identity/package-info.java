@@ -6,7 +6,7 @@
  * {@code @PreAuthorize("hasAuthority('remittances:create')")}, and add those codes to the catalog with a
  * Flyway migration that also grants them to ADMIN.
  * <p>
- * Public API: {@link org.jobits.ottos.identity.StaffDirectory}. Everything in sub-packages is internal.
+ * Public API: {@link org.jobits.ottos.identity.StaffDirectoryService}. Everything in sub-packages is internal.
  * Phase 0.
  */
 @org.springframework.modulith.ApplicationModule(displayName = "Identity and access")

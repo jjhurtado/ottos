@@ -1,9 +1,9 @@
 package org.jobits.ottos.remittances.application;
 
 import org.jobits.ottos.ApiException;
-import org.jobits.ottos.beneficiaries.Beneficiaries;
-import org.jobits.ottos.branches.Zones;
-import org.jobits.ottos.customers.Customers;
+import org.jobits.ottos.beneficiaries.BeneficiaryService;
+import org.jobits.ottos.branches.ZoneService;
+import org.jobits.ottos.customers.CustomerService;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.jobits.ottos.remittances.domain.Remittance;
 import org.jobits.ottos.remittances.domain.RemittanceRepository;
@@ -26,25 +26,22 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-/**
- * Customer and beneficiary statistics, computed from their remittances every time (nothing is stored, so they
- * can't drift). Amounts sent are in the source currency (USD); amounts received are grouped by currency.
- */
+/** Implementation of {@link RemittanceStatsService}. */
 @Service
-public class RemittanceStats {
+class RemittanceStatsServiceImpl implements RemittanceStatsService {
 
     private static final int MONTHS = 12;
     private static final int TOP = 5;
 
     private final RemittanceRepository remittances;
     private final Workflow workflow;
-    private final Customers customers;
-    private final Beneficiaries beneficiaries;
-    private final Zones zones;
+    private final CustomerService customers;
+    private final BeneficiaryService beneficiaries;
+    private final ZoneService zones;
     private final Clock clock;
 
-    RemittanceStats(RemittanceRepository remittances, Workflow workflow, Customers customers,
-                    Beneficiaries beneficiaries, Zones zones, Clock clock) {
+    RemittanceStatsServiceImpl(RemittanceRepository remittances, Workflow workflow, CustomerService customers,
+                    BeneficiaryService beneficiaries, ZoneService zones, Clock clock) {
         this.remittances = remittances;
         this.workflow = workflow;
         this.customers = customers;
@@ -53,6 +50,7 @@ public class RemittanceStats {
         this.clock = clock;
     }
 
+    @Override
     @Transactional(readOnly = true)
     public CustomerStats forCustomer(UUID customerId) {
         if (customers.find(customerId).isEmpty()) {
@@ -62,7 +60,7 @@ public class RemittanceStats {
         List<Remittance> deliveries = ofType(all, RemittanceType.DELIVERY);
         List<Remittance> pickups = ofType(all, RemittanceType.PICKUP);
         Map<String, String> municipalityNames = zones.municipalities(null).stream()
-                .collect(Collectors.toMap(Zones.MunicipalityInfo::code, Zones.MunicipalityInfo::name));
+                .collect(Collectors.toMap(ZoneService.MunicipalityInfo::code, ZoneService.MunicipalityInfo::name));
 
         List<Ranked> topBeneficiaries = rank(all, Remittance::getBeneficiaryId, Remittance::getBeneficiaryName);
         List<Ranked> municipalities = rank(all, Remittance::getBeneficiaryMunicipalityCode,
@@ -75,6 +73,7 @@ public class RemittanceStats {
                 first(all), last(all), byMonth(all), topBeneficiaries, municipalities);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public BeneficiaryStats forBeneficiary(UUID beneficiaryId) {
         if (beneficiaries.find(beneficiaryId).isEmpty()) {
@@ -92,7 +91,7 @@ public class RemittanceStats {
                 .toList();
         List<Remittance> pickups = ofType(all, RemittanceType.PICKUP);
         List<Ranked> senders = rank(all, Remittance::getCustomerId,
-                r -> customers.find(r.getCustomerId()).map(Customers.CustomerInfo::fullName).orElse(null));
+                r -> customers.find(r.getCustomerId()).map(CustomerService.CustomerInfo::fullName).orElse(null));
 
         return new BeneficiaryStats(beneficiaryId, all.size(), open(all), late(all), received,
                 new PickupTotals(pickups.size(), sum(pickups, Remittance::getAmount)),
@@ -157,36 +156,5 @@ public class RemittanceStats {
 
     private static Instant last(List<Remittance> all) {
         return all.isEmpty() ? null : all.get(0).getCreatedAt();
-    }
-
-    /**
-     * @param open  not yet completed
-     * @param late  open and past the expected date
-     */
-    public record CustomerStats(UUID customerId, long remittances, long open, long late, Totals deliveries,
-                                PickupTotals pickups, Instant firstAt, Instant lastAt, List<Monthly> lastMonths,
-                                List<Ranked> topBeneficiaries, List<Ranked> topMunicipalities) {
-    }
-
-    /** Deliveries sent by a customer, in USD: amount sent, fees, total charged and average amount. */
-    public record Totals(long count, BigDecimal amountSent, BigDecimal fees, BigDecimal charged, BigDecimal averageAmount) {
-    }
-
-    public record PickupTotals(long count, BigDecimal amountCollected) {
-    }
-
-    public record Monthly(String month, long count, BigDecimal amount) {
-    }
-
-    public record Ranked(String key, String name, long count, BigDecimal amount) {
-    }
-
-    public record CurrencyTotal(String currency, long count, BigDecimal amount) {
-    }
-
-    /** received: completed deliveries, by the currency handed over. */
-    public record BeneficiaryStats(UUID beneficiaryId, long remittances, long open, long late,
-                                   List<CurrencyTotal> received, PickupTotals pickups, Instant firstAt,
-                                   Instant lastAt, List<Ranked> topSenders) {
     }
 }

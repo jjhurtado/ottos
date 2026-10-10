@@ -17,9 +17,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** Sets exchange rates and fee rules. Every change is a new row that takes effect immediately. */
+/** Implementation of {@link RateAdministrationService}. */
 @Service
-public class RateAdministration {
+class RateAdministrationServiceImpl implements RateAdministrationService {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
 
@@ -28,7 +28,7 @@ public class RateAdministration {
     private final FeeRuleRepository feeRules;
     private final Clock clock;
 
-    RateAdministration(CorridorRepository corridors, ExchangeRateRepository rates, FeeRuleRepository feeRules,
+    RateAdministrationServiceImpl(CorridorRepository corridors, ExchangeRateRepository rates, FeeRuleRepository feeRules,
                        Clock clock) {
         this.corridors = corridors;
         this.rates = rates;
@@ -36,6 +36,7 @@ public class RateAdministration {
         this.clock = clock;
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<CorridorView> corridors() {
         Instant now = clock.instant();
@@ -48,12 +49,14 @@ public class RateAdministration {
         )).toList();
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<RateView> rateHistory(String corridorCode) {
         find(corridorCode);
         return rates.findByCorridorCodeOrderByValidFromDesc(corridorCode).stream().map(RateView::of).toList();
     }
 
+    @Override
     @Transactional
     public RateView setRate(String corridorCode, BigDecimal rate, UUID actorId) {
         Corridor corridor = find(corridorCode);
@@ -63,12 +66,14 @@ public class RateAdministration {
         return RateView.of(rates.save(new ExchangeRate(corridorCode, rate, clock.instant(), actorId)));
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<FeeRuleView> feeRuleHistory(String corridorCode) {
         find(corridorCode);
         return feeRules.findByCorridorCodeOrderByValidFromDesc(corridorCode).stream().map(FeeRuleView::of).toList();
     }
 
+    @Override
     @Transactional
     public FeeRuleView setFeeRule(String corridorCode, FeeType type, BigDecimal value, BigDecimal minFee,
                                   BigDecimal maxFee, UUID actorId) {
@@ -86,25 +91,5 @@ public class RateAdministration {
     private Corridor find(String code) {
         return corridors.findById(code)
                 .orElseThrow(() -> ApiException.notFound("CORRIDOR_NOT_FOUND", "Corridor not found"));
-    }
-
-    public record CorridorView(String code, String sourceCurrency, String targetCurrency, BigDecimal deliveryRounding,
-                               boolean active, RateView currentRate, FeeRuleView currentFeeRule) {
-    }
-
-    public record RateView(UUID id, BigDecimal rate, Instant validFrom, UUID createdBy) {
-
-        static RateView of(ExchangeRate r) {
-            return new RateView(r.getId(), r.getRate(), r.getValidFrom(), r.getCreatedBy());
-        }
-    }
-
-    public record FeeRuleView(UUID id, FeeType type, BigDecimal value, BigDecimal minFee, BigDecimal maxFee,
-                              Instant validFrom, UUID createdBy) {
-
-        static FeeRuleView of(FeeRule f) {
-            return new FeeRuleView(f.getId(), f.getType(), f.getValue(), f.getMinFee(), f.getMaxFee(),
-                    f.getValidFrom(), f.getCreatedBy());
-        }
     }
 }

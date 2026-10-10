@@ -9,19 +9,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-/** Provinces and municipalities. Other modules reference a municipality by its official code. */
+/** Implementation of {@link ZoneService}. */
 @Service
-public class Zones {
+class ZoneServiceImpl implements ZoneService {
 
     private final ProvinceRepository provinces;
     private final MunicipalityRepository municipalities;
 
-    Zones(ProvinceRepository provinces, MunicipalityRepository municipalities) {
+    ZoneServiceImpl(ProvinceRepository provinces, MunicipalityRepository municipalities) {
         this.provinces = provinces;
         this.municipalities = municipalities;
     }
 
-    /** An active municipality, or empty if the code is unknown or inactive. */
+    @Override
     @Transactional(readOnly = true)
     public Optional<MunicipalityInfo> findMunicipality(String code) {
         return municipalities.findWithProvinceByCode(code)
@@ -29,6 +29,7 @@ public class Zones {
                 .map(MunicipalityInfo::of);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<ProvinceInfo> provinces() {
         return provinces.findByActiveTrueOrderByName().stream()
@@ -36,21 +37,12 @@ public class Zones {
                 .toList();
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<MunicipalityInfo> municipalities(String provinceCode) {
         List<Municipality> found = provinceCode == null
                 ? municipalities.findByActiveTrueOrderByName()
                 : municipalities.findByProvinceCodeAndActiveTrueOrderByName(provinceCode);
         return found.stream().map(MunicipalityInfo::of).toList();
-    }
-
-    public record ProvinceInfo(String code, String name) {
-    }
-
-    public record MunicipalityInfo(String code, String name, String provinceCode, String provinceName) {
-
-        static MunicipalityInfo of(Municipality m) {
-            return new MunicipalityInfo(m.getCode(), m.getName(), m.getProvince().getCode(), m.getProvince().getName());
-        }
     }
 }

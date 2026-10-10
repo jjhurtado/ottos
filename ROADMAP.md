@@ -110,6 +110,32 @@ Cinco fases: la Fase 1 ya entrega valor real (remesas registradas por Ventas y e
 
 Fuera del roadmap (futuro): todo lo relacionado con mapas — ubicación del repartidor en tiempo real, rutas optimizadas y seguimiento de la entrega sobre un mapa. Mientras tanto, la asignación se hace por zona o municipio, sin geolocalización.
 
+## Versionado
+
+Versionado semántico (`MAYOR.MENOR.PARCHE`) con etiquetas de pre-release. La versión vive en `build.gradle`, se sube en
+la rama `release/` o `hotfix/` de Git Flow y cada versión publicada lleva su tag en `main`, sin prefijo
+(`1.0.0-beta.1`). Detalles del flujo en [STANDARDS.md](STANDARDS.md).
+
+| Etapa | Formato | Significa | Qué entra |
+| --- | --- | --- | --- |
+| Beta | `1.0.0-beta.N` | Fase 1 en construcción; se prueba en local o staging, sin dinero real | Funcionalidad nueva, refactors y arreglos |
+| Release candidate | `1.0.0-rc.N` | Fase 1 completa según su hito; candidata a producción | Solo arreglos. Revisión de arquitectura y refactor antes de la primera RC |
+| Estable | `1.0.0` | Primera remesa real en producción (hito de la Fase 1) | — |
+| Parche | `1.0.X` | Arreglo urgente en producción (rama `hotfix/`) | Solo el arreglo |
+| Menor | `1.X.0` | Cada fase siguiente, con su propio ciclo beta → rc → estable | Funcionalidad nueva compatible con la API |
+| Mayor | `X.0.0` | Cambio incompatible del contrato de la API (rutas, campos, códigos de error) | Solo con migración planificada para las apps |
+
+Correspondencia prevista con las fases:
+
+| Versión | Fase |
+| --- | --- |
+| `1.0.0` | 1 · MVP de remesas |
+| `1.1.0` | 2 · App Cliente (o 3, según el orden que se confirme) |
+| `1.2.0` | 3 · Caja y control |
+| `1.3.0` | 4 · Consolidación y lanzamiento público |
+
+**Versión actual: `1.0.0-beta.1`** (Fase 1 en curso).
+
 ## Plantilla de fase
 
 Copia este bloque una vez por fase y rellénalo antes de empezarla; se cierra solo cuando se cumplen sus criterios de salida.

@@ -69,7 +69,9 @@ package are its public API; sub-packages are internal.
 | Notifications | `notifications` | 2 |
 | Reporting and audit | `reporting` | 4 |
 
-Inside each module: `domain` (entities, repositories), application services (e.g. `security`, `management`) and `web` (controllers).
+Inside each module: `domain` (entities, repositories), services as an interface plus its `Impl` (in the module root for the
+public API, or in `application`, `management`, `security`) and `web` (controllers). Conventions for Git, layers and
+services: [STANDARDS.md](STANDARDS.md). Versions: [ROADMAP.md](ROADMAP.md#versionado).
 
 ## Environment variables
 
