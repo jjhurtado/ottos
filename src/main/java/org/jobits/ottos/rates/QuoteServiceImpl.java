@@ -14,31 +14,24 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.UUID;
 
-/**
- * Calculates what a remittance costs and what gets delivered, with the rate and fee rule in force now:
- * <pre>
- * fee              = fee rule applied to the amount (e.g. 10 %, at least 10 USD)
- * total            = amount + fee                     (charged to the sender)
- * amount to deliver = amount × rate, rounded down to the corridor's delivery rounding (e.g. 50 CUP)
- * </pre>
- */
+/** Implementation of {@link QuoteService}. */
 @Service
-public class Quotes {
+class QuoteServiceImpl implements QuoteService {
 
     private final CorridorRepository corridors;
     private final ExchangeRateRepository rates;
     private final FeeRuleRepository feeRules;
     private final Clock clock;
 
-    Quotes(CorridorRepository corridors, ExchangeRateRepository rates, FeeRuleRepository feeRules, Clock clock) {
+    QuoteServiceImpl(CorridorRepository corridors, ExchangeRateRepository rates, FeeRuleRepository feeRules, Clock clock) {
         this.corridors = corridors;
         this.rates = rates;
         this.feeRules = feeRules;
         this.clock = clock;
     }
 
+    @Override
     @Transactional(readOnly = true)
     public Quote quote(String sourceCurrency, String targetCurrency, BigDecimal amount) {
         if (amount == null || amount.signum() <= 0 || amount.stripTrailingZeros().scale() > 2) {
@@ -64,17 +57,5 @@ public class Quotes {
         }
         return new Quote(corridor.getCode(), corridor.getSourceCurrency(), corridor.getTargetCurrency(),
                 sent, fee, sent.add(fee), rate.getRate(), toDeliver, rate.getId(), feeRule.getId());
-    }
-
-    /**
-     * @param amount          amount sent, in the source currency
-     * @param fee             fee charged, in the source currency
-     * @param total           amount + fee, charged to the sender
-     * @param rate            target units per source unit
-     * @param amountToDeliver amount handed over, in the target currency, after rounding
-     */
-    public record Quote(String corridor, String sourceCurrency, String targetCurrency, BigDecimal amount,
-                        BigDecimal fee, BigDecimal total, BigDecimal rate, BigDecimal amountToDeliver,
-                        UUID exchangeRateId, UUID feeRuleId) {
     }
 }

@@ -8,12 +8,12 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import org.jobits.ottos.rates.Quotes;
+import org.jobits.ottos.rates.QuoteService;
 import org.jobits.ottos.rates.domain.FeeType;
-import org.jobits.ottos.rates.management.RateAdministration;
-import org.jobits.ottos.rates.management.RateAdministration.CorridorView;
-import org.jobits.ottos.rates.management.RateAdministration.FeeRuleView;
-import org.jobits.ottos.rates.management.RateAdministration.RateView;
+import org.jobits.ottos.rates.management.RateAdministrationService;
+import org.jobits.ottos.rates.management.RateAdministrationService.CorridorView;
+import org.jobits.ottos.rates.management.RateAdministrationService.FeeRuleView;
+import org.jobits.ottos.rates.management.RateAdministrationService.RateView;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -36,10 +36,10 @@ import java.util.UUID;
 @SecurityRequirement(name = "bearer")
 class RateController {
 
-    private final RateAdministration administration;
-    private final Quotes quotes;
+    private final RateAdministrationService administration;
+    private final QuoteService quotes;
 
-    RateController(RateAdministration administration, Quotes quotes) {
+    RateController(RateAdministrationService administration, QuoteService quotes) {
         this.administration = administration;
         this.quotes = quotes;
     }
@@ -86,7 +86,7 @@ class RateController {
     @PostMapping("/quotes")
     @PreAuthorize("hasAuthority('rates:read')")
     @Operation(summary = "Calculate fee, total to charge and amount to deliver with the current rate and fee rule")
-    Quotes.Quote quote(@Valid @RequestBody QuoteRequest request) {
+    QuoteService.Quote quote(@Valid @RequestBody QuoteRequest request) {
         return quotes.quote(request.sourceCurrency(), request.targetCurrency(), request.amount());
     }
 

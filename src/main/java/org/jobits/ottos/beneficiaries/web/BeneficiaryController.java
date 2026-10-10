@@ -6,9 +6,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import org.jobits.ottos.beneficiaries.Beneficiaries;
-import org.jobits.ottos.beneficiaries.Beneficiaries.BeneficiaryDetail;
-import org.jobits.ottos.beneficiaries.Beneficiaries.BeneficiaryInfo;
+import org.jobits.ottos.beneficiaries.BeneficiaryService;
+import org.jobits.ottos.beneficiaries.BeneficiaryService.BeneficiaryDetail;
+import org.jobits.ottos.beneficiaries.BeneficiaryService.BeneficiaryInfo;
 import org.jobits.ottos.beneficiaries.domain.Beneficiary;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,9 +34,9 @@ import java.util.UUID;
 @SecurityRequirement(name = "bearer")
 class BeneficiaryController {
 
-    private final Beneficiaries beneficiaries;
+    private final BeneficiaryService beneficiaries;
 
-    BeneficiaryController(Beneficiaries beneficiaries) {
+    BeneficiaryController(BeneficiaryService beneficiaries) {
         this.beneficiaries = beneficiaries;
     }
 

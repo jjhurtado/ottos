@@ -1,9 +1,9 @@
 package org.jobits.ottos.remittances.application;
 
-import org.jobits.ottos.branches.Zones;
-import org.jobits.ottos.customers.Customers;
-import org.jobits.ottos.customers.Customers.CustomerInfo;
-import org.jobits.ottos.identity.StaffDirectory;
+import org.jobits.ottos.branches.ZoneService;
+import org.jobits.ottos.customers.CustomerService;
+import org.jobits.ottos.customers.CustomerService.CustomerInfo;
+import org.jobits.ottos.identity.StaffDirectoryService;
 import org.jobits.ottos.remittances.domain.Remittance;
 import org.jobits.ottos.remittances.domain.RemittanceStatus;
 import org.jobits.ottos.remittances.domain.RemittanceStatusRepository;
@@ -24,12 +24,12 @@ import java.util.stream.Collectors;
 class RemittanceViews {
 
     private final RemittanceStatusRepository statuses;
-    private final Customers customers;
-    private final StaffDirectory staff;
-    private final Zones zones;
+    private final CustomerService customers;
+    private final StaffDirectoryService staff;
+    private final ZoneService zones;
     private final Clock clock;
 
-    RemittanceViews(RemittanceStatusRepository statuses, Customers customers, StaffDirectory staff, Zones zones,
+    RemittanceViews(RemittanceStatusRepository statuses, CustomerService customers, StaffDirectoryService staff, ZoneService zones,
                     Clock clock) {
         this.statuses = statuses;
         this.customers = customers;
@@ -46,7 +46,7 @@ class RemittanceViews {
         Map<String, RemittanceStatus> statusByCode = statuses.findAll().stream()
                 .collect(Collectors.toMap(RemittanceStatus::getCode, Function.identity()));
         Map<String, String> municipalityNames = zones.municipalities(null).stream()
-                .collect(Collectors.toMap(Zones.MunicipalityInfo::code, Zones.MunicipalityInfo::name));
+                .collect(Collectors.toMap(ZoneService.MunicipalityInfo::code, ZoneService.MunicipalityInfo::name));
         Map<UUID, Optional<CustomerInfo>> customerById = new HashMap<>();
         Map<UUID, Optional<String>> courierNames = new HashMap<>();
         LocalDate today = LocalDate.now(clock);
@@ -59,7 +59,7 @@ class RemittanceViews {
                     : Optional.empty();
             String courierName = r.getCourierId() == null ? null
                     : courierNames.computeIfAbsent(r.getCourierId(),
-                            id -> staff.find(id).map(StaffDirectory.StaffMember::name)).orElse(null);
+                            id -> staff.find(id).map(StaffDirectoryService.StaffMember::name)).orElse(null);
             return new RemittanceView(
                     r.getId(), r.getCode(), r.getType(), r.getStatus(), status.getName(),
                     r.getCustomerId(),

@@ -10,11 +10,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import org.jobits.ottos.payments.application.CashLedger;
-import org.jobits.ottos.payments.application.CashLedger.Balance;
-import org.jobits.ottos.payments.application.CashLedger.CourierCash;
-import org.jobits.ottos.payments.application.CashLedger.CourierStatement;
-import org.jobits.ottos.payments.application.CashLedger.MovementView;
+import org.jobits.ottos.payments.application.CashLedgerService;
+import org.jobits.ottos.payments.application.CashLedgerService.Balance;
+import org.jobits.ottos.payments.application.CashLedgerService.CourierCash;
+import org.jobits.ottos.payments.application.CashLedgerService.CourierStatement;
+import org.jobits.ottos.payments.application.CashLedgerService.MovementView;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -37,9 +37,9 @@ import java.util.UUID;
 @SecurityRequirement(name = "bearer")
 class CashController {
 
-    private final CashLedger ledger;
+    private final CashLedgerService ledger;
 
-    CashController(CashLedger ledger) {
+    CashController(CashLedgerService ledger) {
         this.ledger = ledger;
     }
 

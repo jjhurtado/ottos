@@ -7,8 +7,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import org.jobits.ottos.customers.Customers;
-import org.jobits.ottos.customers.Customers.CustomerInfo;
+import org.jobits.ottos.customers.CustomerService;
+import org.jobits.ottos.customers.CustomerService.CustomerInfo;
 import org.jobits.ottos.customers.domain.Customer;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,9 +33,9 @@ import java.util.UUID;
 @SecurityRequirement(name = "bearer")
 class CustomerController {
 
-    private final Customers customers;
+    private final CustomerService customers;
 
-    CustomerController(Customers customers) {
+    CustomerController(CustomerService customers) {
         this.customers = customers;
     }
 

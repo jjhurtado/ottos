@@ -15,31 +15,33 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Registers and finds customers. Other modules use {@link #find(UUID)}. */
+/** Implementation of {@link CustomerService}. */
 @Service
-public class Customers {
+class CustomerServiceImpl implements CustomerService {
 
     private static final int SEARCH_LIMIT = 50;
 
     private final CustomerRepository customers;
     private final Clock clock;
 
-    Customers(CustomerRepository customers, Clock clock) {
+    CustomerServiceImpl(CustomerRepository customers, Clock clock) {
         this.customers = customers;
         this.clock = clock;
     }
 
+    @Override
     @Transactional(readOnly = true)
     public Optional<CustomerInfo> find(UUID id) {
         return customers.findById(id).map(CustomerInfo::of);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public CustomerInfo get(UUID id) {
-        return find(id).orElseThrow(Customers::notFound);
+        return find(id).orElseThrow(CustomerServiceImpl::notFound);
     }
 
-    /** Matches a fragment of the name or of the phone; without text, the most recent customers. */
+    @Override
     @Transactional(readOnly = true)
     public List<CustomerInfo> search(String text) {
         PageRequest page = PageRequest.of(0, SEARCH_LIMIT);
@@ -55,6 +57,7 @@ public class Customers {
         return found.stream().map(CustomerInfo::of).toList();
     }
 
+    @Override
     @Transactional
     public CustomerInfo register(Customer.Details details, UUID actorId) {
         Customer.Details normalized = normalize(details);
@@ -63,9 +66,10 @@ public class Customers {
         return CustomerInfo.of(customers.save(new Customer(normalized, now, actorId)));
     }
 
+    @Override
     @Transactional
     public CustomerInfo update(UUID id, Customer.Details details) {
-        Customer customer = customers.findById(id).orElseThrow(Customers::notFound);
+        Customer customer = customers.findById(id).orElseThrow(CustomerServiceImpl::notFound);
         Customer.Details normalized = normalize(details);
         requirePhoneAvailable(normalized.phone(), id);
         customer.update(normalized);
@@ -96,14 +100,5 @@ public class Customers {
 
     private static ResponseStatusException notFound() {
         return ApiException.notFound("CUSTOMER_NOT_FOUND", "Customer not found");
-    }
-
-    public record CustomerInfo(UUID id, String fullName, String phone, String email, String documentType,
-                               String documentNumber, String address, String notes, boolean active, Instant createdAt) {
-
-        static CustomerInfo of(Customer c) {
-            return new CustomerInfo(c.getId(), c.getFullName(), c.getPhone(), c.getEmail(), c.getDocumentType(),
-                    c.getDocumentNumber(), c.getAddress(), c.getNotes(), c.isActive(), c.getCreatedAt());
-        }
     }
 }

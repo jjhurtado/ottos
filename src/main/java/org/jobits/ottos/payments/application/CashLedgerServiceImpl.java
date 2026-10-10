@@ -1,7 +1,7 @@
 package org.jobits.ottos.payments.application;
 
 import org.jobits.ottos.ApiException;
-import org.jobits.ottos.identity.StaffDirectory;
+import org.jobits.ottos.identity.StaffDirectoryService;
 import org.jobits.ottos.payments.domain.AccountType;
 import org.jobits.ottos.payments.domain.CashAccount;
 import org.jobits.ottos.payments.domain.CashAccountRepository;
@@ -27,22 +27,19 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Records cash movements and computes balances. Remittance payments, deliveries and pickups are recorded from
- * remittance events, inside the same transaction; funding and returns are recorded by Sales or Admin.
- */
+/** Implementation of {@link CashLedgerService}. */
 @Service
-public class CashLedger {
+class CashLedgerServiceImpl implements CashLedgerService {
 
     private static final String COURIER_PERMISSION = "remittances:deliver";
     private static final int STATEMENT_SIZE = 100;
 
     private final CashAccountRepository accounts;
     private final CashMovementRepository movements;
-    private final StaffDirectory staff;
+    private final StaffDirectoryService staff;
     private final Clock clock;
 
-    CashLedger(CashAccountRepository accounts, CashMovementRepository movements, StaffDirectory staff, Clock clock) {
+    CashLedgerServiceImpl(CashAccountRepository accounts, CashMovementRepository movements, StaffDirectoryService staff, Clock clock) {
         this.accounts = accounts;
         this.movements = movements;
         this.staff = staff;
@@ -76,7 +73,7 @@ public class CashLedger {
 
     // ---------------------------------------------------------------- by Sales or Admin
 
-    /** Cash handed from the business box to a courier. */
+    @Override
     @Transactional
     public MovementView fundCourier(UUID courierId, BigDecimal amount, String currency, String note, UUID actorId) {
         requireCourier(courierId);
@@ -85,7 +82,7 @@ public class CashLedger {
         return view(m, null);
     }
 
-    /** Cash a courier gave back to the business box. */
+    @Override
     @Transactional
     public MovementView courierReturn(UUID courierId, BigDecimal amount, String currency, String note, UUID actorId) {
         requireCourier(courierId);
@@ -94,7 +91,7 @@ public class CashLedger {
         return view(m, null);
     }
 
-    /** Money put into the business box for a reason other than a remittance; the note says why. */
+    @Override
     @Transactional
     public MovementView deposit(BigDecimal amount, String currency, String note, UUID actorId) {
         CashMovement m = record(MovementType.BUSINESS_DEPOSIT, external(currency), business(currency), amount, null,
@@ -102,7 +99,7 @@ public class CashLedger {
         return view(m, null);
     }
 
-    /** Money taken out of the business box for a reason other than a remittance; the note says why. */
+    @Override
     @Transactional
     public MovementView withdraw(BigDecimal amount, String currency, String note, UUID actorId) {
         CashMovement m = record(MovementType.BUSINESS_WITHDRAWAL, business(currency), external(currency), amount, null,
@@ -112,12 +109,13 @@ public class CashLedger {
 
     // ---------------------------------------------------------------- queries
 
+    @Override
     @Transactional(readOnly = true)
     public List<Balance> businessBalances() {
         return balances(accounts.findByTypeOrderByCurrency(AccountType.BUSINESS));
     }
 
-    /** Every courier that has ever carried cash, with their balance per currency. */
+    @Override
     @Transactional(readOnly = true)
     public List<CourierCash> couriers() {
         Map<UUID, List<CashAccount>> byCourier = accounts.findByTypeOrderByCurrency(AccountType.COURIER).stream()
@@ -128,7 +126,7 @@ public class CashLedger {
                 .toList();
     }
 
-    /** A courier's balances and their latest movements, signed from the courier's point of view. */
+    @Override
     @Transactional(readOnly = true)
     public CourierStatement courierStatement(UUID courierId) {
         List<CashAccount> own = accounts.findByTypeAndOwnerIdOrderByCurrency(AccountType.COURIER, courierId);
@@ -140,7 +138,7 @@ public class CashLedger {
         return new CourierStatement(courierCash(courierId, own), latest);
     }
 
-    /** Latest movements of the business box, signed from the business's point of view. */
+    @Override
     @Transactional(readOnly = true)
     public List<MovementView> businessMovements() {
         List<UUID> ids = accounts.findByTypeOrderByCurrency(AccountType.BUSINESS).stream().map(CashAccount::getId).toList();
@@ -149,6 +147,7 @@ public class CashLedger {
                 .toList();
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<MovementView> movementsOfRemittance(UUID remittanceId) {
         return movements.findByRemittanceIdOrderByOccurredAtAsc(remittanceId).stream().map(m -> view(m, null)).toList();
@@ -201,7 +200,7 @@ public class CashLedger {
 
     private CourierCash courierCash(UUID courierId, List<CashAccount> own) {
         List<Balance> balances = balances(own);
-        String name = staff.find(courierId).map(StaffDirectory.StaffMember::name).orElse(null);
+        String name = staff.find(courierId).map(StaffDirectoryService.StaffMember::name).orElse(null);
         boolean negative = balances.stream().anyMatch(b -> b.amount().signum() < 0);
         return new CourierCash(courierId, name, balances, negative);
     }
@@ -215,21 +214,5 @@ public class CashLedger {
                 : perspective.equals(m.getToAccountId()) ? m.getAmount() : m.getAmount().negate();
         return new MovementView(m.getId(), m.getType(), from.getType(), from.getOwnerId(), to.getType(), to.getOwnerId(),
                 m.getAmount(), m.getCurrency(), signed, m.getRemittanceId(), m.getNote(), m.getActorId(), m.getOccurredAt());
-    }
-
-    public record Balance(String currency, BigDecimal amount) {
-    }
-
-    /** negative: the courier has handed over more than they received in some currency. */
-    public record CourierCash(UUID courierId, String name, List<Balance> balances, boolean negative) {
-    }
-
-    public record CourierStatement(CourierCash cash, List<MovementView> movements) {
-    }
-
-    /** signedAmount: positive if the account being viewed received the money, negative if it paid; null otherwise. */
-    public record MovementView(UUID id, MovementType type, AccountType fromType, UUID fromOwnerId, AccountType toType,
-                               UUID toOwnerId, BigDecimal amount, String currency, BigDecimal signedAmount,
-                               UUID remittanceId, String note, UUID actorId, Instant occurredAt) {
     }
 }

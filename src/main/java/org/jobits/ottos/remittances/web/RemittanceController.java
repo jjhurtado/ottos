@@ -50,11 +50,9 @@ import java.util.UUID;
 class RemittanceController {
 
     private final RemittanceService remittances;
-    private final Workflow workflow;
 
-    RemittanceController(RemittanceService remittances, Workflow workflow) {
+    RemittanceController(RemittanceService remittances) {
         this.remittances = remittances;
-        this.workflow = workflow;
     }
 
     @PostMapping("/remittances")
@@ -177,7 +175,7 @@ class RemittanceController {
     @PreAuthorize("hasAnyAuthority('remittances:read', 'remittances:read-assigned')")
     @Operation(summary = "Statuses and allowed transitions, as configured in the database")
     Workflow.WorkflowView workflow() {
-        return workflow.describe();
+        return remittances.workflow();
     }
 
     record NewRemittanceRequest(@NotNull RemittanceType type,
