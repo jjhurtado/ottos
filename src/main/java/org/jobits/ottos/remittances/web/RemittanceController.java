@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.jobits.ottos.remittances.application.RemittanceFilter;
 import org.jobits.ottos.remittances.application.RemittanceService;
@@ -79,10 +80,11 @@ class RemittanceController {
 
     @GetMapping("/remittances")
     @PreAuthorize("hasAuthority('remittances:read')")
-    @Operation(summary = "List remittances, newest first, with optional filters; late=true lists the overdue ones")
+    @Operation(summary = "List remittances, newest first, with optional filters; late=true lists the overdue ones, incident=true the ones with an open incident")
     PageView search(@RequestParam(required = false) String status,
                     @RequestParam(required = false) RemittanceType type,
                     @RequestParam(required = false) Boolean late,
+                    @RequestParam(required = false) Boolean incident,
                     @RequestParam(required = false) UUID courierId,
                     @RequestParam(required = false) UUID customerId,
                     @RequestParam(required = false) UUID beneficiaryId,
@@ -92,7 +94,7 @@ class RemittanceController {
                     @RequestParam(defaultValue = "0") @Min(0) int page,
                     @RequestParam(defaultValue = "50") @Min(1) @Max(200) int size,
                     @AuthenticationPrincipal Jwt jwt) {
-        RemittanceFilter filter = new RemittanceFilter(status, type, late, courierId, customerId, beneficiaryId,
+        RemittanceFilter filter = new RemittanceFilter(status, type, late, incident, courierId, customerId, beneficiaryId,
                 municipality, from, to);
         return remittances.search(filter, page, size, Viewers.from(jwt));
     }
@@ -127,7 +129,7 @@ class RemittanceController {
 
     @GetMapping("/remittances/{id}/events")
     @PreAuthorize("hasAnyAuthority('remittances:read', 'remittances:read-assigned')")
-    @Operation(summary = "History of a remittance: creation, status changes and postponements")
+    @Operation(summary = "History of a remittance: creation, status changes, postponements and incidents")
     List<EventView> events(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         return remittances.history(id, Viewers.from(jwt));
     }
@@ -163,6 +165,14 @@ class RemittanceController {
         return remittances.transition(id, request.toStatus(), request.courierId(), request.note(), Viewers.from(jwt));
     }
 
+    @PostMapping("/remittances/{id}/incidents")
+    @PreAuthorize("hasAuthority('remittances:report-incident')")
+    @Operation(summary = "Report why a delivery or pickup could not be done; it stays open until someone acts on the remittance")
+    RemittanceView reportIncident(@PathVariable UUID id, @Valid @RequestBody IncidentRequest request,
+                                  @AuthenticationPrincipal Jwt jwt) {
+        return remittances.reportIncident(id, request.reason(), request.note(), Viewers.from(jwt));
+    }
+
     @PostMapping("/remittances/{id}/postpone")
     @PreAuthorize("hasAuthority('remittances:postpone')")
     @Operation(summary = "Move the expected date later, with a reason; couriers only on their own remittances")
@@ -196,6 +206,9 @@ class RemittanceController {
     }
 
     record TransitionRequest(@NotBlank String toStatus, UUID courierId, @Size(max = 1000) String note) {
+    }
+
+    record IncidentRequest(@NotNull IncidentReason reason, @Size(max = 1000) String note) {
     }
 
     record PostponeRequest(@NotNull LocalDate newDate, @NotBlank @Size(max = 1000) String reason) {

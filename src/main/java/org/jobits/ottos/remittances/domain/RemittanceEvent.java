@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.jobits.ottos.remittances.IncidentReason;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -43,6 +44,10 @@ public class RemittanceEvent {
 
     @Column(name = "new_date")
     private LocalDate newDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "incident_reason", length = 30)
+    private IncidentReason incidentReason;
 
     @Column(length = 1000)
     private String note;
@@ -87,6 +92,14 @@ public class RemittanceEvent {
         return e;
     }
 
+    public static RemittanceEvent incidentReported(Remittance r, IncidentReason reason, UUID actorId, Instant at,
+                                                   String note) {
+        RemittanceEvent e = new RemittanceEvent(r.getId(), EventType.INCIDENT_REPORTED, actorId, at, note);
+        e.incidentReason = reason;
+        e.courierId = r.getCourierId();
+        return e;
+    }
+
     public UUID getId() {
         return id;
     }
@@ -113,6 +126,10 @@ public class RemittanceEvent {
 
     public LocalDate getPreviousDate() {
         return previousDate;
+    }
+
+    public IncidentReason getIncidentReason() {
+        return incidentReason;
     }
 
     public LocalDate getNewDate() {

@@ -11,6 +11,7 @@ import org.jobits.ottos.identity.StaffDirectoryService;
 import org.jobits.ottos.rates.QuoteService;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceCompleted;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceRegistered;
+import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.jobits.ottos.remittances.domain.Remittance;
 import org.jobits.ottos.remittances.domain.RemittanceEvent;
@@ -155,6 +156,26 @@ class RemittanceServiceImpl implements RemittanceService {
 
     @Override
     @Transactional
+    public RemittanceView reportIncident(UUID id, IncidentReason reason, String note, Viewer viewer) {
+        Remittance r = findVisible(id, viewer);
+        if (workflow.status(r.getStatus()).isFinalStatus()) {
+            throw conflict("REMITTANCE_ALREADY_COMPLETED", "Remittance " + r.getCode() + " is already completed");
+        }
+        if (r.getCourierId() == null) {
+            throw conflict("COURIER_NOT_ASSIGNED", "Assign a courier before reporting an incident on " + r.getCode());
+        }
+        String cleanNote = blankToNull(note);
+        if (reason == IncidentReason.OTHER && cleanNote == null) {
+            throw badRequest("INCIDENT_NOTE_REQUIRED", "Explain the incident in the note when the reason is OTHER");
+        }
+        Instant now = clock.instant();
+        r.reportIncident(reason, cleanNote, now, viewer.userId());
+        events.save(RemittanceEvent.incidentReported(r, reason, viewer.userId(), now, cleanNote));
+        return views.of(r, viewer);
+    }
+
+    @Override
+    @Transactional
     public RemittanceView postpone(UUID id, LocalDate newDate, String reason, Viewer viewer) {
         Remittance r = findVisible(id, viewer);
         if (workflow.status(r.getStatus()).isFinalStatus()) {
@@ -294,6 +315,10 @@ class RemittanceServiceImpl implements RemittanceService {
             }
             if (f.createdTo() != null) {
                 where.add(cb.lessThan(root.get("createdAt"), f.createdTo().plusDays(1).atStartOfDay(zone).toInstant()));
+            }
+            if (f.incident() != null) {
+                where.add(f.incident() ? cb.isNotNull(root.get("openIncidentReason"))
+                        : cb.isNull(root.get("openIncidentReason")));
             }
             if (f.late() != null) {
                 Predicate late = cb.and(

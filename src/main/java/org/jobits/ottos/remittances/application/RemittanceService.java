@@ -1,5 +1,6 @@
 package org.jobits.ottos.remittances.application;
 
+import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.jobits.ottos.remittances.domain.RemittanceEvent;
 
@@ -31,6 +32,12 @@ public interface RemittanceService {
 
     /** Moves to any status allowed by remittance_transitions, e.g. a custom status added in the database. */
     RemittanceView transition(UUID id, String toStatus, UUID courierId, String note, Viewer viewer);
+
+    /**
+     * Reports why a delivery or pickup could not be done. The remittance keeps it as its open incident until someone
+     * acts on it (reassign, postpone, complete or any status change). OTHER needs a note.
+     */
+    RemittanceView reportIncident(UUID id, IncidentReason reason, String note, Viewer viewer);
 
     /** Moves the expected date later. Allowed for any open remittance; recorded with its reason. */
     RemittanceView postpone(UUID id, LocalDate newDate, String reason, Viewer viewer);
@@ -65,11 +72,13 @@ public interface RemittanceService {
     }
 
     record EventView(UUID id, String type, String fromStatus, String toStatus, UUID courierId,
-                     LocalDate previousDate, LocalDate newDate, String note, UUID actorId, Instant occurredAt) {
+                     LocalDate previousDate, LocalDate newDate, IncidentReason incidentReason, String note,
+                     UUID actorId, Instant occurredAt) {
 
         static EventView of(RemittanceEvent e) {
             return new EventView(e.getId(), e.getType().name(), e.getFromStatus(), e.getToStatus(), e.getCourierId(),
-                    e.getPreviousDate(), e.getNewDate(), e.getNote(), e.getActorId(), e.getOccurredAt());
+                    e.getPreviousDate(), e.getNewDate(), e.getIncidentReason(), e.getNote(), e.getActorId(),
+                    e.getOccurredAt());
         }
     }
 }
