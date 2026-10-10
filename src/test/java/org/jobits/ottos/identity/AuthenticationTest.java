@@ -3,14 +3,20 @@ package org.jobits.ottos.identity;
 import org.jobits.ottos.ApiTestSupport;
 
 import com.jayway.jsonpath.JsonPath;
+import org.jobits.ottos.identity.domain.RefreshToken;
 import org.jobits.ottos.identity.domain.Role;
 import org.jobits.ottos.identity.domain.User;
+import org.jobits.ottos.identity.security.RefreshTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,6 +32,25 @@ class AuthenticationTest extends ApiTestSupport {
         User inactive = new User("inactive@ottos.test", passwordEncoder.encode(PASSWORD), "Inactive user");
         inactive.deactivate();
         users.save(inactive);
+    }
+
+    @Test
+    void cleanupDeletesOnlyExpiredRefreshTokens(@Autowired RefreshTokenService refreshTokenService) {
+        User sales = users.findByEmail("sales@ottos.test").orElseThrow();
+        Instant now = Instant.now();
+        refreshTokens.save(new RefreshToken(sales.getId(), "expired", now.minus(Duration.ofDays(31)),
+                now.minus(Duration.ofDays(1))));
+        refreshTokens.save(new RefreshToken(sales.getId(), "valid", now, now.plus(Duration.ofDays(30))));
+        RefreshToken revoked = new RefreshToken(sales.getId(), "revoked", now, now.plus(Duration.ofDays(30)));
+        revoked.revoke(now);
+        refreshTokens.save(revoked);
+
+        assertThat(refreshTokenService.deleteExpired()).isEqualTo(1);
+
+        // Revoked but not expired is kept: presenting it again must still be detected as reuse
+        assertThat(refreshTokens.findByTokenHash("expired")).isEmpty();
+        assertThat(refreshTokens.findByTokenHash("valid")).isPresent();
+        assertThat(refreshTokens.findByTokenHash("revoked")).isPresent();
     }
 
     @Test
