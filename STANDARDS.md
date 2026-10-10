@@ -69,7 +69,7 @@ Sin espacios, mayúsculas, guiones bajos ni nombres de personas.
 | `ci` | Pipelines |
 | `chore` | Mantenimiento que no encaja en lo anterior |
 
-El ámbito es el módulo afectado: `identity`, `customers`, `beneficiaries`, `rates`, `remittances`, `payments`,
+El ámbito es el módulo afectado: `identity`, `customers`, `beneficiaries`, `configuration`, `rates`, `remittances`, `payments`,
 `branches`… Ejemplos:
 
 - `feat(remittances): list assignable couriers`
@@ -137,7 +137,7 @@ empiezan a aplicarse con el trabajo que vaya a `1.0.0`.
 ### Monolito modular
 
 Un único despliegue Spring Boot dividido en módulos (Spring Modulith). Cada paquete directo bajo `org.jobits.ottos` es un
-módulo: `identity`, `branches`, `customers`, `beneficiaries`, `rates`, `remittances`, `dispatch`, `payments`,
+módulo: `identity`, `branches`, `customers`, `beneficiaries`, `configuration`, `rates`, `remittances`, `dispatch`, `payments`,
 `notifications`, `reporting`. `ModularityTest` falla si un módulo usa clases internas de otro.
 
 Lo compartido por todos vive en el paquete raíz `org.jobits.ottos` y se mantiene mínimo: `ApiException`, `ApiErrors`,
@@ -189,6 +189,14 @@ Reglas:
   devuelven `record` de vista.
 - Las piezas auxiliares que no son servicios (`@Component` como `Workflow`, `RemittanceViews`, handlers de seguridad,
   bootstrap) no llevan interfaz y no se usan desde controllers.
+
+### Configuración
+
+Todo valor que el negocio deba poder cambiar sin desplegar (montos mínimos, plazos, tasas, comisiones…) vive en el
+módulo `configuration` y se gestiona desde un solo sitio (`GET /api/v1/configuration`). Los demás módulos lo leen a
+través de `ConfigurationService`; nunca guardan sus propios ajustes. Un ajuste nuevo es: una fila en `settings` (por
+migración), una constante en `Setting`, un método tipado en `ConfigurationService` y su campo en `SettingsView` y en
+`PUT /configuration/settings`.
 
 ### Comunicación entre módulos
 

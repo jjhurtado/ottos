@@ -61,7 +61,8 @@ package are its public API; sub-packages are internal.
 | Identity and access (staff users, roles, permissions) | `identity` | 0 (implemented) |
 | Branches and zones (provinces, municipalities) | `branches` | 1 (zones implemented; branches later) |
 | Customers (senders, no login yet) | `customers` | 1 (implemented) |
-| Rates and fees | `rates` | 1 (implemented) |
+| Configuration (minimum amount, delivery days, corridors, exchange rates, fee rules) | `configuration` | 1 (implemented) |
+| Quotes (calculator over the configuration) | `rates` | 1 (implemented) |
 | Beneficiaries | `beneficiaries` | 1 (implemented) |
 | Remittances (deliveries and pickups) | `remittances` | 1 (implemented) |
 | Dispatch and deliveries (routes, proof photos) | `dispatch` | later; assignment lives in `remittances` for now |
@@ -121,7 +122,8 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Staff users | `GET/POST /users`, `PUT /users/{id}`, `/users/{id}/roles`, `/users/{id}/password`, `POST /users/{id}/activate`, `/deactivate` | `users:read`, `users:write` |
 | Roles | `GET /permissions`, `GET/POST /roles`, `PUT /roles/{id}`, `/roles/{id}/permissions`, `DELETE /roles/{id}` | `roles:read`, `roles:write` |
 | Zones | `GET /provinces`, `GET /municipalities?province=` | authenticated |
-| Rates and fees | `GET /corridors`, `GET/POST /corridors/{code}/rates`, `GET/POST /corridors/{code}/fee-rules`, `POST /quotes` | `rates:read`, `rates:write` |
+| Configuration | `GET /configuration` (everything at once), `GET/PUT /configuration/settings`, `GET /configuration/corridors`, `GET/POST /configuration/corridors/{code}/rates`, `GET/POST /configuration/corridors/{code}/fee-rules` | `configuration:read`, `configuration:write` |
+| Quotes | `POST /quotes` | `rates:read` |
 | Customers | `GET/POST /customers?q=`, `GET/PUT /customers/{id}` | `customers:read`, `customers:write` |
 | Beneficiaries | `GET /beneficiaries?q=`, `GET/PUT/DELETE /beneficiaries/{id}` (delete deactivates it for every customer), `POST /beneficiaries/{id}/restore`, `GET/POST /customers/{id}/beneficiaries`, `PUT/DELETE /customers/{id}/beneficiaries/{beneficiaryId}` | `customers:read`, `customers:write` |
 | Remittances | `POST /remittances` (header `Idempotency-Key`), `GET /remittances?status=&type=&late=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/{id}`, `/remittances/code/{code}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:create`, `remittances:read` |
@@ -132,7 +134,7 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Own cash | `GET /cash/me` | `cash:read-own` |
 | Business box | `POST /cash/business/deposits`, `/withdrawals` | `cash:adjust` |
 
-All paths start with `/api/v1`. Initial grants: ADMIN has everything; SALES manages customers, rates (read),
+All paths start with `/api/v1`. Initial grants: ADMIN has everything; SALES manages customers, reads the configuration, quotes,
 remittances (read, create, assign, postpone) and courier cash; DELIVERY sees and completes its own remittances,
 postpones them and sees its own cash. Administrators can change this through the roles API.
 
@@ -151,7 +153,7 @@ Throw `ApiException.badRequest("SOME_CODE", "English detail")` (or `conflict`, `
 
 | Status | Codes |
 | --- | --- |
-| 400 | `VALIDATION_FAILED` (with `errors: [{field, constraint}]`, e.g. `{"field": "email", "constraint": "NotBlank"}`), `MALFORMED_REQUEST`, `INVALID_PARAMETER`, `AMOUNT_TOO_SMALL`, `BENEFICIARY_NOT_LINKED`, `BENEFICIARY_UNAVAILABLE`, `COURIER_REQUIRED`, `CUSTOMER_UNAVAILABLE`, `FEE_PERCENTAGE_TOO_HIGH`, `FIXED_RATE`, `INCORRECT_CURRENT_PASSWORD`, `INCORRECT_PIN`, `INVALID_AMOUNT`, `INVALID_COURIER`, `INVALID_FEE_RANGE`, `INVALID_PHONE`, `INVALID_POSTPONE_DATE`, `NO_ACTIVE_CORRIDOR`, `NO_BUSINESS_CASH`, `UNKNOWN_MUNICIPALITY`, `UNKNOWN_PERMISSIONS`, `UNKNOWN_ROLES` |
+| 400 | `AMOUNT_BELOW_MINIMUM` (with `minimumAmount`, `currency`), `VALIDATION_FAILED` (with `errors: [{field, constraint}]`, e.g. `{"field": "email", "constraint": "NotBlank"}`), `MALFORMED_REQUEST`, `INVALID_PARAMETER`, `AMOUNT_TOO_SMALL`, `BENEFICIARY_NOT_LINKED`, `BENEFICIARY_UNAVAILABLE`, `COURIER_REQUIRED`, `CUSTOMER_UNAVAILABLE`, `FEE_PERCENTAGE_TOO_HIGH`, `FIXED_RATE`, `INCORRECT_CURRENT_PASSWORD`, `INCORRECT_PIN`, `INVALID_AMOUNT`, `INVALID_COURIER`, `INVALID_FEE_RANGE`, `INVALID_PHONE`, `INVALID_POSTPONE_DATE`, `NO_ACTIVE_CORRIDOR`, `NO_BUSINESS_CASH`, `UNKNOWN_MUNICIPALITY`, `UNKNOWN_PERMISSIONS`, `UNKNOWN_ROLES` |
 | 401 | `AUTHENTICATION_REQUIRED` (no token, or account no longer active), `INVALID_TOKEN` (malformed or expired: refresh or log in again), `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
 | 403 | `FORBIDDEN` (missing permission), `PERMISSION_ESCALATION`, `TRANSITION_FORBIDDEN` |
 | 404 | `NOT_FOUND` (unknown route), `BENEFICIARY_NOT_FOUND`, `CORRIDOR_NOT_FOUND`, `CUSTOMER_NOT_FOUND`, `REMITTANCE_NOT_FOUND`, `ROLE_NOT_FOUND`, `USER_NOT_FOUND` |
@@ -161,7 +163,11 @@ Other framework errors get the status name as code (e.g. `METHOD_NOT_ALLOWED`, `
 
 ## Remittance rules
 
-- **Quote:** fee = 10 % of the amount, at least 10 USD (a fee rule per corridor, versioned in `fee_rules`);
+- **Configuration:** every configurable value lives in the `configuration` module and is managed from one place
+  (`GET /configuration`): `minimum_amount` (USD, 0 = no minimum) and `default_delivery_days` in `settings`, and per
+  corridor its exchange rates and fee rules.
+- **Quote:** amount ≥ the configured minimum amount, otherwise `AMOUNT_BELOW_MINIMUM` (with `minimumAmount` and
+  `currency`); fee = 10 % of the amount, at least 10 USD (a fee rule per corridor, versioned in `fee_rules`);
   total charged = amount + fee; amount to deliver = amount × rate, rounded down to 50 CUP (no rounding for USD-USD).
   Rates (`exchange_rates`) and fee rules are never edited: a change inserts a new row. Each remittance keeps a copy
   of what it used, and of the beneficiary's data.
@@ -169,7 +175,7 @@ Other framework errors get the status name as code (e.g. `METHOD_NOT_ALLOWED`, `
   totals are visible only with `remittances:read-financials`.
 - **Workflow:** statuses and transitions are rows in `remittance_statuses` and `remittance_transitions`; the code
   relies only on the flags `is_initial`, `requires_courier` and `is_final`. Seeded: Paid → Assigned → Delivered.
-- **Due date and delays:** expected date = registration day + `default_delivery_days` (2, in `remittance_settings`),
+- **Due date and delays:** expected date = registration day + `default_delivery_days` (2, a configuration setting),
   in Cuba's timezone (`ottos.timezone`). A remittance is late when it is not final and its expected date has
   passed; postponing moves the date with a required reason and is kept in the history.
 - **Cash:** a double-entry ledger (`cash_accounts`, `cash_movements`). Registering a delivery adds the total
