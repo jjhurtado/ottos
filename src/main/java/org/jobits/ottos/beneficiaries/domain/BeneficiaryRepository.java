@@ -9,21 +9,25 @@ import java.util.UUID;
 
 public interface BeneficiaryRepository extends JpaRepository<Beneficiary, UUID> {
 
-    @Query("select b from Beneficiary b where lower(b.fullName) like lower(concat('%', :name, '%')) order by b.fullName")
+    @Query("""
+            select b from Beneficiary b
+            where b.active = true and lower(b.fullName) like lower(concat('%', :name, '%'))
+            order by b.fullName""")
     List<Beneficiary> searchByName(String name, Pageable page);
 
     @Query("""
             select b from Beneficiary b
-            where lower(b.fullName) like lower(concat('%', :name, '%'))
-               or b.phone like concat('%', :phone, '%') or b.alternatePhone like concat('%', :phone, '%')
+            where b.active = true
+              and (lower(b.fullName) like lower(concat('%', :name, '%'))
+                   or b.phone like concat('%', :phone, '%') or b.alternatePhone like concat('%', :phone, '%'))
             order by b.fullName""")
     List<Beneficiary> searchByNameOrPhone(String name, String phone, Pageable page);
 
     @Query("""
             select b from Beneficiary b, CustomerBeneficiary cb
-            where cb.key.beneficiaryId = b.id and cb.key.customerId = :customerId
+            where cb.key.beneficiaryId = b.id and cb.key.customerId = :customerId and b.active = true
             order by b.fullName""")
     List<Beneficiary> findByCustomer(UUID customerId);
 
-    List<Beneficiary> findAllByOrderByCreatedAtDesc(Pageable page);
+    List<Beneficiary> findByActiveTrueOrderByCreatedAtDesc(Pageable page);
 }

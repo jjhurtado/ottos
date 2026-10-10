@@ -74,7 +74,7 @@ class BeneficiaryServiceImpl implements BeneficiaryService {
         PageRequest page = PageRequest.of(0, SEARCH_LIMIT);
         List<Beneficiary> found;
         if (text == null || text.isBlank()) {
-            found = beneficiaries.findAllByOrderByCreatedAtDesc(page);
+            found = beneficiaries.findByActiveTrueOrderByCreatedAtDesc(page);
         } else {
             String phone = Phones.normalize(text);
             found = phone == null
@@ -113,7 +113,10 @@ class BeneficiaryServiceImpl implements BeneficiaryService {
     @Transactional
     public void link(UUID customerId, UUID beneficiaryId) {
         customers.get(customerId);
-        beneficiaries.findById(beneficiaryId).orElseThrow(BeneficiaryServiceImpl::notFound);
+        Beneficiary beneficiary = beneficiaries.findById(beneficiaryId).orElseThrow(BeneficiaryServiceImpl::notFound);
+        if (!beneficiary.isActive()) {
+            throw ApiException.conflict("BENEFICIARY_INACTIVE", "The beneficiary was deleted");
+        }
         if (!isLinked(customerId, beneficiaryId)) {
             links.save(new CustomerBeneficiary(customerId, beneficiaryId, clock.instant()));
         }
@@ -123,6 +126,20 @@ class BeneficiaryServiceImpl implements BeneficiaryService {
     @Transactional
     public void unlink(UUID customerId, UUID beneficiaryId) {
         links.deleteById(new CustomerBeneficiary.Key(customerId, beneficiaryId));
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID id) {
+        beneficiaries.findById(id).orElseThrow(BeneficiaryServiceImpl::notFound).deactivate();
+    }
+
+    @Override
+    @Transactional
+    public BeneficiaryInfo restore(UUID id) {
+        Beneficiary beneficiary = beneficiaries.findById(id).orElseThrow(BeneficiaryServiceImpl::notFound);
+        beneficiary.activate();
+        return info(beneficiary);
     }
 
     private Beneficiary.Details validate(Beneficiary.Details d) {
