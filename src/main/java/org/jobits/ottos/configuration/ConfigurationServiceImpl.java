@@ -97,34 +97,38 @@ class ConfigurationServiceImpl implements ConfigurationService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<RateView> rateHistory(String corridorCode) {
+    public List<RateView> rateHistory(String corridorCode, ServiceType remittanceType) {
         find(corridorCode);
-        return rates.findByCorridorCodeOrderByValidFromDesc(corridorCode).stream()
-                .map(ConfigurationServiceImpl::view).toList();
+        List<ExchangeRate> found = remittanceType == null
+                ? rates.findByCorridorCodeOrderByValidFromDesc(corridorCode)
+                : rates.findByCorridorCodeAndRemittanceTypeOrderByValidFromDesc(corridorCode, remittanceType);
+        return found.stream().map(ConfigurationServiceImpl::view).toList();
     }
 
     @Override
     @Transactional
-    public RateView setRate(String corridorCode, BigDecimal rate, UUID actorId) {
+    public RateView setRate(String corridorCode, ServiceType remittanceType, BigDecimal rate, UUID actorId) {
         Corridor corridor = find(corridorCode);
         if (corridor.isSameCurrency() && rate.compareTo(BigDecimal.ONE) != 0) {
             throw ApiException.badRequest("FIXED_RATE", "The rate of " + corridorCode + " is always 1");
         }
-        return view(rates.save(new ExchangeRate(corridorCode, rate, clock.instant(), actorId)));
+        return view(rates.save(new ExchangeRate(corridorCode, remittanceType, rate, clock.instant(), actorId)));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<FeeRuleView> feeRuleHistory(String corridorCode) {
+    public List<FeeRuleView> feeRuleHistory(String corridorCode, ServiceType remittanceType) {
         find(corridorCode);
-        return feeRules.findByCorridorCodeOrderByValidFromDesc(corridorCode).stream()
-                .map(ConfigurationServiceImpl::view).toList();
+        List<FeeRule> found = remittanceType == null
+                ? feeRules.findByCorridorCodeOrderByValidFromDesc(corridorCode)
+                : feeRules.findByCorridorCodeAndRemittanceTypeOrderByValidFromDesc(corridorCode, remittanceType);
+        return found.stream().map(ConfigurationServiceImpl::view).toList();
     }
 
     @Override
     @Transactional
-    public FeeRuleView setFeeRule(String corridorCode, FeeType type, BigDecimal value, BigDecimal minFee,
-                                  BigDecimal maxFee, UUID actorId) {
+    public FeeRuleView setFeeRule(String corridorCode, ServiceType remittanceType, FeeType type, BigDecimal value,
+                                  BigDecimal minFee, BigDecimal maxFee, UUID actorId) {
         find(corridorCode);
         if (type == FeeType.PERCENTAGE && value.compareTo(HUNDRED) > 0) {
             throw ApiException.badRequest("FEE_PERCENTAGE_TOO_HIGH", "A percentage fee cannot exceed 100");
@@ -132,7 +136,7 @@ class ConfigurationServiceImpl implements ConfigurationService {
         if (minFee != null && maxFee != null && minFee.compareTo(maxFee) > 0) {
             throw ApiException.badRequest("INVALID_FEE_RANGE", "minFee cannot be greater than maxFee");
         }
-        FeeRule rule = new FeeRule(corridorCode, type, value, minFee, maxFee, clock.instant(), actorId);
+        FeeRule rule = new FeeRule(corridorCode, remittanceType, type, value, minFee, maxFee, clock.instant(), actorId);
         return view(feeRules.save(rule));
     }
 
@@ -151,18 +155,26 @@ class ConfigurationServiceImpl implements ConfigurationService {
     private CorridorView view(Corridor c, Instant now) {
         return new CorridorView(c.getCode(), c.getSourceCurrency(), c.getTargetCurrency(), c.getDeliveryRounding(),
                 c.isActive(),
-                rates.findFirstByCorridorCodeAndValidFromLessThanEqualOrderByValidFromDesc(c.getCode(), now)
-                        .map(ConfigurationServiceImpl::view).orElse(null),
-                feeRules.findFirstByCorridorCodeAndValidFromLessThanEqualOrderByValidFromDesc(c.getCode(), now)
-                        .map(ConfigurationServiceImpl::view).orElse(null));
+                currentRate(c, ServiceType.DELIVERY, now), currentFeeRule(c, ServiceType.DELIVERY, now),
+                currentRate(c, ServiceType.PICKUP, now), currentFeeRule(c, ServiceType.PICKUP, now));
+    }
+
+    private RateView currentRate(Corridor c, ServiceType remittanceType, Instant now) {
+        return rates.findFirstByCorridorCodeAndRemittanceTypeAndValidFromLessThanEqualOrderByValidFromDesc(
+                c.getCode(), remittanceType, now).map(ConfigurationServiceImpl::view).orElse(null);
+    }
+
+    private FeeRuleView currentFeeRule(Corridor c, ServiceType remittanceType, Instant now) {
+        return feeRules.findFirstByCorridorCodeAndRemittanceTypeAndValidFromLessThanEqualOrderByValidFromDesc(
+                c.getCode(), remittanceType, now).map(ConfigurationServiceImpl::view).orElse(null);
     }
 
     private static RateView view(ExchangeRate r) {
-        return new RateView(r.getId(), r.getRate(), r.getValidFrom(), r.getCreatedBy());
+        return new RateView(r.getId(), r.getRemittanceType(), r.getRate(), r.getValidFrom(), r.getCreatedBy());
     }
 
     private static FeeRuleView view(FeeRule f) {
-        return new FeeRuleView(f.getId(), f.getType(), f.getValue(), f.getMinFee(), f.getMaxFee(), f.getValidFrom(),
-                f.getCreatedBy());
+        return new FeeRuleView(f.getId(), f.getRemittanceType(), f.getType(), f.getValue(), f.getMinFee(),
+                f.getMaxFee(), f.getValidFrom(), f.getCreatedBy());
     }
 }

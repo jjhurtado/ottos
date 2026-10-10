@@ -8,6 +8,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import org.jobits.ottos.configuration.ServiceType;
 import org.jobits.ottos.rates.QuoteService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,13 +32,15 @@ class QuoteController {
 
     @PostMapping("/quotes")
     @PreAuthorize("hasAuthority('rates:read')")
-    @Operation(summary = "Calculate fee, total to charge and amount to deliver with the current configuration")
+    @Operation(summary = "Calculate fee, total to charge and amount to deliver with the current configuration; remittanceType defaults to DELIVERY")
     QuoteService.Quote quote(@Valid @RequestBody QuoteRequest request) {
-        return quotes.quote(request.sourceCurrency(), request.targetCurrency(), request.amount());
+        ServiceType remittanceType = request.remittanceType() == null ? ServiceType.DELIVERY : request.remittanceType();
+        return quotes.quote(remittanceType, request.sourceCurrency(), request.targetCurrency(), request.amount());
     }
 
     record QuoteRequest(@NotNull @Pattern(regexp = "[A-Z]{3}") String sourceCurrency,
                         @NotNull @Pattern(regexp = "[A-Z]{3}") String targetCurrency,
-                        @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal amount) {
+                        @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal amount,
+                        ServiceType remittanceType) {
     }
 }

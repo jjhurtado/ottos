@@ -31,6 +31,9 @@ class ConfigurationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.settings.defaultDeliveryDays").value(2))
                 .andExpect(jsonPath("$.corridors[0].code").value("USD-CUP"))
                 .andExpect(jsonPath("$.corridors[0].currentFeeRule.type").value("PERCENTAGE"))
+                .andExpect(jsonPath("$.corridors[0].currentPickupRate.rate").value(1))
+                .andExpect(jsonPath("$.corridors[0].currentPickupRate.remittanceType").value("PICKUP"))
+                .andExpect(jsonPath("$.corridors[0].currentPickupFeeRule.type").value("PERCENTAGE"))
                 .andExpect(jsonPath("$.corridors[1].code").value("USD-USD"))
                 .andExpect(jsonPath("$.corridors[1].currentRate.rate").value(1));
     }
@@ -65,6 +68,18 @@ class ConfigurationTest extends ApiTestSupport {
         updateSettings(salesToken, "{\"minimumAmount\": 20}").andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/configuration/corridors/USD-CUP/rates").header("Authorization", bearer(salesToken)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void historiesCanBeNarrowedToOneKindOfRemittance() throws Exception {
+        mvc.perform(get("/api/v1/configuration/corridors/USD-CUP/rates").param("remittanceType", "PICKUP")
+                        .header("Authorization", bearer(salesToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].remittanceType").value("PICKUP"))
+                .andExpect(jsonPath("$[0].rate").value(1));
+        mvc.perform(get("/api/v1/configuration/corridors/USD-CUP/fee-rules").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test

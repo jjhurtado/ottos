@@ -311,7 +311,7 @@ class RemittancesTest extends ApiTestSupport {
     }
 
     @Test
-    void pickupFinancialsAreOnlyForAdmins() throws Exception {
+    void pickupsUseTheirOwnRateAndOnlyAdminsSeeTheFinancials() throws Exception {
         String id = id(register("PICKUP", "200", "CUP"));
         assign(id, courier.getId().toString());
 
@@ -322,9 +322,10 @@ class RemittancesTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.rate").doesNotExist())
                 .andExpect(jsonPath("$.cashAmount").value(200.00))
                 .andExpect(jsonPath("$.cashCurrency").value("USD"));
+        // The pickup rate starts at 1 (1x1), whatever the delivery rate is; the fee rule starts as a copy of delivery's
         mvc.perform(get("/api/v1/remittances/{id}", id).header("Authorization", bearer(adminToken)))
                 .andExpect(jsonPath("$.fee").value(20.00))
-                .andExpect(jsonPath("$.rate").value(410));
+                .andExpect(jsonPath("$.rate").value(1));
         mvc.perform(get("/api/v1/remittances/{id}", id).header("Authorization", bearer(courierToken)))
                 .andExpect(jsonPath("$.cashAmount").value(200.00))
                 .andExpect(jsonPath("$.fee").doesNotExist());

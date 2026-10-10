@@ -5,6 +5,7 @@ import org.jobits.ottos.ApiException;
 import org.jobits.ottos.beneficiaries.BeneficiaryService;
 import org.jobits.ottos.beneficiaries.BeneficiaryService.BeneficiaryInfo;
 import org.jobits.ottos.configuration.ConfigurationService;
+import org.jobits.ottos.configuration.ServiceType;
 import org.jobits.ottos.customers.CustomerService;
 import org.jobits.ottos.customers.CustomerService.CustomerInfo;
 import org.jobits.ottos.identity.StaffDirectoryService;
@@ -98,7 +99,8 @@ class RemittanceServiceImpl implements RemittanceService {
         if (!beneficiaries.isLinked(customer.id(), beneficiary.id())) {
             throw badRequest("BENEFICIARY_NOT_LINKED", "The beneficiary is not linked to this customer; link them first");
         }
-        QuoteService.Quote quote = quotes.quote(SOURCE_CURRENCY, request.targetCurrency(), request.amount());
+        QuoteService.Quote quote = quotes.quote(ServiceType.valueOf(request.type().name()), SOURCE_CURRENCY,
+                request.targetCurrency(), request.amount());
 
         Instant now = clock.instant();
         Remittance remittance = new Remittance(
