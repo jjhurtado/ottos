@@ -223,8 +223,11 @@ migración), una constante en `Setting`, un método tipado en `ConfigurationServ
 - El backend no traduce: todo texto que devuelve (`detail` de los errores, descripciones de permisos, nombres y
   descripciones de los roles semilla) está en inglés.
 - El frontend traduce por **código**, nunca por el texto: códigos de error (`AMOUNT_BELOW_MINIMUM`), de rol (`ADMIN`,
-  `SALES`, `DELIVERY`) y de permiso (`remittances:assign`). Si llega un código sin traducción, muestra el texto en
-  inglés del backend como respaldo.
+  `SALES`, `DELIVERY`), de permiso (`remittances:assign`), de motivo de incidencia (`NOT_HOME`) y de estado de remesa
+  (`PAID`, `ASSIGNED`, `DELIVERED`). Si llega un código sin traducción, muestra el texto del backend como respaldo.
+- Los estados de remesa se traducen por código **y tipo**: `DELIVERED` es "Entregada" en una entrega (`DELIVERY`) y
+  "Recogida" en una recogida (`PICKUP`). Excepción a la regla del inglés: los nombres de estado (`statusName`) están
+  guardados en español en `remittance_statuses`; son solo el respaldo para estados personalizados sin traducción.
 - Los datos que crean los usuarios (roles personalizados, nombres de clientes, notas…) se muestran tal cual.
 - Por eso los códigos son contrato: no se renombran. Al añadir un código nuevo (error, permiso o rol semilla) se avisa
   al frontend para que añada su traducción.
