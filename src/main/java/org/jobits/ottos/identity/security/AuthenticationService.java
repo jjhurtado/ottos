@@ -8,10 +8,11 @@ import java.util.UUID;
 public interface AuthenticationService {
 
     /**
-     * Checks the credentials and issues a token pair. Every failure returns the same 401,
-     * so the response never reveals whether the email exists.
+     * Checks the credentials and issues a token pair. Every failure returns the same 401, so the response never reveals
+     * whether the email exists. Too many failures on the email or from the IP lock them for a while (429
+     * TOO_MANY_LOGIN_ATTEMPTS, see {@link LoginLimits}).
      */
-    Session login(String email, String password, ClientType client);
+    Session login(String email, String password, ClientType client, String ip);
 
     /**
      * Exchanges a refresh token for a new pair of the same client, reloading the user's current roles and permissions.

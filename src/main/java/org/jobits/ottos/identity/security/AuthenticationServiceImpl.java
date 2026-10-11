@@ -24,28 +24,35 @@ class AuthenticationServiceImpl implements AuthenticationService {
     private final RefreshTokenService refreshTokens;
     private final JwtProperties props;
     private final StaffAudit audit;
+    private final LoginAttempts attempts;
 
     AuthenticationServiceImpl(UserRepository users, PasswordEncoder passwordEncoder, TokenService tokens,
-                              RefreshTokenService refreshTokens, JwtProperties props, StaffAudit audit) {
+                              RefreshTokenService refreshTokens, JwtProperties props, StaffAudit audit,
+                              LoginAttempts attempts) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
         this.refreshTokens = refreshTokens;
         this.props = props;
         this.audit = audit;
+        this.attempts = attempts;
     }
 
     @Override
     @Transactional
-    public Session login(String email, String password, ClientType client) {
-        Optional<User> found = users.findByEmail(User.normalizeEmail(email));
+    public Session login(String email, String password, ClientType client, String ip) {
+        String normalized = User.normalizeEmail(email);
+        attempts.check(normalized, ip);
+        Optional<User> found = users.findByEmail(normalized);
         boolean valid = found
                 .filter(User::isActive)
                 .map(u -> passwordEncoder.matches(password, u.getPasswordHash()))
                 .orElse(false);
         if (!valid) {
+            attempts.failed(normalized, ip);
             throw invalidCredentials();
         }
+        attempts.succeeded(normalized);
         return openSession(found.get(), client);
     }
 
