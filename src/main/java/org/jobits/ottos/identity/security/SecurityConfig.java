@@ -1,6 +1,7 @@
 package org.jobits.ottos.identity.security;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import org.jobits.ottos.identity.domain.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,10 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -32,6 +37,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 
 @Configuration
 @EnableWebSecurity
@@ -82,13 +88,30 @@ class SecurityConfig {
         return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSecretKey));
     }
 
+    /**
+     * Besides signature, issuer and expiry, the user must still exist and be active: a deactivated user (a courier who
+     * left, whose mobile token lasts a working day) is cut off on their next request, not when the token expires. One
+     * primary-key lookup per request.
+     */
     @Bean
-    JwtDecoder jwtDecoder(SecretKey jwtSecretKey, JwtProperties props) {
+    JwtDecoder jwtDecoder(SecretKey jwtSecretKey, JwtProperties props, UserRepository users) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSecretKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(props.issuer()));
+        OAuth2TokenValidator<Jwt> activeUser = jwt -> isActiveUser(users, jwt.getSubject())
+                ? OAuth2TokenValidatorResult.success()
+                : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "The user is deactivated or no longer exists", null));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(props.issuer()), activeUser));
         return decoder;
+    }
+
+    private static boolean isActiveUser(UserRepository users, String subject) {
+        try {
+            return subject != null && users.existsByIdAndActiveTrue(UUID.fromString(subject));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /**

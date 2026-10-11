@@ -95,12 +95,19 @@ class UserAdministrationTest extends ApiTestSupport {
     @Test
     void deactivatingAUserEndsTheirSessions() throws Exception {
         User sales = createUser("sales@ottos.test", "SALES");
-        String refreshToken = JsonPath.read(loginResponse("sales@ottos.test"), "$.refreshToken");
+        String session = loginResponse("sales@ottos.test");
+        String refreshToken = JsonPath.read(session, "$.refreshToken");
+        String accessToken = JsonPath.read(session, "$.accessToken");
+        mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(accessToken))).andExpect(status().isOk());
 
         mvc.perform(post("/api/v1/users/{id}/deactivate", sales.getId()).header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(false));
 
+        // The access token still has hours left (a mobile one lasts a working day), but it no longer works
+        mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(accessToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
         refresh(refreshToken).andExpect(status().isUnauthorized());
         login("sales@ottos.test", PASSWORD).andExpect(status().isUnauthorized());
 

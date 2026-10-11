@@ -56,6 +56,10 @@ sección *identity*; los permisos de cada módulo están en su sección y los pe
   borra (`ROLE_IN_USE`).
 - **Cambios de permisos** llegan al usuario en el siguiente login o refresh. Desactivar o cambiar contraseña revoca sus
   refresh tokens.
+- **Usuario desactivado o borrado:** su access token deja de valer en la siguiente petición (401 `INVALID_TOKEN`),
+  aunque le queden horas (el del móvil dura la jornada): el decodificador de JWT comprueba en cada petición que el
+  usuario existe y está activo (una consulta por clave primaria). Las acciones que un repartidor desactivado tenga sin
+  sincronizar en el móvil ya no se pueden enviar; conviene que sincronice antes de desactivarlo.
 - **Primer admin:** `InitialAdminBootstrap` lo crea al arrancar desde `OTTOS_ADMIN_EMAIL` / `OTTOS_ADMIN_PASSWORD` si no
   existe ninguno.
 - Los roles semilla y las descripciones de permisos están en inglés; el frontend traduce por código.
