@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.jobits.ottos.remittances.RemittanceOperations.blankToNull;
+import static org.jobits.ottos.Texts.blankToNull;
 import static org.jobits.ottos.remittances.RemittanceOperations.notFound;
 
 /** Implementation of {@link RemittanceSyncService}. */

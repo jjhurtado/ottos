@@ -18,6 +18,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.jobits.ottos.Texts.blankToNull;
+
 /** Implementation of {@link CustomerService}. */
 @Service
 class CustomerServiceImpl implements CustomerService {
@@ -131,9 +133,6 @@ class CustomerServiceImpl implements CustomerService {
                 blankToNull(d.documentNumber()), blankToNull(d.address()), blankToNull(d.notes()));
     }
 
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
 
     private static ResponseStatusException notFound() {
         return ApiException.notFound("CUSTOMER_NOT_FOUND", "Customer not found");
