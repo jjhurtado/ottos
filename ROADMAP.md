@@ -196,7 +196,8 @@ modo offline.
 - Decidido: un cambio con una tasa que se aleja más de un porcentaje (20 % por defecto, en Configuración) de la tasa
   configurada se registra igual pero queda **marcado para revisión**, como las entregas sincronizadas.
 
-**Importar y exportar clientes con sus beneficiarios**
+**Importar y exportar clientes con sus beneficiarios** — implementado
+([docs/contracts/customer-transfer.md](docs/contracts/customer-transfer.md))
 
 - Exportar: todos los clientes con sus beneficiarios y vínculos, para respaldo o para llevarlos a otra herramienta.
 - Importar: cargar clientes y beneficiarios desde un archivo (por ejemplo, desde el sistema que el negocio usa hoy),
@@ -210,7 +211,8 @@ modo offline.
   - **Coincidencias (decidido):** un cliente ya existe si coinciden **nombre, teléfono y dirección**. El mismo nombre y
     teléfono con otra dirección es otro cliente: queda duplicado a propósito, porque una persona puede tener dos
     direcciones y no se implementará un modelo de varias direcciones. Hoy el teléfono del cliente es único
-    (`PHONE_ALREADY_REGISTERED`), así que importar exige cambiar esa regla.
+    (`PHONE_ALREADY_REGISTERED`): se cambió esa regla, ahora solo se rechaza un cliente idéntico
+    (`CUSTOMER_ALREADY_REGISTERED`).
   - **Validación por fila** con los mismos códigos que la API (`INVALID_PHONE`, `UNKNOWN_MUNICIPALITY`…), sin que un
     error bloquee las demás filas; límite de filas por envío.
   - **Permisos:** exportar datos personales de todos los clientes es delicado; propuesta: permisos propios

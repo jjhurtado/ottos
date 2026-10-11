@@ -23,11 +23,16 @@ Las estadísticas de un cliente (`GET /customers/{id}/stats`) viven en `remittan
 
 ## Datos
 
-`customers` (`V1__baseline.sql`, sección *customers*): nombre, teléfono, correo, documento,
+`customers` (`V1__baseline.sql`, sección *customers*; teléfono y documento dejan de ser únicos en
+`V4__customer_import_export.sql`): nombre, teléfono, correo, documento,
 dirección, notas, activo.
 
 ## Reglas
 
-- El **teléfono identifica al cliente**: se guarda normalizado (solo dígitos y `+` inicial, `Phones.normalize`) y es
-  único (`PHONE_ALREADY_REGISTERED`). Debe tener dígitos (`INVALID_PHONE`).
+- El teléfono se guarda normalizado (solo dígitos y `+` inicial, `Phones.normalize`) y debe tener dígitos
+  (`INVALID_PHONE`).
+- **Un cliente es su nombre, teléfono y dirección.** Una persona con dos direcciones son dos clientes con el mismo
+  nombre y teléfono (no hay modelo de varias direcciones). Ni el teléfono ni el documento son únicos; solo se rechaza
+  un cliente idéntico (mismo nombre, teléfono y dirección, sin distinguir mayúsculas ni espacios):
+  `CUSTOMER_ALREADY_REGISTERED`, con el `customerId` existente.
 - La búsqueda coincide por fragmento de nombre o de teléfono; sin texto devuelve los más recientes (máximo 50).

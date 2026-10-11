@@ -20,6 +20,8 @@ los clientes que les envían. Un beneficiario puede estar vinculado a varios cli
 | `POST /customers/{id}/beneficiaries` (crear y vincular), `PUT /beneficiaries/{id}` | `customers:write` |
 | `PUT` / `DELETE /customers/{id}/beneficiaries/{beneficiaryId}` (vincular / desvincular de ese cliente) | `customers:write` |
 | `DELETE /beneficiaries/{id}` (borrar para todos), `POST /beneficiaries/{id}/restore` | `customers:write` |
+| `GET /customers/export` (todos los clientes con sus beneficiarios, JSON) | `customers:export` (ADMIN) |
+| `POST /customers/import` (`dryRun` para la vista previa) | `customers:import` (ADMIN) |
 
 ## Datos
 
@@ -33,3 +35,11 @@ los clientes que les envían. Un beneficiario puede estar vinculado a varios cli
   borra la fila porque las remesas apuntan a él. Restaurar lo reactiva con los vínculos que tenía.
 - Desvincular de un cliente no afecta a los demás ni a las remesas pasadas.
 - Las remesas guardan una copia de los datos del beneficiario: editarlo no cambia las remesas ya registradas.
+- **Importar y exportar** (`CustomerTransferService`, contrato `docs/contracts/customer-transfer.md`): vive aquí porque
+  trabaja con clientes y beneficiarios a la vez. El archivo lo lee y genera el frontend; aquí es JSON. Al importar, un
+  cliente ya existe si coinciden nombre, teléfono y dirección, y un beneficiario si coinciden nombre, teléfono, calle,
+  número y municipio (que se acepta por código o por nombre); lo existente no se modifica, solo se vincula. Cada
+  cliente se guarda con sus beneficiarios en su propia transacción y un rechazo no frena el resto; `dryRun` calcula lo
+  mismo sin guardar. Importaciones y exportaciones quedan en la auditoría. Los rechazos de un beneficiario se
+  comprueban antes de llamar a `BeneficiaryService`, porque una excepción dentro de una llamada transaccional marcaría
+  para deshacer toda la transacción del cliente.
