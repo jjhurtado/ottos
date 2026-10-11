@@ -61,7 +61,7 @@ class CustomerServiceImpl implements CustomerService {
     @Transactional
     public CustomerInfo register(Customer.Details details, UUID actorId) {
         Customer.Details normalized = normalize(details);
-        requirePhoneAvailable(normalized.phone(), null);
+        requireNotIdentical(normalized, null);
         Instant now = clock.instant();
         return CustomerInfo.of(customers.save(new Customer(normalized, now, actorId)));
     }
@@ -71,18 +71,48 @@ class CustomerServiceImpl implements CustomerService {
     public CustomerInfo update(UUID id, Customer.Details details) {
         Customer customer = customers.findById(id).orElseThrow(CustomerServiceImpl::notFound);
         Customer.Details normalized = normalize(details);
-        requirePhoneAvailable(normalized.phone(), id);
+        requireNotIdentical(normalized, id);
         customer.update(normalized);
         return CustomerInfo.of(customer);
     }
 
-    private void requirePhoneAvailable(String phone, UUID exceptId) {
-        customers.findByPhone(phone)
-                .filter(other -> !other.getId().equals(exceptId))
-                .ifPresent(other -> {
-                    throw ApiException.conflict("PHONE_ALREADY_REGISTERED",
-                            "Phone " + phone + " already belongs to customer " + other.getId());
-                });
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<CustomerInfo> findIdentical(CustomerData data) {
+        return identical(normalize(data.toDetails()), null).map(CustomerInfo::of);
+    }
+
+    @Override
+    @Transactional
+    public CustomerInfo register(CustomerData data, UUID actorId) {
+        return register(data.toDetails(), actorId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CustomerInfo> all() {
+        return customers.findAllByOrderByFullNameAsc().stream().map(CustomerInfo::of).toList();
+    }
+
+    private void requireNotIdentical(Customer.Details normalized, UUID exceptId) {
+        identical(normalized, exceptId).ifPresent(other -> {
+            throw ApiException.conflict("CUSTOMER_ALREADY_REGISTERED",
+                    "A customer with the same name, phone and address already exists").with("customerId", other.getId());
+        });
+    }
+
+    /** Same phone, and the same name and address ignoring case and outer spaces (no address equals no address). */
+    private Optional<Customer> identical(Customer.Details normalized, UUID exceptId) {
+        return customers.findByPhone(normalized.phone()).stream()
+                .filter(c -> !c.getId().equals(exceptId))
+                .filter(c -> same(c.getFullName(), normalized.fullName()) && same(c.getAddress(), normalized.address()))
+                .findFirst();
+    }
+
+    private static boolean same(String a, String b) {
+        String x = a == null ? "" : a.trim();
+        String y = b == null ? "" : b.trim();
+        return x.equalsIgnoreCase(y);
     }
 
     private static Customer.Details normalize(Customer.Details d) {

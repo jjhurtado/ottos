@@ -35,10 +35,17 @@ class CustomersAndBeneficiariesTest extends ApiTestSupport {
     }
 
     @Test
-    void phoneIdentifiesTheCustomer() throws Exception {
-        registerCustomer("Ana Pérez", "+1 305 555 0101").andExpect(status().isCreated());
+    void onlyAnIdenticalCustomerIsRejected() throws Exception {
+        registerCustomer("Ana Pérez", "+1 305 555 0101", "Miami").andExpect(status().isCreated());
 
-        registerCustomer("Another Ana", "+1-305-555-0101").andExpect(status().isConflict());
+        // Same name, phone and address (ignoring case and spaces): the same customer
+        registerCustomer(" ana pérez ", "+1-305-555-0101", "MIAMI")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CUSTOMER_ALREADY_REGISTERED"))
+                .andExpect(jsonPath("$.customerId").isNotEmpty());
+        // Same person with another address, or someone else sharing the phone: another customer
+        registerCustomer("Ana Pérez", "+1 305 555 0101", "Hialeah").andExpect(status().isCreated());
+        registerCustomer("Luis Pérez", "+1 305 555 0101", "Miami").andExpect(status().isCreated());
     }
 
     @Test
@@ -152,6 +159,15 @@ class CustomersAndBeneficiariesTest extends ApiTestSupport {
 
         mvc.perform(get("/api/v1/customers").header("Authorization", bearer(deliveryToken)))
                 .andExpect(status().isForbidden());
+    }
+
+    private ResultActions registerCustomer(String name, String phone, String address) throws Exception {
+        return mvc.perform(post("/api/v1/customers")
+                .header("Authorization", bearer(salesToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"fullName": "%s", "phone": "%s", "address": "%s"}
+                        """.formatted(name, phone, address)));
     }
 
     private ResultActions registerCustomer(String name, String phone) throws Exception {

@@ -17,9 +17,31 @@ public interface CustomerService {
     /** Matches a fragment of the name or of the phone; without text, the most recent customers. */
     List<CustomerInfo> search(String text);
 
+    /** Fails with CUSTOMER_ALREADY_REGISTERED if an identical customer (same name, phone and address) exists. */
     CustomerInfo register(Customer.Details details, UUID actorId);
 
     CustomerInfo update(UUID id, Customer.Details details);
+
+    /** Same as {@link #register(Customer.Details, UUID)}, for other modules. */
+    CustomerInfo register(CustomerData data, UUID actorId);
+
+    /**
+     * The customer identical to these details (same name and address, ignoring case and outer spaces, and the same
+     * normalized phone), if any. Same name and phone with another address is another customer.
+     */
+    Optional<CustomerInfo> findIdentical(CustomerData data);
+
+    /** Every customer, by name; for the export. */
+    List<CustomerInfo> all();
+
+    /** A customer's data as other modules provide it (e.g. the import). */
+    record CustomerData(String fullName, String phone, String email, String documentType, String documentNumber,
+                        String address, String notes) {
+
+        Customer.Details toDetails() {
+            return new Customer.Details(fullName, phone, email, documentType, documentNumber, address, notes);
+        }
+    }
 
     record CustomerInfo(UUID id, String fullName, String phone, String email, String documentType,
                  String documentNumber, String address, String notes, boolean active, Instant createdAt) {
