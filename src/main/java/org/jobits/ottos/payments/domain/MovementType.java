@@ -14,5 +14,9 @@ public enum MovementType {
     /** External → business: money put into the box (capital, the CUP side of an exchange…). */
     BUSINESS_DEPOSIT,
     /** Business → external: money taken out of the box (expenses, the USD side of an exchange…). */
-    BUSINESS_WITHDRAWAL
+    BUSINESS_WITHDRAWAL,
+    /** A courier changed cash to another currency: the currency they gave away leaves their cash. */
+    COURIER_EXCHANGE_OUT,
+    /** A courier changed cash to another currency: the currency they got enters their cash. */
+    COURIER_EXCHANGE_IN
 }

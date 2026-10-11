@@ -1,12 +1,13 @@
 package org.jobits.ottos.sync;
 
 import org.jobits.ottos.payments.application.CashLedgerService.CourierStatement;
+import org.jobits.ottos.payments.application.CashLedgerService.ExchangeView;
 import org.jobits.ottos.remittances.application.RemittanceView;
-import org.jobits.ottos.remittances.application.SyncActionType;
 import org.jobits.ottos.remittances.application.SyncOutcome;
 import org.jobits.ottos.remittances.application.Viewer;
 import org.jobits.ottos.remittances.application.Workflow.WorkflowView;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -33,16 +34,23 @@ public interface SyncService {
                      CourierStatement cash, WorkflowView workflow) {
     }
 
-    /** An action of the queue as the app sends it; its payload is checked here, so a bad one rejects only itself. */
-    record QueuedAction(UUID id, SyncActionType type, UUID remittanceId, Instant occurredAt, String note, String pin,
-                        Boolean strictPin, LocalDate newDate, String reason) {
+    /**
+     * An action of the queue as the app sends it; its payload is checked here, so a bad one rejects only itself.
+     * remittanceId is null for CASH_EXCHANGE, which uses fromCurrency, fromAmount, toCurrency and rate.
+     */
+    record QueuedAction(UUID id, SyncActionKind type, UUID remittanceId, Instant occurredAt, String note, String pin,
+                        Boolean strictPin, LocalDate newDate, String reason, String fromCurrency,
+                        BigDecimal fromAmount, String toCurrency, BigDecimal rate) {
     }
 
     record SyncResult(Instant serverTime, List<ActionResult> results) {
     }
 
-    /** remittance is present when APPLIED or ALREADY_APPLIED; code and message when REJECTED. */
+    /**
+     * When APPLIED or ALREADY_APPLIED: remittance for remittance actions, exchange for CASH_EXCHANGE. code and message
+     * when REJECTED.
+     */
     record ActionResult(UUID id, SyncOutcome.Status status, String code, String message, RemittanceView remittance,
-                        boolean flaggedForReview) {
+                        ExchangeView exchange, boolean flaggedForReview) {
     }
 }

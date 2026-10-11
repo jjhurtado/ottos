@@ -44,6 +44,13 @@ public class CashMovement {
     @Column(length = 1000)
     private String note;
 
+    /** The exchange both legs belong to, with its rate (units of the other currency per 1 USD); null otherwise. */
+    @Column(name = "exchange_id")
+    private UUID exchangeId;
+
+    @Column(precision = 19, scale = 6)
+    private BigDecimal rate;
+
     @Column(name = "actor_id", nullable = false)
     private UUID actorId;
 
@@ -68,6 +75,24 @@ public class CashMovement {
         this.note = note;
         this.actorId = actorId;
         this.occurredAt = occurredAt;
+    }
+
+    /** One leg of a currency exchange. */
+    public static CashMovement exchangeLeg(MovementType type, CashAccount from, CashAccount to, BigDecimal amount,
+                                           UUID exchangeId, BigDecimal rate, String note, UUID actorId,
+                                           Instant occurredAt) {
+        CashMovement m = new CashMovement(type, from, to, amount, null, note, actorId, occurredAt);
+        m.exchangeId = exchangeId;
+        m.rate = rate;
+        return m;
+    }
+
+    public UUID getExchangeId() {
+        return exchangeId;
+    }
+
+    public BigDecimal getRate() {
+        return rate;
     }
 
     public UUID getId() {

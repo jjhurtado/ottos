@@ -5,6 +5,7 @@ import org.jobits.ottos.payments.domain.MovementType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,6 +40,26 @@ public interface CashLedgerService {
 
     List<MovementView> movementsOfRemittance(UUID remittanceId);
 
+    /**
+     * A courier changes cash from one currency to another at the rate they got (units of the other currency per 1 USD;
+     * one of the two currencies is USD). Two movements inside the courier's cash; flagged for review when the rate
+     * strays from the configured delivery rate more than the configured tolerance.
+     */
+    ExchangeView recordExchange(UUID courierId, NewExchange exchange, UUID actorId);
+
+    /**
+     * Same, from the mobile app's offline queue, at the moment it happened. The phone's action id makes sending it
+     * again harmless; exchanges older than 7 days are applied but flagged LATE_SYNC.
+     */
+    SyncedExchange applySyncedExchange(UUID actionId, UUID courierId, NewExchange exchange, Instant occurredAt,
+                                       UUID actorId);
+
+    /** Exchanges, newest first, optionally of one courier, pending review (review=true) or within dates. */
+    ExchangePage exchanges(UUID courierId, Boolean review, LocalDate from, LocalDate to, int page, int size);
+
+    /** Clears the pending review of an exchange with a note. */
+    ExchangeView resolveExchangeReview(UUID exchangeId, String note, UUID actorId);
+
     record Balance(String currency, BigDecimal amount) {
     }
 
@@ -52,6 +73,31 @@ public interface CashLedgerService {
     /** signedAmount: positive if the account being viewed received the money, negative if it paid; null otherwise. */
     record MovementView(UUID id, MovementType type, AccountType fromType, UUID fromOwnerId, AccountType toType,
                  UUID toOwnerId, BigDecimal amount, String currency, BigDecimal signedAmount,
-                 UUID remittanceId, String note, UUID actorId, Instant occurredAt) {
+                 UUID remittanceId, UUID exchangeId, BigDecimal rate, String note, UUID actorId, Instant occurredAt) {
+    }
+
+    /** rate: units of the other currency per 1 USD, in both directions (480 = 480 CUP per 1 USD). */
+    record NewExchange(String fromCurrency, BigDecimal fromAmount, String toCurrency, BigDecimal rate, String note) {
+    }
+
+    /**
+     * @param configuredRate   the configured delivery rate it was compared with; null if none was set
+     * @param deviationPercent how far the rate strayed from it, in percent
+     * @param review           null if it was never flagged
+     */
+    record ExchangeView(UUID id, UUID courierId, String courierName, String fromCurrency, BigDecimal fromAmount,
+                        String toCurrency, BigDecimal toAmount, BigDecimal rate, BigDecimal configuredRate,
+                        BigDecimal deviationPercent, String note, Instant occurredAt, UUID recordedBy,
+                        ExchangeReview review) {
+    }
+
+    /** Pending while resolvedAt is null. reason: UNUSUAL_EXCHANGE_RATE or LATE_SYNC. */
+    record ExchangeReview(String reason, Instant flaggedAt, Instant resolvedAt, UUID resolvedBy, String resolvedNote) {
+    }
+
+    record SyncedExchange(boolean alreadyApplied, ExchangeView exchange) {
+    }
+
+    record ExchangePage(List<ExchangeView> items, int page, int size, long totalItems) {
     }
 }
