@@ -144,6 +144,32 @@ class RatesTest extends ApiTestSupport {
     }
 
     @Test
+    void aPickupCanCarryItsOwnRateButADeliveryCannot() throws Exception {
+        setRate("USD-CUP", "410").andExpect(status().isCreated());
+
+        mvc.perform(post("/api/v1/quotes")
+                        .header("Authorization", bearer(salesToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sourceCurrency": "USD", "targetCurrency": "CUP", "amount": 1000, "remittanceType": "PICKUP",
+                                 "rate": 0.97}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rate").value(0.97))
+                .andExpect(jsonPath("$.rateOverridden").value(true))
+                .andExpect(jsonPath("$.amountToDeliver").value(950.00));
+        quote("USD", "CUP", "1000", "PICKUP").andExpect(jsonPath("$.rateOverridden").value(false));
+        mvc.perform(post("/api/v1/quotes")
+                        .header("Authorization", bearer(salesToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sourceCurrency": "USD", "targetCurrency": "CUP", "amount": 100, "rate": 500}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("RATE_NOT_ALLOWED"));
+    }
+
+    @Test
     void sameCurrencyRateMustBeOne() throws Exception {
         setRate("USD-USD", "1.5").andExpect(status().isBadRequest());
     }

@@ -35,12 +35,14 @@ class QuoteController {
     @Operation(summary = "Calculate fee, total to charge and amount to deliver with the current configuration; remittanceType defaults to DELIVERY")
     QuoteService.Quote quote(@Valid @RequestBody QuoteRequest request) {
         ServiceType remittanceType = request.remittanceType() == null ? ServiceType.DELIVERY : request.remittanceType();
-        return quotes.quote(remittanceType, request.sourceCurrency(), request.targetCurrency(), request.amount());
+        return quotes.quote(remittanceType, request.sourceCurrency(), request.targetCurrency(), request.amount(),
+                request.rate());
     }
 
     record QuoteRequest(@NotNull @Pattern(regexp = "[A-Z]{3}") String sourceCurrency,
                         @NotNull @Pattern(regexp = "[A-Z]{3}") String targetCurrency,
                         @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal amount,
-                        ServiceType remittanceType) {
+                        ServiceType remittanceType,
+                        @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate) {
     }
 }

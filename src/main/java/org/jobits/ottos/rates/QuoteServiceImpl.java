@@ -26,7 +26,14 @@ class QuoteServiceImpl implements QuoteService {
 
     @Override
     @Transactional(readOnly = true)
-    public Quote quote(ServiceType remittanceType, String sourceCurrency, String targetCurrency, BigDecimal amount) {
+    public Quote quote(ServiceType remittanceType, String sourceCurrency, String targetCurrency, BigDecimal amount,
+                       BigDecimal customRate) {
+        if (customRate != null && remittanceType != ServiceType.PICKUP) {
+            throw ApiException.badRequest("RATE_NOT_ALLOWED", "Only pickups can carry a rate entered by hand");
+        }
+        if (customRate != null && (customRate.signum() <= 0 || customRate.stripTrailingZeros().scale() > 6)) {
+            throw ApiException.badRequest("VALIDATION_FAILED", "rate must be positive with at most 6 decimals");
+        }
         if (amount == null || amount.signum() <= 0 || amount.stripTrailingZeros().scale() > 2) {
             throw ApiException.badRequest("INVALID_AMOUNT", "Amount must be positive with at most 2 decimals");
         }
@@ -46,13 +53,14 @@ class QuoteServiceImpl implements QuoteService {
         }
 
         BigDecimal fee = feeFor(feeRule, sent);
-        BigDecimal toDeliver = roundForDelivery(sent.multiply(rate.rate()), corridor.deliveryRounding());
+        BigDecimal applied = customRate != null ? customRate : rate.rate();
+        BigDecimal toDeliver = roundForDelivery(sent.multiply(applied), corridor.deliveryRounding());
         if (toDeliver.signum() <= 0) {
             throw ApiException.badRequest("AMOUNT_TOO_SMALL",
                     "Amount too small: it rounds down to 0 " + corridor.targetCurrency() + " to deliver");
         }
         return new Quote(remittanceType, corridor.code(), corridor.sourceCurrency(), corridor.targetCurrency(),
-                sent, fee, sent.add(fee), rate.rate(), toDeliver, rate.id(), feeRule.id());
+                sent, fee, sent.add(fee), applied, customRate != null, toDeliver, rate.id(), feeRule.id());
     }
 
     /** The configured minimum is in USD and applies to every corridor sending USD; zero means no minimum. */

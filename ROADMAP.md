@@ -181,7 +181,7 @@ modo offline.
   frontend a partir del JSON, para no cargar el servidor.
 - Endpoint propuesto: `GET /reports/monthly?month=AAAA-MM` con un permiso nuevo `reports:read` (ADMIN y SALES), en el
   módulo `reporting`.
-- **Recogidas con tasa propia por remesa:** al registrar una recogida se indica el tipo de cambio de ese momento (1x1
+- **Recogidas con tasa propia por remesa** (implementado, [docs/contracts/pickup-rate.md](docs/contracts/pickup-rate.md)): al registrar una recogida se indica el tipo de cambio de ese momento (1x1
   u otro), en vez de usar siempre el configurado, y la caja se comporta según esa tasa. Las recogidas se hacen cuando
   al negocio le interesa tener efectivo, normalmente 1x1 y para montos grandes: **no dejan ganancia**. Por eso la
   comisión de recogida debe configurarse en 0 desde Configuración (es un dato, no va en una migración).

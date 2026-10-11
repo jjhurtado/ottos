@@ -38,6 +38,7 @@ public record RemittanceView(
         BigDecimal fee,
         BigDecimal total,
         BigDecimal rate,
+        Boolean rateOverridden,
         BigDecimal amountToDeliver,
         BigDecimal cashAmount,
         String cashCurrency,

@@ -46,6 +46,9 @@ historial y estadísticas.
 - **Workflow configurable:** estados y transiciones son filas; el código solo usa las marcas `is_initial`,
   `requires_courier` e `is_final`. Sembrado: Pagada → Asignada → Entregada. Los nombres de estado están en español en la
   BD y son solo respaldo: el frontend traduce por código y tipo (`DELIVERED` = Entregada / Recogida).
+- **Recogidas:** se hacen cuando el negocio quiere efectivo, normalmente 1x1 y para montos grandes, sin ganancia (la
+  comisión de recogida se configura en 0). Al registrarlas se puede indicar la tasa del momento (`rate`); la remesa
+  guarda `rateOverridden` (contrato `docs/contracts/pickup-rate.md`). Las entregas siempre usan la tasa configurada.
 - **Asignar:** el repartidor debe estar activo y tener `remittances:deliver` (la misma regla que lista `GET /couriers`).
 - **Completar:** exige repartidor asignado. Los repartidores pueden completar sin PIN (`/deliver`) o con PIN
   (`/deliver-with-pin`); es una decisión de producto.

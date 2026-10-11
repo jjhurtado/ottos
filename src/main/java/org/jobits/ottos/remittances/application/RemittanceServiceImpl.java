@@ -116,7 +116,7 @@ class RemittanceServiceImpl implements RemittanceService {
             throw badRequest("BENEFICIARY_NOT_LINKED", "The beneficiary is not linked to this customer; link them first");
         }
         QuoteService.Quote quote = quotes.quote(ServiceType.valueOf(request.type().name()), SOURCE_CURRENCY,
-                request.targetCurrency(), request.amount());
+                request.targetCurrency(), request.amount(), request.rate());
 
         Instant now = clock.instant();
         Remittance remittance = new Remittance(
@@ -125,8 +125,8 @@ class RemittanceServiceImpl implements RemittanceService {
                         beneficiary.alternatePhone(), beneficiary.addressLine(), beneficiary.municipalityCode(),
                         beneficiary.reference()),
                 new Remittance.QuoteSnapshot(quote.corridor(), quote.sourceCurrency(), quote.targetCurrency(),
-                        quote.amount(), quote.fee(), quote.total(), quote.rate(), quote.amountToDeliver(),
-                        quote.exchangeRateId(), quote.feeRuleId()),
+                        quote.amount(), quote.fee(), quote.total(), quote.rate(), quote.rateOverridden(),
+                        quote.amountToDeliver(), quote.exchangeRateId(), quote.feeRuleId()),
                 newPin(), today().plusDays(configuration.defaultDeliveryDays()), blankToNull(request.notes()),
                 request.idempotencyKey(), now, viewer.userId());
         remittances.saveAndFlush(remittance);
