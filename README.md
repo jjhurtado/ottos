@@ -87,6 +87,12 @@ services: [STANDARDS.md](STANDARDS.md). What each module does: [docs/modules](do
 | `OTTOS_JWT_SECRET` | Base64 HMAC key, at least 32 bytes (`openssl rand -base64 32`) | Required |
 | `OTTOS_ADMIN_EMAIL` / `OTTOS_ADMIN_PASSWORD` | Creates the first ADMIN if none exists | empty |
 | `PORT` | HTTP port | `8080` |
+| `OTTOS_CORS_ALLOWED_ORIGINS` | Browser origins allowed to call the API, comma-separated (the web panel's domain) | empty: no CORS |
+| `SPRING_PROFILES_ACTIVE` | `dev` locally; `prod` in staging and production | — |
+
+**Profile `prod`** (staging and production, `application-prod.yml`): small Tomcat (20 threads) and Hikari (5
+connections) pools, Swagger and the OpenAPI document off, health without details, JSON logs (ECS) and graceful
+shutdown. JVM flags (heap, GC) are set by the infrastructure through `JAVA_TOOL_OPTIONS`.
 
 Token lifetimes: `ottos.security.access-token-ttl` (15m, web panel), `ottos.security.mobile-access-token-ttl` (14h, mobile
 app logging in with `"client": "MOBILE"`) and `ottos.security.refresh-token-ttl` (30d). Retrying a refresh within

@@ -1,0 +1,39 @@
+# Staging and production (SPRING_PROFILES_ACTIVE=prod). Tuned to use little CPU and memory, since the hosting bills
+# them. JVM flags (heap, GC) come from JAVA_TOOL_OPTIONS, set by the infrastructure. Every value can be overridden
+# with an environment variable.
+
+server:
+  shutdown: graceful
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 2
+    accept-count: 50
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+# No public API docs outside development
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoint:
+    health:
+      show-details: never
+
+# One JSON object per line (Elastic Common Schema), for the hosting's log viewer
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    root: INFO

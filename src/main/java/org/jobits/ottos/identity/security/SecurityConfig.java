@@ -1,6 +1,7 @@
 package org.jobits.ottos.identity.security;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,9 +22,13 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -38,9 +43,12 @@ class SecurityConfig {
     static final String PERMISSIONS_CLAIM = "permissions";
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityProblemHandlers problems) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityProblemHandlers problems,
+                                            @Value("${ottos.cors.allowed-origins:}") List<String> corsOrigins)
+            throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsSource(corsOrigins)))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST,
@@ -81,6 +89,26 @@ class SecurityConfig {
                 .build();
         decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(props.issuer()));
         return decoder;
+    }
+
+    /**
+     * The web panel calls the API from another origin in staging and production (ottos.cors.allowed-origins). Bearer
+     * tokens, not cookies, so no credentials. Without origins nothing is allowed cross-origin, as in development.
+     */
+    private static CorsConfigurationSource corsSource(List<String> origins) {
+        List<String> allowed = origins.stream().map(String::trim).filter(o -> !o.isEmpty()).toList();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        if (allowed.isEmpty()) {
+            return source;
+        }
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(allowed);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key"));
+        config.setExposedHeaders(List.of("WWW-Authenticate"));
+        config.setMaxAge(Duration.ofHours(1));
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 
     @Bean
