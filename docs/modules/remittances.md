@@ -35,9 +35,8 @@ historial y estadísticas.
 
 ## Datos
 
-`remittances`, `remittance_events`, `remittance_statuses`, `remittance_transitions` (`V6__remittances.sql`; incidencias
-en `V9__delivery_incidents.sql`; revisión y `updated_at` en `V12__remittance_review.sql`), `synced_actions`
-(`V13__synced_actions.sql`).
+`remittances`, `remittance_events`, `remittance_statuses`, `remittance_transitions`, `synced_actions`
+(`V1__baseline.sql`, sección *remittances*).
 
 ## Reglas
 

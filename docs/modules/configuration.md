@@ -30,8 +30,7 @@ Regla del proyecto (`STANDARDS.md` › Configuración): los demás módulos leen
 
 ## Datos
 
-`settings` (`V8__configuration.sql`), `corridors`, `exchange_rates`, `fee_rules` (`V4__rates.sql`, columna
-`remittance_type` en `V10__pickup_rates.sql`).
+`settings`, `corridors`, `exchange_rates`, `fee_rules` (`V1__baseline.sql`, sección *configuration*).
 
 ## Reglas
 
