@@ -7,18 +7,20 @@
 ## 1. Dónde estamos
 
 **Versión actual: `1.0.0-rc.1`.** La Fase 1 (MVP de remesas) está completa en el backend y se revisa la arquitectura
-antes de dar la versión por estable. En una RC solo entran arreglos y el refactor que salga de esa revisión.
+antes de dar la versión por estable. En una RC solo entran arreglos y el refactor que salga de esa revisión. Como aún
+no hay producción, la rc.1 queda abierta: todo entra en ella sin subir a `rc.2`, y el tag se crea al cerrarla.
 
 Lo que falta para `1.0.0`:
 
 | # | Paso | Quién |
 | --- | --- | --- |
-| 1 | Revisión de arquitectura y refactor sobre la RC (nuevas `rc.N` si hace falta) | Usuario y backend |
-| 2 | Pantallas de importar/exportar y de auditoría en el panel, si entran en 1.0 | Usuario decide, frontend |
-| 3 | Entorno de producción: base de datos con copias de seguridad, dominio, CORS, secretos | Infraestructura |
-| 4 | Datos de cada entorno: tasa USD-CUP de entrega, monto mínimo, comisión de recogida por defecto, importar los beneficiarios | Admin del negocio |
-| 5 | Revisión legal (licencias, conocer al cliente, antilavado) antes de mover dinero real | Negocio |
-| 6 | Primera remesa real en producción: hito de la Fase 1 y versión `1.0.0` | Todos |
+| 1 | Revisión de arquitectura y refactor sobre la RC | Usuario y backend |
+| 2 | Prueba general del frontend, con las pantallas de importar/exportar y de auditoría (entran en 1.0) | Frontend |
+| 3 | Cerrar la rc.1: fusionar las migraciones posteriores en `V1__baseline.sql`, subir el tag `1.0.0-rc.1` y probar en staging | Backend, infraestructura |
+| 4 | Entorno de producción: base de datos con copias de seguridad, dominio, CORS, secretos | Infraestructura |
+| 5 | Datos de cada entorno: tasa USD-CUP de entrega, monto mínimo, comisión de recogida por defecto, importar los beneficiarios | Admin del negocio |
+| 6 | Revisión legal (licencias, conocer al cliente, antilavado) antes de mover dinero real | Negocio |
+| 7 | Primera remesa real en producción: hito de la Fase 1 y versión `1.0.0` | Todos |
 
 ## 2. El producto
 
