@@ -31,11 +31,18 @@ class StaffDirectoryServiceImpl implements StaffDirectoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<StaffMember> workersWith(String permission) {
-        return users.findActiveWithPermission(permission).stream()
+    public List<StaffMember> couriers() {
+        return users.findActiveWithPermission(COURIER_PERMISSION).stream()
                 .filter(u -> !administrator(u))
-                .map(u -> new StaffMember(u.getId(), u.getName(), u.getEmail(), u.isActive(), false, Set.of(permission)))
+                .map(u -> new StaffMember(u.getId(), u.getName(), u.getEmail(), u.isActive(), false,
+                        Set.of(COURIER_PERMISSION)))
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isCourier(UUID id) {
+        return find(id).map(StaffMember::isCourier).orElse(false);
     }
 
     private static boolean administrator(User user) {

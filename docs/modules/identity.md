@@ -9,8 +9,10 @@ permisos (RBAC dinámico). Los clientes (remitentes) no tienen cuenta todavía.
 
 ## API pública (para otros módulos)
 
-- `StaffDirectoryService`: buscar un miembro del personal y sus permisos efectivos (`find`), y listar los activos que
-  tienen un permiso (`workersWith`, que deja fuera a los administradores: tienen todos los permisos pero no son repartidores). Lo usan `remittances` (repartidores asignables) y `payments` (caja por repartidor).
+- `StaffDirectoryService`: buscar un miembro del personal y sus permisos efectivos (`find`), y la única regla de qué es
+  un repartidor (`couriers()`, `isCourier(id)`, `COURIER_PERMISSION`): activo, con `remittances:deliver` y sin ser
+  administrador (tienen todos los permisos pero no son repartidores). La usan `remittances` (listar y asignar) y
+  `payments` (caja por repartidor).
 
 ## Endpoints
 

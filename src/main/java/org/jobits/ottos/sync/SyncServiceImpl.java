@@ -6,7 +6,8 @@ import org.jobits.ottos.payments.CashLedgerService.NewExchange;
 import org.jobits.ottos.payments.CashLedgerService.SyncedExchange;
 import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceService;
-import org.jobits.ottos.remittances.RemittanceService.AssignedChanges;
+import org.jobits.ottos.remittances.RemittanceSyncService;
+import org.jobits.ottos.remittances.RemittanceSyncService.AssignedChanges;
 import org.jobits.ottos.remittances.SyncAction;
 import org.jobits.ottos.remittances.SyncActionType;
 import org.jobits.ottos.remittances.SyncOutcome;
@@ -29,10 +30,12 @@ class SyncServiceImpl implements SyncService {
     private static final int MAX_TEXT = 1000;
 
     private final RemittanceService remittances;
+    private final RemittanceSyncService remittanceSync;
     private final CashLedgerService cash;
 
-    SyncServiceImpl(RemittanceService remittances, CashLedgerService cash) {
+    SyncServiceImpl(RemittanceService remittances, RemittanceSyncService remittanceSync, CashLedgerService cash) {
         this.remittances = remittances;
+        this.remittanceSync = remittanceSync;
         this.cash = cash;
     }
 
@@ -40,7 +43,7 @@ class SyncServiceImpl implements SyncService {
     public SyncState state(Instant since, Viewer viewer) {
         // Taken before reading, so nothing that changes meanwhile is missed by the next download
         Instant serverTime = Instant.now();
-        AssignedChanges changes = remittances.assignedChangesSince(since, viewer);
+        AssignedChanges changes = remittanceSync.assignedChangesSince(since, viewer);
         return new SyncState(serverTime, changes.full(), changes.remittances(), changes.removedIds(),
                 viewer.has(CASH_READ_OWN) ? cash.courierStatement(viewer.userId()) : null, remittances.workflow());
     }
@@ -59,7 +62,7 @@ class SyncServiceImpl implements SyncService {
             if (q.type() == SyncActionKind.CASH_EXCHANGE) {
                 return applyExchange(q, viewer);
             }
-            SyncOutcome outcome = remittances.applySynced(toSyncAction(deviceId, q), viewer);
+            SyncOutcome outcome = remittanceSync.applySynced(toSyncAction(deviceId, q), viewer);
             return new ActionResult(q.id(), outcome.status(), outcome.code(), outcome.message(), outcome.remittance(),
                     null, outcome.flaggedForReview());
         } catch (ApiException e) {

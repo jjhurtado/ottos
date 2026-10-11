@@ -10,11 +10,17 @@ public interface StaffDirectoryService {
 
     Optional<StaffMember> find(UUID id);
 
+    /** The permission that makes a staff member a courier. */
+    String COURIER_PERMISSION = "remittances:deliver";
+
     /**
-     * Staff who can be given work that needs the permission (e.g. couriers): active, holding it, and not
-     * administrators. Administrators hold every permission through the built-in role, but are not couriers. By name.
+     * Couriers, by name: active staff holding {@link #COURIER_PERMISSION} who are not administrators (they hold every
+     * permission through the built-in role, but are not couriers). The one rule for listing, assigning and paying them.
      */
-    List<StaffMember> workersWith(String permission);
+    List<StaffMember> couriers();
+
+    /** Whether the user is a courier now, by the rule of {@link #couriers()}. */
+    boolean isCourier(UUID id);
 
     /** administrator: holds the built-in ADMIN role (and with it every permission). */
     record StaffMember(UUID id, String name, String email, boolean active, boolean administrator,
@@ -24,9 +30,9 @@ public interface StaffDirectoryService {
             return active && permissions.contains(permission);
         }
 
-        /** Can be given work that needs the permission: see {@link StaffDirectoryService#workersWith}. */
-        public boolean worksWith(String permission) {
-            return can(permission) && !administrator;
+        /** See {@link StaffDirectoryService#couriers()}. */
+        public boolean isCourier() {
+            return can(COURIER_PERMISSION) && !administrator;
         }
     }
 }

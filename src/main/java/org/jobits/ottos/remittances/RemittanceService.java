@@ -12,10 +12,9 @@ import java.util.UUID;
 public interface RemittanceService {
 
     /**
-     * Registers a remittance, already paid: the sender pays before it is registered (pickups are paid through
-     * the courier). Repeating a request with the same idempotency key returns the first remittance; when two such
-     * requests run at the same time, the second fails with DataIntegrityViolationException and the caller looks the
-     * first one up with {@link #findByIdempotencyKey}.
+     * Registers a remittance, already paid: the sender pays before it is registered (in a pickup the courier
+     * collects the amount). Repeating a request with the same idempotency key returns the first remittance, also
+     * when both requests run at the same time.
      */
     RemittanceView register(NewRemittance request, Viewer viewer);
 
@@ -37,20 +36,6 @@ public interface RemittanceService {
      */
     RemittanceView reportIncident(UUID id, IncidentReason reason, String note, Viewer viewer);
 
-    /**
-     * Applies one action of the mobile app's offline queue, at the moment it happened (occurredAt), in its own
-     * transaction. Sending an action again returns ALREADY_APPLIED. Rejections are thrown as ApiException with the
-     * same codes as the online endpoints, plus INVALID_OCCURRED_AT and ACTION_ID_CONFLICT. See
-     * docs/contracts/offline-sync.md for the conflict and review rules.
-     */
-    SyncOutcome applySynced(SyncAction action, Viewer viewer);
-
-    /**
-     * Open remittances assigned to the viewer that changed after since, and the ones to remove from the phone; all of
-     * them (full) without since or when since is more than 7 days old. Empty without remittances:read-assigned.
-     */
-    AssignedChanges assignedChangesSince(Instant since, Viewer viewer);
-
     /** Sales figures of the remittances registered in [from, to); "completed" means completed before to. */
     SalesSummary salesSummary(Instant from, Instant to);
 
@@ -65,8 +50,6 @@ public interface RemittanceService {
     /** The statuses and transitions configured in the database. */
     WorkflowView workflow();
 
-    Optional<RemittanceView> findByIdempotencyKey(String idempotencyKey, Viewer viewer);
-
     RemittanceView getByCode(String code, Viewer viewer);
 
     List<EventView> history(UUID id, Viewer viewer);
@@ -74,7 +57,7 @@ public interface RemittanceService {
     /** Open remittances assigned to the viewer, soonest expected date first. */
     List<RemittanceView> assignedTo(Viewer viewer);
 
-    /** Staff who can be assigned remittances (active, with remittances:deliver), with how many open ones they hold. */
+    /** Couriers (see StaffDirectoryService#couriers), with how many open remittances each holds. */
     List<CourierView> couriers();
 
     PageView search(RemittanceFilter filter, int page, int size, Viewer viewer);
@@ -91,9 +74,6 @@ public interface RemittanceService {
     }
 
     record CourierView(UUID id, String name, String email, long openRemittances) {
-    }
-
-    record AssignedChanges(boolean full, List<RemittanceView> remittances, List<UUID> removedIds) {
     }
 
     /** serverTime: the since of the next call. hasMore: more completions are waiting; call again right away. */

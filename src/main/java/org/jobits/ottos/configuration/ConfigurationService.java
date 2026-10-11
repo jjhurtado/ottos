@@ -14,8 +14,11 @@ import java.util.UUID;
  */
 public interface ConfigurationService {
 
-    /** Remittances are always sent in USD, so the minimum amount is in USD. */
-    String MINIMUM_AMOUNT_CURRENCY = "USD";
+    /**
+     * The business works in USD: every remittance is charged in it, the minimum amount is in it, couriers exchange to
+     * and from it and the reports are in it.
+     */
+    String BUSINESS_CURRENCY = "USD";
 
     /** Everything at once, for the configuration screen. */
     ConfigurationView get();
@@ -26,7 +29,7 @@ public interface ConfigurationService {
     SettingsView updateSettings(BigDecimal minimumAmount, Integer defaultDeliveryDays,
                                 BigDecimal exchangeRateTolerancePercent, UUID actorId);
 
-    /** Smallest amount a remittance can send, in {@link #MINIMUM_AMOUNT_CURRENCY}; zero means no minimum. */
+    /** Smallest amount a remittance can send, in {@link #BUSINESS_CURRENCY}; zero means no minimum. */
     BigDecimal minimumAmount();
 
     /** Days from registration to the expected delivery date of a remittance. */
