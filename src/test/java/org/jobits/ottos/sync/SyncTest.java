@@ -146,6 +146,36 @@ class SyncTest extends ApiTestSupport {
     }
 
     @Test
+    void salesHearOfADeliverySyncedLateEvenIfItHappenedBeforeTheirLastCheck() throws Exception {
+        String id = registered();
+        assign(id, courier);
+        clock.advance(Duration.ofHours(3));
+        // Without since: nothing from the past, only where to start
+        String first = body(completed(salesToken, null)
+                .andExpect(jsonPath("$.remittances", hasSize(0)))
+                .andExpect(jsonPath("$.hasMore").value(false)));
+        String since = JsonPath.read(first, "$.serverTime");
+
+        Instant deliveredAt = clock.instant().minus(Duration.ofHours(2)).truncatedTo(ChronoUnit.SECONDS);
+        sync(courierToken, action(UUID.randomUUID().toString(), "DELIVER", id, deliveredAt, "{}"))
+                .andExpect(jsonPath("$.results[0].status").value("APPLIED"));
+        clock.advance(Duration.ofMinutes(1));
+
+        String feed = body(completed(salesToken, since)
+                .andExpect(jsonPath("$.remittances", hasSize(1)))
+                .andExpect(jsonPath("$.remittances[0].id").value(id))
+                .andExpect(jsonPath("$.remittances[0].status").value("DELIVERED")));
+        assertThat(Instant.parse(JsonPath.read(feed, "$.serverTime"))).isAfter(Instant.parse(since));
+        completed(salesToken, JsonPath.read(feed, "$.serverTime")).andExpect(jsonPath("$.remittances", hasSize(0)));
+        completed(courierToken, since).andExpect(status().isForbidden());
+    }
+
+    private ResultActions completed(String token, String since) throws Exception {
+        var request = get("/api/v1/remittances/completed").header("Authorization", bearer(token));
+        return mvc.perform(since == null ? request : request.param("since", since));
+    }
+
+    @Test
     void anActionIdCannotBeReusedForAnotherAction() throws Exception {
         String first = registered();
         String second = registered();

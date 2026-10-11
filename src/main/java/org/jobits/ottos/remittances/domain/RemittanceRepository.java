@@ -2,6 +2,7 @@ package org.jobits.ottos.remittances.domain;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
@@ -43,6 +44,10 @@ public interface RemittanceRepository extends JpaRepository<Remittance, UUID>, J
     List<UUID> findNoLongerAssignedSince(UUID userId, Collection<String> finalStatuses, Instant since);
 
     List<Remittance> findByCustomerIdOrderByCreatedAtDesc(UUID customerId);
+
+    /** Completions recorded in (after, until], oldest first. */
+    List<Remittance> findByCompletionRecordedAtGreaterThanAndCompletionRecordedAtLessThanEqualOrderByCompletionRecordedAtAscIdAsc(
+            Instant after, Instant until, Pageable page);
 
     /** Remittances registered in [from, to). */
     List<Remittance> findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(Instant from, Instant to);

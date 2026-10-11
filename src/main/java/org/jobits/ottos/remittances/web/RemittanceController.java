@@ -17,6 +17,7 @@ import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.jobits.ottos.remittances.application.RemittanceFilter;
 import org.jobits.ottos.remittances.application.RemittanceService;
+import org.jobits.ottos.remittances.application.RemittanceService.CompletedFeed;
 import org.jobits.ottos.remittances.application.RemittanceService.EventView;
 import org.jobits.ottos.remittances.application.RemittanceService.PageView;
 import org.jobits.ottos.remittances.application.RemittanceView;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -99,6 +101,14 @@ class RemittanceController {
         RemittanceFilter filter = new RemittanceFilter(status, type, late, incident, review, courierId,
                 customerId, beneficiaryId, municipality, from, to);
         return remittances.search(filter, page, size, Viewers.from(jwt));
+    }
+
+    @GetMapping("/remittances/completed")
+    @PreAuthorize("hasAuthority('remittances:read')")
+    @Operation(summary = "Remittances whose completion the server recorded after since (server time), oldest first, max 100; pass serverTime back as the next since")
+    CompletedFeed completed(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant since,
+                            @AuthenticationPrincipal Jwt jwt) {
+        return remittances.completedSince(since, Viewers.from(jwt));
     }
 
     @GetMapping("/couriers")
