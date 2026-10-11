@@ -32,6 +32,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -270,8 +271,10 @@ class CashLedgerServiceImpl implements CashLedgerService {
     @Transactional(readOnly = true)
     public List<CourierCash> couriers() {
         Map<UUID, List<CashAccount>> byCourier = accounts.findByTypeOrderByCurrency(AccountType.COURIER).stream()
-                .collect(Collectors.groupingBy(CashAccount::getOwnerId));
-        // Administrators are not couriers; they cannot get courier cash anyway (requireCourier)
+                .collect(Collectors.groupingBy(CashAccount::getOwnerId, LinkedHashMap::new, Collectors.toList()));
+        // Every current courier, also one without movements yet (to give them their first funds), plus anyone who
+        // still has courier cash although they no longer are one (deactivated). Administrators are not couriers.
+        staff.workersWith(COURIER_PERMISSION).forEach(m -> byCourier.putIfAbsent(m.id(), List.of()));
         return byCourier.entrySet().stream()
                 .filter(e -> staff.find(e.getKey()).map(m -> !m.administrator()).orElse(true))
                 .map(e -> courierCash(e.getKey(), e.getValue()))

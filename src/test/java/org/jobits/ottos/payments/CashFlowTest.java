@@ -86,10 +86,17 @@ class CashFlowTest extends ApiTestSupport {
     void aCourierCanDeliverWithoutCashAndGoesNegative() throws Exception {
         completed("DELIVERY", "100");
 
+        createUser("new.courier@ottos.test", "DELIVERY");
+
+        // A new courier without movements is listed too, so Sales can give them their first funds
         mvc.perform(get("/api/v1/cash/couriers").header("Authorization", bearer(salesToken)))
-                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].name").value("User courier@ottos.test"))
                 .andExpect(jsonPath("$[0].balances[0].amount").value(-41000.00))
-                .andExpect(jsonPath("$[0].negative").value(true));
+                .andExpect(jsonPath("$[0].negative").value(true))
+                .andExpect(jsonPath("$[1].name").value("User new.courier@ottos.test"))
+                .andExpect(jsonPath("$[1].balances", hasSize(0)))
+                .andExpect(jsonPath("$[1].negative").value(false));
     }
 
     @Test
