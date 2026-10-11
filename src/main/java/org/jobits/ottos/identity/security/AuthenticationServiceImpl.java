@@ -1,6 +1,7 @@
 package org.jobits.ottos.identity.security;
 
 import org.jobits.ottos.ApiException;
+import org.jobits.ottos.identity.domain.ClientType;
 import org.jobits.ottos.identity.domain.RefreshToken;
 import org.jobits.ottos.identity.domain.User;
 import org.jobits.ottos.identity.domain.UserRepository;
@@ -21,18 +22,20 @@ class AuthenticationServiceImpl implements AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokens;
     private final RefreshTokenService refreshTokens;
+    private final JwtProperties props;
 
     AuthenticationServiceImpl(UserRepository users, PasswordEncoder passwordEncoder, TokenService tokens,
-                          RefreshTokenService refreshTokens) {
+                              RefreshTokenService refreshTokens, JwtProperties props) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
         this.refreshTokens = refreshTokens;
+        this.props = props;
     }
 
     @Override
     @Transactional
-    public Session login(String email, String password) {
+    public Session login(String email, String password, ClientType client) {
         Optional<User> found = users.findByEmail(User.normalizeEmail(email));
         boolean valid = found
                 .filter(User::isActive)
@@ -41,7 +44,7 @@ class AuthenticationServiceImpl implements AuthenticationService {
         if (!valid) {
             throw invalidCredentials();
         }
-        return openSession(found.get());
+        return openSession(found.get(), client);
     }
 
     @Override
@@ -50,17 +53,22 @@ class AuthenticationServiceImpl implements AuthenticationService {
         RefreshToken token = refreshTokens.find(refreshToken).orElseThrow(AuthenticationServiceImpl::invalidRefreshToken);
         Instant now = Instant.now();
         if (token.isRevoked()) {
-            refreshTokens.revokeAll(token.getUserId());
-            throw invalidRefreshToken();
+            Optional<RefreshToken> unreceived = unreceivedSuccessor(token, now);
+            if (unreceived.isEmpty()) {
+                refreshTokens.revokeAll(token.getUserId());
+                throw invalidRefreshToken();
+            }
+            unreceived.get().revoke(now);
         }
         if (token.isExpired(now)) {
             throw invalidRefreshToken();
         }
-        token.revoke(now);
         User user = users.findWithRolesById(token.getUserId())
                 .filter(User::isActive)
                 .orElseThrow(AuthenticationServiceImpl::invalidRefreshToken);
-        return openSession(user);
+        Session session = openSession(user, token.getClient());
+        token.replaceWith(session.refreshToken().id(), now);
+        return session;
     }
 
     @Override
@@ -82,8 +90,20 @@ class AuthenticationServiceImpl implements AuthenticationService {
         refreshTokens.revokeAll(userId);
     }
 
-    private Session openSession(User user) {
-        return new Session(user, tokens.issueAccessToken(user), refreshTokens.issue(user.getId()));
+    private Session openSession(User user, ClientType client) {
+        return new Session(user, tokens.issueAccessToken(user, client), refreshTokens.issue(user.getId(), client));
+    }
+
+    /**
+     * The token issued when this one was used, if this looks like a retry: it was used within the grace period and
+     * what it issued has not been used, revoked or expired since (so the client never got it).
+     */
+    private Optional<RefreshToken> unreceivedSuccessor(RefreshToken token, Instant now) {
+        if (!token.isRecentlyReplaced(now, props.refreshReuseGrace())) {
+            return Optional.empty();
+        }
+        return refreshTokens.findById(token.getReplacedBy())
+                .filter(successor -> !successor.isRevoked() && !successor.isExpired(now));
     }
 
     private static ResponseStatusException invalidCredentials() {

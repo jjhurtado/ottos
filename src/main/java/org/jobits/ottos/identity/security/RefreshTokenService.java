@@ -1,5 +1,6 @@
 package org.jobits.ottos.identity.security;
 
+import org.jobits.ottos.identity.domain.ClientType;
 import org.jobits.ottos.identity.domain.RefreshToken;
 
 import java.util.Optional;
@@ -11,9 +12,11 @@ import java.util.UUID;
  */
 public interface RefreshTokenService {
 
-    IssuedRefreshToken issue(UUID userId);
+    IssuedRefreshToken issue(UUID userId, ClientType client);
 
     Optional<RefreshToken> find(String value);
+
+    Optional<RefreshToken> findById(UUID id);
 
     /** Signs the user out of every device: no refresh token issued so far will work again. */
     void revokeAll(UUID userId);
@@ -26,6 +29,7 @@ public interface RefreshTokenService {
      */
     int deleteExpired();
 
-    record IssuedRefreshToken(String value, long expiresInSeconds) {
+    /** @param id the stored token's id, to link it from the token it replaces */
+    record IssuedRefreshToken(UUID id, String value, long expiresInSeconds) {
     }
 }

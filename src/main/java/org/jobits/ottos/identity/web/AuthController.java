@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.jobits.ottos.identity.domain.ClientType;
 import org.jobits.ottos.identity.security.AuthenticationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -35,7 +36,8 @@ class AuthController {
     @PostMapping("/login")
     @Operation(summary = "Log in with email and password and get an access token and a refresh token")
     TokenResponse login(@Valid @RequestBody LoginRequest request) {
-        return TokenResponse.of(authentication.login(request.email(), request.password()));
+        ClientType client = request.client() == null ? ClientType.WEB : request.client();
+        return TokenResponse.of(authentication.login(request.email(), request.password(), client));
     }
 
     @PostMapping("/refresh")
@@ -59,6 +61,7 @@ class AuthController {
                 jwt.getClaimAsString("email"),
                 jwt.getClaimAsString("name"),
                 jwt.getClaimAsString("type"),
+                jwt.getClaimAsString("client"),
                 jwt.getClaimAsStringList("roles"),
                 jwt.getClaimAsStringList("permissions"));
     }
@@ -71,7 +74,8 @@ class AuthController {
         authentication.changePassword(UUID.fromString(jwt.getSubject()), request.currentPassword(), request.newPassword());
     }
 
-    record LoginRequest(@NotBlank @Email String email, @NotBlank String password) {
+    /** @param client MOBILE for the mobile app (access tokens for a whole working day); WEB, the default, otherwise */
+    record LoginRequest(@NotBlank @Email String email, @NotBlank String password, ClientType client) {
     }
 
     record RefreshRequest(@NotBlank String refreshToken) {
@@ -91,7 +95,7 @@ class AuthController {
         }
     }
 
-    record CurrentUserResponse(String id, String email, String name, String type,
+    record CurrentUserResponse(String id, String email, String name, String type, String client,
                                List<String> roles, List<String> permissions) {
     }
 }

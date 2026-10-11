@@ -1,5 +1,6 @@
 package org.jobits.ottos.identity.security;
 
+import org.jobits.ottos.identity.domain.ClientType;
 import org.jobits.ottos.identity.domain.User;
 
 /**
@@ -8,7 +9,8 @@ import org.jobits.ottos.identity.domain.User;
  */
 public interface TokenService {
 
-    IssuedToken issueAccessToken(User user);
+    /** The user's roles and permissions must be loaded. Mobile tokens last a whole working day, web ones are short. */
+    IssuedToken issueAccessToken(User user, ClientType client);
 
     record IssuedToken(String value, long expiresInSeconds) {
     }

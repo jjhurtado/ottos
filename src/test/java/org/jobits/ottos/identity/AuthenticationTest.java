@@ -3,6 +3,7 @@ package org.jobits.ottos.identity;
 import org.jobits.ottos.ApiTestSupport;
 
 import com.jayway.jsonpath.JsonPath;
+import org.jobits.ottos.identity.domain.ClientType;
 import org.jobits.ottos.identity.domain.RefreshToken;
 import org.jobits.ottos.identity.domain.Role;
 import org.jobits.ottos.identity.domain.User;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -38,10 +40,11 @@ class AuthenticationTest extends ApiTestSupport {
     void cleanupDeletesOnlyExpiredRefreshTokens(@Autowired RefreshTokenService refreshTokenService) {
         User sales = users.findByEmail("sales@ottos.test").orElseThrow();
         Instant now = Instant.now();
-        refreshTokens.save(new RefreshToken(sales.getId(), "expired", now.minus(Duration.ofDays(31)),
+        refreshTokens.save(new RefreshToken(sales.getId(), ClientType.WEB, "expired", now.minus(Duration.ofDays(31)),
                 now.minus(Duration.ofDays(1))));
-        refreshTokens.save(new RefreshToken(sales.getId(), "valid", now, now.plus(Duration.ofDays(30))));
-        RefreshToken revoked = new RefreshToken(sales.getId(), "revoked", now, now.plus(Duration.ofDays(30)));
+        refreshTokens.save(new RefreshToken(sales.getId(), ClientType.WEB, "valid", now, now.plus(Duration.ofDays(30))));
+        RefreshToken revoked = new RefreshToken(sales.getId(), ClientType.WEB, "revoked", now,
+                now.plus(Duration.ofDays(30)));
         revoked.revoke(now);
         refreshTokens.save(revoked);
 
@@ -114,6 +117,7 @@ class AuthenticationTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andReturn().getResponse().getContentAsString();
         String second = JsonPath.read(body, "$.refreshToken");
+        usedTokensAreOlderThanTheGracePeriod();
 
         refresh(first).andExpect(status().isUnauthorized());
         // Reusing a consumed token means it leaked: every session of that user is revoked.
@@ -136,6 +140,50 @@ class AuthenticationTest extends ApiTestSupport {
                 .andReturn().getResponse().getContentAsString();
         mvc.perform(get("/api/v1/users").header("Authorization", bearer(JsonPath.read(refreshed, "$.accessToken"))))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void aRetryWithinTheGracePeriodGetsANewPairInsteadOfSigningOut() throws Exception {
+        String first = JsonPath.read(loginResponse("sales@ottos.test"), "$.refreshToken");
+        String lost = JsonPath.read(refresh(first).andReturn().getResponse().getContentAsString(), "$.refreshToken");
+
+        // The first response never arrived: the app retries with the same token
+        String retried = JsonPath.read(refresh(first)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), "$.refreshToken");
+
+        refresh(retried).andExpect(status().isOk());
+        // The pair that never arrived was revoked; presenting it now is reuse, as before
+        refresh(lost).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void theGracePeriodDoesNotApplyAfterLogout() throws Exception {
+        String first = JsonPath.read(loginResponse("sales@ottos.test"), "$.refreshToken");
+        String second = JsonPath.read(refresh(first).andReturn().getResponse().getContentAsString(), "$.refreshToken");
+        mvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\": \"" + second + "\"}"))
+                .andExpect(status().isNoContent());
+
+        refresh(first).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void mobileSessionsLastAWorkingDayAndKeepTheirClientOnRefresh() throws Exception {
+        String web = login("sales@ottos.test", PASSWORD).andExpect(jsonPath("$.expiresIn").value(300))
+                .andReturn().getResponse().getContentAsString();
+        String mobile = mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"sales@ottos.test\", \"password\": \"" + PASSWORD + "\", \"client\": \"MOBILE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expiresIn").value(14 * 3600))
+                .andReturn().getResponse().getContentAsString();
+
+        refresh(JsonPath.read(mobile, "$.refreshToken")).andExpect(jsonPath("$.expiresIn").value(14 * 3600));
+        refresh(JsonPath.read(web, "$.refreshToken")).andExpect(jsonPath("$.expiresIn").value(300));
+        mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(JsonPath.read(mobile, "$.accessToken"))))
+                .andExpect(jsonPath("$.client").value("MOBILE"));
     }
 
     @Test
@@ -175,5 +223,11 @@ class AuthenticationTest extends ApiTestSupport {
         refresh(JsonPath.read(login, "$.refreshToken")).andExpect(status().isUnauthorized());
         login("sales@ottos.test", PASSWORD).andExpect(status().isUnauthorized());
         login("sales@ottos.test", "new-password-456").andExpect(status().isOk());
+    }
+
+    /** Moves the use of every consumed refresh token back beyond ottos.security.refresh-reuse-grace. */
+    private void usedTokensAreOlderThanTheGracePeriod() {
+        jdbc.update("UPDATE refresh_tokens SET revoked_at = ? WHERE revoked_at IS NOT NULL",
+                Timestamp.from(Instant.now().minus(Duration.ofMinutes(5))));
     }
 }
