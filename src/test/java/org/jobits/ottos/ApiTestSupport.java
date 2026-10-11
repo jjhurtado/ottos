@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(ApiTestSupport.TestClockConfig.class)
+@Import({PostgresTestConfig.class, ApiTestSupport.TestClockConfig.class})
 public abstract class ApiTestSupport {
 
     protected static final String PASSWORD = "test-password-123";

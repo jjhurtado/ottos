@@ -247,7 +247,11 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 
 ### Tests
 
-- Tests de API con `ApiTestSupport` (MockMvc + H2 en modo PostgreSQL con las mismas migraciones).
+- Tests de API con `ApiTestSupport`: MockMvc contra un **PostgreSQL real** (16, el mismo que `docker-compose`) que
+  Testcontainers arranca en Docker, con las mismas migraciones. No se usan bases en memoria: el SQL, las migraciones y
+  la concurrencia se prueban como en producción. Hace falta Docker para ejecutar los tests.
+- Lo que dependa de peticiones simultáneas (idempotencia, bloqueos, saldos) lleva un test en `ConcurrencyTest` que las
+  lance a la vez de verdad.
 - Cada funcionalidad o corrección lleva su test; los tests existentes no se cambian para que pase un cambio de
   comportamiento sin acordarlo.
 - `./gradlew build` en verde antes de fusionar.
