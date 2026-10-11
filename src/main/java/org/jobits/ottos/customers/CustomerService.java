@@ -3,7 +3,9 @@ package org.jobits.ottos.customers;
 import org.jobits.ottos.customers.domain.Customer;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,6 +13,9 @@ import java.util.UUID;
 public interface CustomerService {
 
     Optional<CustomerInfo> find(UUID id);
+
+    /** The customers with these ids, by id, in one query (for lists); unknown ids are left out. */
+    Map<UUID, CustomerInfo> findAll(Collection<UUID> ids);
 
     CustomerInfo get(UUID id);
 
