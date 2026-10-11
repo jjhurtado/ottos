@@ -21,6 +21,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.jobits.ottos.configuration.ConfigurationService.BUSINESS_CURRENCY;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -44,9 +46,7 @@ import java.util.stream.Collectors;
 @Service
 class CashLedgerServiceImpl implements CashLedgerService {
 
-    private static final String COURIER_PERMISSION = "remittances:deliver";
     private static final int STATEMENT_SIZE = 100;
-    private static final String USD = "USD";
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final String UNUSUAL_EXCHANGE_RATE = "UNUSUAL_EXCHANGE_RATE";
     private static final String LATE_SYNC = "LATE_SYNC";
@@ -211,7 +211,7 @@ class CashLedgerServiceImpl implements CashLedgerService {
                 .map(CashAccount::getCurrency).collect(Collectors.toSet());
         if (fromCurrency == null || toCurrency == null || fromCurrency.equals(toCurrency)
                 || !handled.contains(fromCurrency) || !handled.contains(toCurrency)
-                || !(USD.equals(fromCurrency) || USD.equals(toCurrency))) {
+                || !(BUSINESS_CURRENCY.equals(fromCurrency) || BUSINESS_CURRENCY.equals(toCurrency))) {
             throw ApiException.badRequest("INVALID_CURRENCY",
                     "Exchange between two different currencies of " + new TreeSet<>(handled) + ", one of them USD");
         }
@@ -222,14 +222,14 @@ class CashLedgerServiceImpl implements CashLedgerService {
             throw ApiException.badRequest("INVALID_RATE", "Rate must be positive with at most 6 decimals");
         }
         BigDecimal fromAmount = e.fromAmount().setScale(2, RoundingMode.UNNECESSARY);
-        BigDecimal toAmount = USD.equals(fromCurrency)
+        BigDecimal toAmount = BUSINESS_CURRENCY.equals(fromCurrency)
                 ? fromAmount.multiply(e.rate()).setScale(2, RoundingMode.HALF_UP)
                 : fromAmount.divide(e.rate(), 2, RoundingMode.HALF_UP);
         if (toAmount.signum() <= 0) {
             throw ApiException.badRequest("INVALID_AMOUNT", "The amount is too small to exchange at that rate");
         }
-        String other = USD.equals(fromCurrency) ? toCurrency : fromCurrency;
-        BigDecimal configured = configuration.deliveryRateAt(USD, other, occurredAt).orElse(null);
+        String other = BUSINESS_CURRENCY.equals(fromCurrency) ? toCurrency : fromCurrency;
+        BigDecimal configured = configuration.deliveryRateAt(BUSINESS_CURRENCY, other, occurredAt).orElse(null);
         BigDecimal deviation = configured == null ? null
                 : e.rate().subtract(configured).abs().multiply(HUNDRED).divide(configured, 2, RoundingMode.HALF_UP);
         String note = e.note() == null || e.note().isBlank() ? null : e.note().trim();
@@ -272,7 +272,7 @@ class CashLedgerServiceImpl implements CashLedgerService {
                 .collect(Collectors.groupingBy(CashAccount::getOwnerId, LinkedHashMap::new, Collectors.toList()));
         // Every current courier, also one without movements yet (to give them their first funds), plus anyone who
         // still has courier cash although they no longer are one (deactivated). Administrators are not couriers.
-        staff.workersWith(COURIER_PERMISSION).forEach(m -> byCourier.putIfAbsent(m.id(), List.of()));
+        staff.couriers().forEach(m -> byCourier.putIfAbsent(m.id(), List.of()));
         return byCourier.entrySet().stream()
                 .filter(e -> staff.find(e.getKey()).map(m -> !m.administrator()).orElse(true))
                 .map(e -> courierCash(e.getKey(), e.getValue()))
@@ -339,10 +339,9 @@ class CashLedgerServiceImpl implements CashLedgerService {
     }
 
     private void requireCourier(UUID courierId) {
-        boolean eligible = staff.find(courierId).map(m -> m.worksWith(COURIER_PERMISSION)).orElse(false);
-        if (!eligible) {
+        if (!staff.isCourier(courierId)) {
             throw ApiException.badRequest("INVALID_COURIER",
-                    "The courier must be an active user with permission " + COURIER_PERMISSION + ", not an administrator");
+                    "The courier must be an active user with permission " + StaffDirectoryService.COURIER_PERMISSION + ", not an administrator");
         }
     }
 

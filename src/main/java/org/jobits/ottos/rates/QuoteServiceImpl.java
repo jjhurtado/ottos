@@ -72,7 +72,7 @@ class QuoteServiceImpl implements QuoteService {
 
     /** The configured minimum is in USD and applies to every corridor sending USD; zero means no minimum. */
     private void requireMinimum(BigDecimal amount, String currency) {
-        if (!ConfigurationService.MINIMUM_AMOUNT_CURRENCY.equals(currency)) {
+        if (!ConfigurationService.BUSINESS_CURRENCY.equals(currency)) {
             return;
         }
         BigDecimal minimum = configuration.minimumAmount();

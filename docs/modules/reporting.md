@@ -67,7 +67,7 @@ comisiones y ajustes guardan quién los cambió; si más adelante se quieren en 
 - Auditar algo nuevo: publicar `AuditEvent` con el `ApplicationEventPublisher` dentro de la transacción del cambio,
   con una `action` estable (no se renombra: el frontend puede traducirla).
 
-- Reglas del informe mensual: `RemittanceServiceImpl.salesSummary`; forma de la respuesta: `ReportService`.
+- Reglas del informe mensual: `remittances.SalesSummaries`; forma de la respuesta: `ReportService`.
 
 ## Pendiente
 

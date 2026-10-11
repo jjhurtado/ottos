@@ -22,7 +22,6 @@ import org.jobits.ottos.remittances.RemittanceService.EventView;
 import org.jobits.ottos.remittances.RemittanceService.PageView;
 import org.jobits.ottos.remittances.RemittanceView;
 import org.jobits.ottos.remittances.WorkflowView;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -66,19 +65,9 @@ class RemittanceController {
                             @Parameter(description = "Unique per request, e.g. a UUID; makes retries safe")
                             @RequestHeader(value = "Idempotency-Key", required = false) @Size(max = 100) String idempotencyKey,
                             @AuthenticationPrincipal Jwt jwt) {
-        var viewer = Viewers.from(jwt);
-        try {
-            return remittances.register(new RemittanceService.NewRemittance(request.type(), request.customerId(),
-                    request.beneficiaryId(), request.amount(), request.targetCurrency(), request.rate(), request.fee(), request.notes(),
-                    idempotencyKey),
-                    viewer);
-        } catch (DataIntegrityViolationException e) {
-            // A concurrent request with the same key won the race: return its remittance.
-            if (idempotencyKey == null) {
-                throw e;
-            }
-            return remittances.findByIdempotencyKey(idempotencyKey, viewer).orElseThrow(() -> e);
-        }
+        return remittances.register(new RemittanceService.NewRemittance(request.type(), request.customerId(),
+                request.beneficiaryId(), request.amount(), request.targetCurrency(), request.rate(), request.fee(),
+                request.notes(), idempotencyKey), Viewers.from(jwt));
     }
 
     @GetMapping("/remittances")

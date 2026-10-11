@@ -14,8 +14,8 @@ historial y estadísticas.
 
 - `RemittanceType`, `IncidentReason`, `ReviewReason` y los eventos de `RemittanceEvents` (`RemittanceRegistered`,
   `RemittanceCompleted`), que escucha `payments` para mover la caja en la misma transacción.
-- `RemittanceService` con `RemittanceView`, `Viewer`, `WorkflowView` y los tipos de sincronización (los usa `sync`), y
-  `salesSummary` (lo usa `reporting`).
+- `RemittanceService` con `RemittanceView`, `Viewer` y `WorkflowView`, y `salesSummary` (lo usa `reporting`).
+- `RemittanceSyncService` con los tipos de sincronización (`SyncAction`, `SyncOutcome`…), que usa solo `sync`.
 
 ## Endpoints
 
@@ -77,9 +77,11 @@ historial y estadísticas.
 ## Dónde tocar
 
 - Estado nuevo del workflow: filas en `remittance_statuses` y `remittance_transitions` (migración), sin código.
-- Reglas de registro, asignación, completado e incidencias: `RemittanceServiceImpl`.
+- Reglas de registro y consultas: `RemittanceServiceImpl`. Asignar, completar, atrasar e incidencias (compartido con
+  la cola offline): `RemittanceOperations`. Cifras del informe: `SalesSummaries`. Filtros de búsqueda:
+  `RemittanceSpecifications`.
 - Qué ve cada usuario: `Viewer` y `RemittanceViews`.
-- Reglas de las acciones sincronizadas: `RemittanceServiceImpl.applySynced` (contrato en
+- Reglas de las acciones sincronizadas: `RemittanceSyncServiceImpl.applySynced` (contrato en
   `docs/contracts/offline-sync.md`).
 
 ## Pendiente

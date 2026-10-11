@@ -51,7 +51,7 @@ class ConfigurationServiceImpl implements ConfigurationService {
     @Override
     @Transactional(readOnly = true)
     public SettingsView settings() {
-        return new SettingsView(minimumAmount(), MINIMUM_AMOUNT_CURRENCY, defaultDeliveryDays(),
+        return new SettingsView(minimumAmount(), BUSINESS_CURRENCY, defaultDeliveryDays(),
                 exchangeRateTolerancePercent());
     }
 

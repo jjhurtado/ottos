@@ -25,7 +25,7 @@ datos propios: orquesta `remittances` y `payments`.
   Completa sin `since` o si es de hace más de 7 días; si no, solo lo cambiado (columna `remittances.updated_at`).
   `serverTime` es el `since` de la próxima vez. Ventas recibe listas vacías: trabaja en la app solo con conexión.
 - **Lote:** las acciones (`DELIVER`, `DELIVER_WITH_PIN`, `POSTPONE`, `REPORT_INCIDENT` y `CASH_EXCHANGE`) se aplican
-  en orden, cada una en su propia transacción (`RemittanceService.applySynced` o
+  en orden, cada una en su propia transacción (`RemittanceSyncService.applySynced` o
   `CashLedgerService.applySyncedExchange`); este servicio no es transaccional a propósito. Un `payload` mal formado
   rechaza solo su acción.
 - La idempotencia, la hora real (`occurredAt`), los conflictos y las marcas de revisión viven en `remittances` (ver
@@ -33,12 +33,12 @@ datos propios: orquesta `remittances` y `payments`.
 
 ## Dependencias
 
-Usa las API públicas de `remittances` (`RemittanceService`, `Viewer`, tipos de sincronización) y de `payments`
+Usa las API públicas de `remittances` (`RemittanceSyncService`, `RemittanceService.workflow`, `Viewer`) y de `payments`
 (`CashLedgerService`).
 
 ## Dónde tocar
 
 - Tipos de acción y su validación: `SyncServiceImpl.toSyncAction` y `remittances.SyncActionType`.
-- Reglas de aplicación y conflictos: `RemittanceServiceImpl.applySynced`.
+- Reglas de aplicación y conflictos: `RemittanceSyncServiceImpl.applySynced`.
 - Duración de la sesión móvil y margen de refresh: `identity` (`ottos.security.mobile-access-token-ttl`,
   `ottos.security.refresh-reuse-grace`).
