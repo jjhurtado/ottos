@@ -12,6 +12,7 @@ cambiar algo. Se actualiza en la misma rama que cambia el módulo (ver `STANDARD
 | [configuration](configuration.md) | Ajustes, corredores, tasas y comisiones (entrega y recogida) | Implementado |
 | [rates](rates.md) | Cotizador | Implementado |
 | [remittances](remittances.md) | Remesas: registro, workflow, asignación, incidencias, entrega, estadísticas | Implementado |
+| [sync](sync.md) | Descarga y cola de acciones de la app móvil offline-first | Implementado |
 | [payments](payments.md) | Caja del negocio y de cada repartidor (doble entrada) | Libro implementado; cierre en Fase 3 |
 | [dispatch](dispatch.md) | Asignación por zona, prueba de entrega | Vacío (después de 1.0) |
 | [notifications](notifications.md) | Push, correo, SMS | Vacío (Fase 2) |
@@ -24,4 +25,5 @@ remittances → customers, beneficiaries, rates, configuration, identity, branch
 rates       → configuration
 beneficiaries → customers, branches
 payments    → identity  (+ escucha eventos de remittances)
+sync        → remittances.application, payments.application  (interfaces con nombre)
 ```

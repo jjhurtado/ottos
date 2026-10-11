@@ -63,6 +63,7 @@ package are its public API; sub-packages are internal.
 | Customers (senders, no login yet) | `customers` | 1 (implemented) |
 | Configuration (minimum amount, delivery days, corridors, exchange rates, fee rules) | `configuration` | 1 (implemented) |
 | Quotes (calculator over the configuration) | `rates` | 1 (implemented) |
+| Mobile sync (offline-first app: download and queued actions) | `sync` | 1 (implemented) |
 | Beneficiaries | `beneficiaries` | 1 (implemented) |
 | Remittances (deliveries and pickups) | `remittances` | 1 (implemented) |
 | Dispatch and deliveries (routes, proof photos, assignment by zone) | `dispatch` | after 1.0; manual assignment lives in `remittances` |
@@ -84,7 +85,9 @@ services: [STANDARDS.md](STANDARDS.md). What each module does: [docs/modules](do
 | `OTTOS_ADMIN_EMAIL` / `OTTOS_ADMIN_PASSWORD` | Creates the first ADMIN if none exists | empty |
 | `PORT` | HTTP port | `8080` |
 
-Token lifetimes: `ottos.security.access-token-ttl` (15m) and `ottos.security.refresh-token-ttl` (30d). Expired refresh
+Token lifetimes: `ottos.security.access-token-ttl` (15m, web panel), `ottos.security.mobile-access-token-ttl` (14h, mobile
+app logging in with `"client": "MOBILE"`) and `ottos.security.refresh-token-ttl` (30d). Retrying a refresh within
+`ottos.security.refresh-reuse-grace` (60s) gets a new pair instead of signing out everywhere. Expired refresh
 tokens are deleted daily at `ottos.security.refresh-token-cleanup-cron` (Spring cron, default `0 30 3 * * *`, in
 `ottos.timezone`); revoked ones are kept until they expire so reuse is still detected.
 
@@ -120,7 +123,7 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 
 | Area | Main endpoints | Permissions |
 | --- | --- | --- |
-| Auth | `POST /auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/change-password`; `GET /auth/me` | public / authenticated |
+| Auth | `POST /auth/login` (`client`: `WEB` or `MOBILE`), `/auth/refresh`, `/auth/logout`, `/auth/change-password`; `GET /auth/me` | public / authenticated |
 | Staff users | `GET/POST /users`, `PUT /users/{id}`, `/users/{id}/roles`, `/users/{id}/password`, `POST /users/{id}/activate`, `/deactivate` | `users:read`, `users:write` |
 | Roles | `GET /permissions`, `GET/POST /roles`, `PUT /roles/{id}`, `/roles/{id}/permissions`, `DELETE /roles/{id}` | `roles:read`, `roles:write` |
 | Zones | `GET /provinces`, `GET /municipalities?province=` | authenticated |
@@ -128,9 +131,11 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Quotes | `POST /quotes` (`remittanceType` defaults to `DELIVERY`) | `rates:read` |
 | Customers | `GET/POST /customers?q=`, `GET/PUT /customers/{id}` | `customers:read`, `customers:write` |
 | Beneficiaries | `GET /beneficiaries?q=`, `GET/PUT/DELETE /beneficiaries/{id}` (delete deactivates it for every customer), `POST /beneficiaries/{id}/restore`, `GET/POST /customers/{id}/beneficiaries`, `PUT/DELETE /customers/{id}/beneficiaries/{beneficiaryId}` | `customers:read`, `customers:write` |
-| Remittances | `POST /remittances` (header `Idempotency-Key`), `GET /remittances?status=&type=&late=&incident=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/{id}`, `/remittances/code/{code}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:create`, `remittances:read` |
+| Remittances | `POST /remittances` (header `Idempotency-Key`), `GET /remittances?status=&type=&late=&incident=&review=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/{id}`, `/remittances/code/{code}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:create`, `remittances:read` |
 | Courier work | `GET /remittances/assigned`, `POST /remittances/{id}/deliver`, `/deliver-with-pin` | `remittances:read-assigned`, `remittances:deliver` |
 | Incidents | `POST /remittances/{id}/incidents` (`{reason, note}`) | `remittances:report-incident` |
+| Review | `GET /remittances?review=true`, `POST /remittances/{id}/review/resolve` | `remittances:read`, `remittances:review` |
+| Mobile sync | `GET /sync/state?since=`, `POST /sync/actions` (contract: `docs/contracts/offline-sync.md`) | authenticated; each action needs its endpoint's permission |
 | Workflow | `GET /couriers` (assignable staff and their open remittances), `POST /remittances/{id}/assign`, `/transitions`, `/postpone` | `remittances:assign`, the transition's permission, `remittances:postpone` |
 | Statistics | `GET /customers/{id}/stats`, `GET /beneficiaries/{id}/stats` | `remittances:read` |
 | Cash | `GET /cash/business`, `/cash/business/movements`, `/cash/couriers`, `/cash/couriers/{id}`, `/cash/remittances/{id}/movements`; `POST /cash/couriers/{id}/funding`, `/returns` | `cash:read`, `cash:write` |
@@ -156,11 +161,11 @@ Throw `ApiException.badRequest("SOME_CODE", "English detail")` (or `conflict`, `
 
 | Status | Codes |
 | --- | --- |
-| 400 | `AMOUNT_BELOW_MINIMUM` (with `minimumAmount`, `currency`), `INCIDENT_NOTE_REQUIRED`, `VALIDATION_FAILED` (with `errors: [{field, constraint}]`, e.g. `{"field": "email", "constraint": "NotBlank"}`), `MALFORMED_REQUEST`, `INVALID_PARAMETER`, `AMOUNT_TOO_SMALL`, `BENEFICIARY_NOT_LINKED`, `BENEFICIARY_UNAVAILABLE`, `COURIER_REQUIRED`, `CUSTOMER_UNAVAILABLE`, `FEE_PERCENTAGE_TOO_HIGH`, `FIXED_RATE`, `INCORRECT_CURRENT_PASSWORD`, `INCORRECT_PIN`, `INVALID_AMOUNT`, `INVALID_COURIER`, `INVALID_FEE_RANGE`, `INVALID_PHONE`, `INVALID_POSTPONE_DATE`, `NO_ACTIVE_CORRIDOR`, `NO_BUSINESS_CASH`, `UNKNOWN_MUNICIPALITY`, `UNKNOWN_PERMISSIONS`, `UNKNOWN_ROLES` |
+| 400 | `AMOUNT_BELOW_MINIMUM` (with `minimumAmount`, `currency`), `INCIDENT_NOTE_REQUIRED`, `INVALID_OCCURRED_AT` (sync), `VALIDATION_FAILED` (with `errors: [{field, constraint}]`, e.g. `{"field": "email", "constraint": "NotBlank"}`), `MALFORMED_REQUEST`, `INVALID_PARAMETER`, `AMOUNT_TOO_SMALL`, `BENEFICIARY_NOT_LINKED`, `BENEFICIARY_UNAVAILABLE`, `COURIER_REQUIRED`, `CUSTOMER_UNAVAILABLE`, `FEE_PERCENTAGE_TOO_HIGH`, `FIXED_RATE`, `INCORRECT_CURRENT_PASSWORD`, `INCORRECT_PIN`, `INVALID_AMOUNT`, `INVALID_COURIER`, `INVALID_FEE_RANGE`, `INVALID_PHONE`, `INVALID_POSTPONE_DATE`, `NO_ACTIVE_CORRIDOR`, `NO_BUSINESS_CASH`, `UNKNOWN_MUNICIPALITY`, `UNKNOWN_PERMISSIONS`, `UNKNOWN_ROLES` |
 | 401 | `AUTHENTICATION_REQUIRED` (no token, or account no longer active), `INVALID_TOKEN` (malformed or expired: refresh or log in again), `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
 | 403 | `FORBIDDEN` (missing permission), `PERMISSION_ESCALATION`, `TRANSITION_FORBIDDEN` |
 | 404 | `NOT_FOUND` (unknown route), `BENEFICIARY_NOT_FOUND`, `CORRIDOR_NOT_FOUND`, `CUSTOMER_NOT_FOUND`, `REMITTANCE_NOT_FOUND`, `ROLE_NOT_FOUND`, `USER_NOT_FOUND` |
-| 409 | `CONCURRENT_UPDATE` (retry), `BENEFICIARY_INACTIVE`, `BUILT_IN_ROLE`, `CANNOT_DEACTIVATE_SELF`, `COURIER_NOT_ASSIGNED`, `EMAIL_TAKEN`, `LAST_ADMIN`, `NO_EXCHANGE_RATE`, `NO_FEE_RULE`, `PHONE_ALREADY_REGISTERED`, `REMITTANCE_ALREADY_COMPLETED`, `REMITTANCE_NOT_ASSIGNABLE`, `REMITTANCE_NOT_COMPLETABLE`, `ROLE_CODE_TAKEN`, `ROLE_IN_USE`, `TRANSITION_NOT_ALLOWED` |
+| 409 | `CONCURRENT_UPDATE` (retry), `ACTION_ID_CONFLICT` (sync), `REVIEW_NOT_PENDING`, `BENEFICIARY_INACTIVE`, `BUILT_IN_ROLE`, `CANNOT_DEACTIVATE_SELF`, `COURIER_NOT_ASSIGNED`, `EMAIL_TAKEN`, `LAST_ADMIN`, `NO_EXCHANGE_RATE`, `NO_FEE_RULE`, `PHONE_ALREADY_REGISTERED`, `REMITTANCE_ALREADY_COMPLETED`, `REMITTANCE_NOT_ASSIGNABLE`, `REMITTANCE_NOT_COMPLETABLE`, `ROLE_CODE_TAKEN`, `ROLE_IN_USE`, `TRANSITION_NOT_ALLOWED` |
 
 Other framework errors get the status name as code (e.g. `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE`).
 

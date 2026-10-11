@@ -165,7 +165,7 @@ adapta así:
 | 7 | **PIN sin conexión** | La app guarda el PIN que dice el beneficiario y el servidor lo comprueba al sincronizar; si no coincide, la entrega se registra marcada para revisión. Nunca se envía el PIN ni su hash al teléfono (6 dígitos se descifran al instante). |
 | 8 | **Descarga incremental** | La app pide solo lo que cambió desde su última sincronización, incluidas las remesas que dejaron de ser suyas (reasignadas), para quitarlas del teléfono. |
 
-Pendiente de cerrar con el frontend: el formato exacto de la cola y de la respuesta de sincronización.
+Contrato cerrado con el frontend e implementado en el backend: [docs/contracts/offline-sync.md](docs/contracts/offline-sync.md) (módulo `sync`).
 
 ## Plantilla de fase
 
