@@ -82,6 +82,12 @@ public interface RemittanceService {
 
     PageView search(RemittanceFilter filter, int page, int size, Viewer viewer);
 
+    /**
+     * Remittances whose completion the server recorded after since, oldest first, for Sales' local notifications.
+     * Without since, none: the answer only sets where the next call starts. The next call passes serverTime back.
+     */
+    CompletedFeed completedSince(Instant since, Viewer viewer);
+
     /** rate: entered by hand for a pickup (null uses the configured one); not allowed for deliveries. */
     record NewRemittance(RemittanceType type, UUID customerId, UUID beneficiaryId, BigDecimal amount,
                          String targetCurrency, BigDecimal rate, String notes, String idempotencyKey) {
@@ -91,6 +97,10 @@ public interface RemittanceService {
     }
 
     record AssignedChanges(boolean full, List<RemittanceView> remittances, List<UUID> removedIds) {
+    }
+
+    /** serverTime: the since of the next call. hasMore: more completions are waiting; call again right away. */
+    record CompletedFeed(Instant serverTime, boolean hasMore, List<RemittanceView> remittances) {
     }
 
     record PageView(List<RemittanceView> items, int page, int size, long totalItems) {

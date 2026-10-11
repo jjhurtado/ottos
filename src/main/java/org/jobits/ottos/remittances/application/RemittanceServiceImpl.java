@@ -60,6 +60,8 @@ class RemittanceServiceImpl implements RemittanceService {
     private static final Duration CLOCK_SKEW = Duration.ofMinutes(5);
     /** Synced actions older than this: deliveries are flagged LATE_SYNC, the rest rejected. */
     private static final Duration LATE_SYNC = Duration.ofDays(7);
+    static final int FEED_LIMIT = 100;
+    static final Duration FEED_SETTLE = Duration.ofSeconds(5);
     private static final String CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -444,7 +446,7 @@ class RemittanceServiceImpl implements RemittanceService {
             if (r.getCourierId() == null) {
                 throw conflict("COURIER_NOT_ASSIGNED", "Assign a courier before completing " + r.getCode());
             }
-            r.complete(at, viewer.userId());
+            r.complete(at, viewer.userId(), clock.instant());
             publisher.publishEvent(new RemittanceCompleted(r.getId(), r.getCode(), r.getType(), r.getCourierId(),
                     r.cashAmount(), r.cashCurrency(), viewer.userId(), at));
         }
@@ -499,6 +501,23 @@ class RemittanceServiceImpl implements RemittanceService {
     public List<RemittanceView> assignedTo(Viewer viewer) {
         return views.of(remittances.findByCourierIdAndStatusNotInOrderByExpectedDateAsc(viewer.userId(),
                 workflow.finalCodes()), viewer);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CompletedFeed completedSince(Instant since, Viewer viewer) {
+        // A few seconds behind the clock, so a completion whose transaction is still committing is not skipped
+        Instant until = clock.instant().minus(FEED_SETTLE);
+        if (since == null || !since.isBefore(until)) {
+            return new CompletedFeed(since == null ? until : since, false, List.of());
+        }
+        List<Remittance> found = remittances
+                .findByCompletionRecordedAtGreaterThanAndCompletionRecordedAtLessThanEqualOrderByCompletionRecordedAtAscIdAsc(
+                        since, until, PageRequest.of(0, FEED_LIMIT + 1));
+        boolean hasMore = found.size() > FEED_LIMIT;
+        List<Remittance> page = hasMore ? found.subList(0, FEED_LIMIT) : found;
+        Instant next = hasMore ? page.getLast().getCompletionRecordedAt() : until;
+        return new CompletedFeed(next, hasMore, views.of(page, viewer));
     }
 
     @Override

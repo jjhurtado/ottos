@@ -159,6 +159,10 @@ public class Remittance {
     @Column(name = "completed_by")
     private UUID completedBy;
 
+    /** Server time when the completion was recorded; later than completedAt for a delivery synced late. */
+    @Column(name = "completion_recorded_at")
+    private Instant completionRecordedAt;
+
     @Version
     private long version;
 
@@ -209,9 +213,10 @@ public class Remittance {
         this.courierId = courierId;
     }
 
-    public void complete(Instant at, UUID by) {
+    public void complete(Instant at, UUID by, Instant recordedAt) {
         this.completedAt = at;
         this.completedBy = by;
+        this.completionRecordedAt = recordedAt;
     }
 
     /** Postponing acts on the open incident and closes it. */
@@ -418,6 +423,10 @@ public class Remittance {
 
     public UUID getCompletedBy() {
         return completedBy;
+    }
+
+    public Instant getCompletionRecordedAt() {
+        return completionRecordedAt;
     }
 
     public record BeneficiarySnapshot(UUID id, String name, String phone, String alternatePhone, String address,
