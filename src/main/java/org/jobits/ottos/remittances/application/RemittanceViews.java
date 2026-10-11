@@ -73,6 +73,7 @@ class RemittanceViews {
                     financials ? r.getFee() : null,
                     financials ? r.getTotal() : null,
                     financials ? r.getRate() : null,
+                    financials ? r.isRateOverridden() : null,
                     financials ? r.getAmountToDeliver() : null,
                     r.cashAmount(), r.cashCurrency(),
                     viewer.seesPin() ? r.getPin() : null,

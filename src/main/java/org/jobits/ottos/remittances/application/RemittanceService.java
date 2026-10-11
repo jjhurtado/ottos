@@ -82,8 +82,9 @@ public interface RemittanceService {
 
     PageView search(RemittanceFilter filter, int page, int size, Viewer viewer);
 
+    /** rate: entered by hand for a pickup (null uses the configured one); not allowed for deliveries. */
     record NewRemittance(RemittanceType type, UUID customerId, UUID beneficiaryId, BigDecimal amount,
-                         String targetCurrency, String notes, String idempotencyKey) {
+                         String targetCurrency, BigDecimal rate, String notes, String idempotencyKey) {
     }
 
     record CourierView(UUID id, String name, String email, long openRemittances) {

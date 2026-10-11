@@ -331,6 +331,35 @@ class RemittancesTest extends ApiTestSupport {
     }
 
     @Test
+    void aPickupIsRegisteredWithTheRateEnteredByHand() throws Exception {
+        String id = id(mvc.perform(post("/api/v1/remittances")
+                        .header("Authorization", bearer(salesToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type": "PICKUP", "customerId": "%s", "beneficiaryId": "%s", "amount": 5000,
+                                 "targetCurrency": "USD", "rate": 1}
+                                """.formatted(customerId, beneficiaryId)))
+                .andExpect(status().isCreated()));
+
+        mvc.perform(get("/api/v1/remittances/{id}", id).header("Authorization", bearer(adminToken)))
+                .andExpect(jsonPath("$.rate").value(1))
+                .andExpect(jsonPath("$.rateOverridden").value(true))
+                .andExpect(jsonPath("$.amountToDeliver").value(5000.00));
+        // Sales does not see the financials of pickups
+        mvc.perform(get("/api/v1/remittances/{id}", id).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.rateOverridden").doesNotExist());
+        mvc.perform(post("/api/v1/remittances")
+                        .header("Authorization", bearer(salesToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type": "DELIVERY", "customerId": "%s", "beneficiaryId": "%s", "amount": 100,
+                                 "targetCurrency": "CUP", "rate": 500}
+                                """.formatted(customerId, beneficiaryId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("RATE_NOT_ALLOWED"));
+    }
+
+    @Test
     void anAmountThatRoundsToNothingIsRejected() throws Exception {
         // 0.10 USD × 410 = 41 CUP, rounded down to the 50 CUP step: nothing to deliver
         register("DELIVERY", "0.10", "CUP").andExpect(status().isBadRequest());

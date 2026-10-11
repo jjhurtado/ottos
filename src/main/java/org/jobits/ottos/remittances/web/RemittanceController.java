@@ -67,7 +67,8 @@ class RemittanceController {
         var viewer = Viewers.from(jwt);
         try {
             return remittances.register(new RemittanceService.NewRemittance(request.type(), request.customerId(),
-                    request.beneficiaryId(), request.amount(), request.targetCurrency(), request.notes(), idempotencyKey),
+                    request.beneficiaryId(), request.amount(), request.targetCurrency(), request.rate(), request.notes(),
+                    idempotencyKey),
                     viewer);
         } catch (DataIntegrityViolationException e) {
             // A concurrent request with the same key won the race: return its remittance.
@@ -202,6 +203,7 @@ class RemittanceController {
                                 @NotNull UUID beneficiaryId,
                                 @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal amount,
                                 @NotNull @Pattern(regexp = "[A-Z]{3}") String targetCurrency,
+                                @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate,
                                 @Size(max = 1000) String notes) {
     }
 
