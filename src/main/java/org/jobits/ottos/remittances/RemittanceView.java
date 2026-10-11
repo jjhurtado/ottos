@@ -1,8 +1,5 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
-import org.jobits.ottos.remittances.IncidentReason;
-import org.jobits.ottos.remittances.RemittanceType;
-import org.jobits.ottos.remittances.ReviewReason;
 
 import java.math.BigDecimal;
 import java.time.Instant;

@@ -1,11 +1,11 @@
 package org.jobits.ottos.sync;
 
-import org.jobits.ottos.payments.application.CashLedgerService.CourierStatement;
-import org.jobits.ottos.payments.application.CashLedgerService.ExchangeView;
-import org.jobits.ottos.remittances.application.RemittanceView;
-import org.jobits.ottos.remittances.application.SyncOutcome;
-import org.jobits.ottos.remittances.application.Viewer;
-import org.jobits.ottos.remittances.application.Workflow.WorkflowView;
+import org.jobits.ottos.payments.CashLedgerService.CourierStatement;
+import org.jobits.ottos.payments.CashLedgerService.ExchangeView;
+import org.jobits.ottos.remittances.RemittanceView;
+import org.jobits.ottos.remittances.SyncOutcome;
+import org.jobits.ottos.remittances.Viewer;
+import org.jobits.ottos.remittances.WorkflowView;
 
 import java.math.BigDecimal;
 import java.time.Instant;

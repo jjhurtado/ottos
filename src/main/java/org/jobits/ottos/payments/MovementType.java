@@ -1,4 +1,4 @@
-package org.jobits.ottos.payments.domain;
+package org.jobits.ottos.payments;
 
 public enum MovementType {
     /** External → business: the sender paid a remittance. */

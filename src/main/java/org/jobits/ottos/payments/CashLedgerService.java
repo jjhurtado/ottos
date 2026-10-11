@@ -1,7 +1,5 @@
-package org.jobits.ottos.payments.application;
+package org.jobits.ottos.payments;
 
-import org.jobits.ottos.payments.domain.AccountType;
-import org.jobits.ottos.payments.domain.MovementType;
 
 import java.math.BigDecimal;
 import java.time.Instant;

@@ -1,4 +1,4 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
 import jakarta.persistence.criteria.Predicate;
 import org.jobits.ottos.ApiException;
@@ -12,9 +12,6 @@ import org.jobits.ottos.identity.StaffDirectoryService;
 import org.jobits.ottos.rates.QuoteService;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceCompleted;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceRegistered;
-import org.jobits.ottos.remittances.IncidentReason;
-import org.jobits.ottos.remittances.ReviewReason;
-import org.jobits.ottos.remittances.RemittanceType;
 import org.jobits.ottos.remittances.domain.Remittance;
 import org.jobits.ottos.remittances.domain.EventType;
 import org.jobits.ottos.remittances.domain.RemittanceEvent;
@@ -481,7 +478,7 @@ class RemittanceServiceImpl implements RemittanceService {
     }
 
     @Override
-    public Workflow.WorkflowView workflow() {
+    public WorkflowView workflow() {
         return workflow.describe();
     }
 

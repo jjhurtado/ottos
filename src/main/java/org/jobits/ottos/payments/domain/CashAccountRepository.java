@@ -1,5 +1,6 @@
 package org.jobits.ottos.payments.domain;
 
+import org.jobits.ottos.payments.AccountType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

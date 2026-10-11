@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.jobits.ottos.customers.CustomerService;
 import org.jobits.ottos.customers.CustomerService.CustomerInfo;
-import org.jobits.ottos.customers.domain.Customer;
+import org.jobits.ottos.customers.CustomerService.CustomerData;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -58,14 +58,14 @@ class CustomerController {
     @PreAuthorize("hasAuthority('customers:write')")
     @Operation(summary = "Register a customer; the phone must not belong to another customer")
     CustomerInfo register(@Valid @RequestBody CustomerRequest request, @AuthenticationPrincipal Jwt jwt) {
-        return customers.register(request.toDetails(), UUID.fromString(jwt.getSubject()));
+        return customers.register(request.toData(), UUID.fromString(jwt.getSubject()));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('customers:write')")
     @Operation(summary = "Update a customer")
     CustomerInfo update(@PathVariable UUID id, @Valid @RequestBody CustomerRequest request) {
-        return customers.update(id, request.toDetails());
+        return customers.update(id, request.toData());
     }
 
     record CustomerRequest(@NotBlank @Size(max = 150) String fullName,
@@ -76,8 +76,8 @@ class CustomerController {
                            @Size(max = 255) String address,
                            @Size(max = 1000) String notes) {
 
-        Customer.Details toDetails() {
-            return new Customer.Details(fullName, phone, email, documentType, documentNumber, address, notes);
+        CustomerData toData() {
+            return new CustomerData(fullName, phone, email, documentType, documentNumber, address, notes);
         }
     }
 }

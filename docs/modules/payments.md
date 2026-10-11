@@ -8,8 +8,8 @@ Llevar el efectivo del negocio y el de cada repartidor, por moneda, en un libro 
 
 ## API pública
 
-Escucha los eventos de `remittances`. La interfaz con nombre `application` (`CashLedgerService`) la usa solo el módulo
-`sync`, para incluir la caja del repartidor en la descarga de la app móvil.
+Escucha los eventos de `remittances`. `CashLedgerService` (con `MovementType` y `AccountType`) lo usa el módulo `sync`
+para incluir la caja del repartidor en la descarga de la app móvil.
 
 ## Endpoints
 

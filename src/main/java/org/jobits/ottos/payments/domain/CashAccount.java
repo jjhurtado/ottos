@@ -1,5 +1,6 @@
 package org.jobits.ottos.payments.domain;
 
+import org.jobits.ottos.payments.AccountType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

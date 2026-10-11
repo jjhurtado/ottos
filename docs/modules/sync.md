@@ -33,12 +33,12 @@ datos propios: orquesta `remittances` y `payments`.
 
 ## Dependencias
 
-Usa los paquetes `remittances.application` y `payments.application`, expuestos como interfaces con nombre
-(`@NamedInterface("application")`) solo para este módulo.
+Usa las API públicas de `remittances` (`RemittanceService`, `Viewer`, tipos de sincronización) y de `payments`
+(`CashLedgerService`).
 
 ## Dónde tocar
 
-- Tipos de acción y su validación: `SyncServiceImpl.toSyncAction` y `remittances.application.SyncActionType`.
+- Tipos de acción y su validación: `SyncServiceImpl.toSyncAction` y `remittances.SyncActionType`.
 - Reglas de aplicación y conflictos: `RemittanceServiceImpl.applySynced`.
 - Duración de la sesión móvil y margen de refresh: `identity` (`ottos.security.mobile-access-token-ttl`,
   `ottos.security.refresh-reuse-grace`).

@@ -8,7 +8,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import org.jobits.ottos.identity.domain.ClientType;
+import org.jobits.ottos.identity.ClientType;
 import org.jobits.ottos.identity.security.AuthenticationService;
 import org.jobits.ottos.identity.security.ClientIp;
 import org.springframework.http.HttpStatus;

@@ -1,6 +1,6 @@
 package org.jobits.ottos.reporting;
 
-import org.jobits.ottos.remittances.application.SalesSummary;
+import org.jobits.ottos.remittances.SalesSummary;
 
 import java.math.BigDecimal;
 import java.time.Instant;

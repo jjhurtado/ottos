@@ -1,4 +1,4 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
 /**
  * What happened to a synced action. A rejection is usually thrown as an ApiException (nothing is saved); this

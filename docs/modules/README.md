@@ -25,6 +25,6 @@ remittances → customers, beneficiaries, rates, configuration, identity, branch
 rates       → configuration
 beneficiaries → customers, branches
 payments    → identity  (+ escucha eventos de remittances)
-sync        → remittances.application, payments.application  (interfaces con nombre)
-reporting   → identity, remittances.application  (+ escucha AuditEvent del paquete raíz)
+sync        → remittances, payments
+reporting   → identity, remittances  (+ escucha AuditEvent del paquete raíz)
 ```

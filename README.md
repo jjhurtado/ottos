@@ -75,7 +75,7 @@ package are its public API; sub-packages are internal.
 | Reporting and audit (audit log; KPIs later) | `reporting` | 1 (audit log implemented); KPIs in 4 |
 
 Inside each module: `domain` (entities, repositories), services as an interface plus its `Impl` (in the module root for the
-public API, or in `application`, `management`, `security`) and `web` (controllers). Conventions for Git, layers and
+public API, or in `management`, `security` when internal) and `web` (controllers). Conventions for Git, layers and
 services: [STANDARDS.md](STANDARDS.md). What each module does: [docs/modules](docs/modules/README.md). Versions: [ROADMAP.md](ROADMAP.md#3-versionado).
 
 ## Environment variables

@@ -1,4 +1,4 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
 import org.jobits.ottos.branches.ZoneService;
 import org.jobits.ottos.customers.CustomerService;

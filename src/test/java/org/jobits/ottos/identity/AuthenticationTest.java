@@ -3,7 +3,7 @@ package org.jobits.ottos.identity;
 import org.jobits.ottos.ApiTestSupport;
 
 import com.jayway.jsonpath.JsonPath;
-import org.jobits.ottos.identity.domain.ClientType;
+import org.jobits.ottos.identity.ClientType;
 import org.jobits.ottos.identity.domain.RefreshToken;
 import org.jobits.ottos.identity.domain.Role;
 import org.jobits.ottos.identity.domain.User;

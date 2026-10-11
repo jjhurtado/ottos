@@ -1,4 +1,4 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
 import java.math.BigDecimal;
 import java.time.Instant;

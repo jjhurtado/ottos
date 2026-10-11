@@ -1,4 +1,4 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
 /** What a queued action from the mobile app does; each one equals an online endpoint. */
 public enum SyncActionType {
