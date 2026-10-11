@@ -43,7 +43,9 @@ sección *identity*; los permisos de cada módulo están en su sección y los pe
   sobre un email lo bloquean 15 minutos, y 50 fallos desde una IP (sobre cualquier email) bloquean esa IP. Responde 429
   `TOO_MANY_LOGIN_ATTEMPTS` con `retryAfterSeconds` y la cabecera `Retry-After`. Un login correcto borra los fallos del
   email. Un email inexistente se cuenta igual, así que el bloqueo no revela qué cuentas existen. Los contadores viven en
-  memoria (una sola instancia; reiniciar los olvida). En `prod` la IP sale de `X-Forwarded-For` (detrás del proxy).
+  memoria (una sola instancia; reiniciar los olvida). En `prod` la IP sale de la cabecera que pone el proxy del hosting con la IP real (`ottos.security.client-ip-header`,
+  `X-Real-Ip` en Railway; clase `ClientIp`); nunca de la entrada más a la izquierda de `X-Forwarded-For`, que el
+  cliente puede falsificar. Sin cabecera configurada, la dirección de la conexión.
 - **Limpieza:** `RefreshTokenCleanup` borra a diario los caducados (`ottos.security.refresh-token-cleanup-cron`); los
   revocados se conservan hasta que caducan para seguir detectando reutilización.
 - **RBAC:** los permisos son el catálogo que comprueba el código (`@PreAuthorize("hasAuthority('…')")`) y solo se crean
