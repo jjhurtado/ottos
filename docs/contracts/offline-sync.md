@@ -98,6 +98,7 @@ porque Ventas trabaja en la app solo con conexión (sección 5), no un error.
 | `DELIVER_WITH_PIN` | `{ "pin": "6 dígitos", "strictPin"?: boolean, "note"?: string }` | `remittances:deliver` | `POST /remittances/{id}/deliver-with-pin` |
 | `POSTPONE` | `{ "newDate": "AAAA-MM-DD", "reason": string ≤ 1000 }` | `remittances:postpone` | `POST /remittances/{id}/postpone` |
 | `REPORT_INCIDENT` | `{ "reason": IncidentReason, "note"?: string }` | `remittances:report-incident` | `POST /remittances/{id}/incidents` |
+| `CASH_EXCHANGE` (sin `remittanceId`) | `{ "fromCurrency", "fromAmount", "toCurrency", "rate", "note"? }` | `cash:exchange-own` | `POST /cash/me/exchanges` (ver [courier-exchange.md](courier-exchange.md)) |
 
 ### Respuesta
 

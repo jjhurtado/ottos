@@ -24,9 +24,10 @@ datos propios: orquesta `remittances` y `payments`.
 - **Descarga:** remesas abiertas asignadas al usuario, ids a quitar (reasignadas o cerradas), su caja y el workflow.
   Completa sin `since` o si es de hace más de 7 días; si no, solo lo cambiado (columna `remittances.updated_at`).
   `serverTime` es el `since` de la próxima vez. Ventas recibe listas vacías: trabaja en la app solo con conexión.
-- **Lote:** las acciones (`DELIVER`, `DELIVER_WITH_PIN`, `POSTPONE`, `REPORT_INCIDENT`) se aplican en orden, cada una
-  en su propia transacción (`RemittanceService.applySynced`); este servicio no es transaccional a propósito. Un
-  `payload` mal formado rechaza solo su acción.
+- **Lote:** las acciones (`DELIVER`, `DELIVER_WITH_PIN`, `POSTPONE`, `REPORT_INCIDENT` y `CASH_EXCHANGE`) se aplican
+  en orden, cada una en su propia transacción (`RemittanceService.applySynced` o
+  `CashLedgerService.applySyncedExchange`); este servicio no es transaccional a propósito. Un `payload` mal formado
+  rechaza solo su acción.
 - La idempotencia, la hora real (`occurredAt`), los conflictos y las marcas de revisión viven en `remittances` (ver
   su documento).
 

@@ -1,6 +1,6 @@
 # Contrato: cambio de moneda del repartidor
 
-Estado: **cerrado con el frontend** (2026-10-11). No implementado. Contexto en
+Estado: **cerrado con el frontend e implementado** (2026-10-11; módulo `payments`, migración `V2__courier_exchanges.sql`). Contexto en
 [ROADMAP.md › Funcionalidades pedidas en diseño](../../ROADMAP.md).
 
 El negocio trabaja en USD. Si hay que entregar en CUP, el repartidor cambia los USD durante el viaje a la tasa que
@@ -76,7 +76,9 @@ POST /cash/exchanges/{id}/review/resolve  { "note": "..." }      permiso cash:re
 
 - `configuredRate` y `deviationPercent`: la tasa con la que se comparó y cuánto se alejó (null si no había tasa).
 - `recordedBy`: quién lo registró (el propio repartidor, o Ventas/Admin en su nombre).
-- `review`: `null` o `{ "reason": "UNUSUAL_EXCHANGE_RATE", "flaggedAt": "…", "resolvedNote"? }`.
+- `review`: `null` si nunca se marcó, o `{ "reason", "flaggedAt", "resolvedAt", "resolvedBy", "resolvedNote" }`. Está
+  pendiente mientras `resolvedAt` es `null`; al resolverlo se rellenan los tres campos y la marca queda como historial.
+  `reason`: `UNUSUAL_EXCHANGE_RATE`, o `LATE_SYNC` si se sincronizó más de 7 días después.
 
 El repartidor ve sus cambios como movimientos de su caja (`/cash/me`); no necesita `/cash/exchanges`.
 
@@ -89,7 +91,11 @@ Acción nueva en `POST /sync/actions` (contrato en [offline-sync.md](offline-syn
   "payload": { "fromCurrency": "USD", "fromAmount": 100, "toCurrency": "CUP", "rate": 480, "note": "…" } }
 ```
 
-- `remittanceId` es `null` (no hay remesa). Mismo id como clave de idempotencia, mismas reglas de `occurredAt`.
+- `remittanceId` es `null` (no hay remesa). Mismo id como clave de idempotencia. `occurredAt` no puede ser más de
+  5 minutos futuro; si es de hace más de 7 días, el cambio se aplica igualmente (el dinero ya cambió de manos) y queda
+  marcado `LATE_SYNC`, salvo que ya lo esté por `UNUSUAL_EXCHANGE_RATE`.
+- Un `payload` incompleto (faltan `fromCurrency`, `fromAmount`, `toCurrency` o `rate`) rechaza solo esa acción con
+  `VALIDATION_FAILED`.
 - Resultado: `APPLIED` / `ALREADY_APPLIED` con `exchange: ExchangeView` (y `remittance: null`), o `REJECTED` con su
   `code`. `flaggedForReview: true` si la tasa fue inusual.
 - La tasa se compara con la configurada **a la hora del cambio** (`occurredAt`), no a la de la sincronización.
@@ -111,4 +117,5 @@ quedan en el propio cambio.
 
 ## Códigos nuevos
 
-`INVALID_CURRENCY`, `INVALID_RATE`. Motivo de revisión nuevo: `UNUSUAL_EXCHANGE_RATE`.
+`INVALID_CURRENCY`, `INVALID_RATE`, `EXCHANGE_NOT_FOUND`. Motivos de revisión de un cambio: `UNUSUAL_EXCHANGE_RATE`,
+`LATE_SYNC`.

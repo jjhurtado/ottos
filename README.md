@@ -145,6 +145,7 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Cash | `GET /cash/business`, `/cash/business/movements`, `/cash/couriers`, `/cash/couriers/{id}`, `/cash/remittances/{id}/movements`; `POST /cash/couriers/{id}/funding`, `/returns` | `cash:read`, `cash:write` |
 | Own cash | `GET /cash/me` | `cash:read-own` |
 | Business box | `POST /cash/business/deposits`, `/withdrawals` | `cash:adjust` |
+| Courier exchanges | `POST /cash/me/exchanges`, `POST /cash/couriers/{id}/exchanges`, `GET /cash/exchanges?review=`, `POST /cash/exchanges/{id}/review/resolve` (contract: `docs/contracts/courier-exchange.md`) | `cash:exchange-own`, `cash:write`, `cash:read`, `cash:review` |
 
 All paths start with `/api/v1`. Initial grants: ADMIN has everything; SALES manages customers, reads the configuration, quotes,
 remittances (read, create, assign, postpone, report incidents) and courier cash; DELIVERY sees and completes its own
@@ -165,10 +166,10 @@ Throw `ApiException.badRequest("SOME_CODE", "English detail")` (or `conflict`, `
 
 | Status | Codes |
 | --- | --- |
-| 400 | `AMOUNT_BELOW_MINIMUM` (with `minimumAmount`, `currency`), `INCIDENT_NOTE_REQUIRED`, `INVALID_OCCURRED_AT` (sync), `VALIDATION_FAILED` (with `errors: [{field, constraint}]`, e.g. `{"field": "email", "constraint": "NotBlank"}`), `MALFORMED_REQUEST`, `INVALID_PARAMETER`, `AMOUNT_TOO_SMALL`, `BENEFICIARY_NOT_LINKED`, `BENEFICIARY_UNAVAILABLE`, `COURIER_REQUIRED`, `CUSTOMER_UNAVAILABLE`, `FEE_PERCENTAGE_TOO_HIGH`, `FIXED_RATE`, `INCORRECT_CURRENT_PASSWORD`, `INCORRECT_PIN`, `INVALID_AMOUNT`, `INVALID_COURIER`, `INVALID_FEE_RANGE`, `INVALID_PHONE`, `INVALID_POSTPONE_DATE`, `NO_ACTIVE_CORRIDOR`, `NO_BUSINESS_CASH`, `UNKNOWN_MUNICIPALITY`, `UNKNOWN_PERMISSIONS`, `UNKNOWN_ROLES` |
+| 400 | `AMOUNT_BELOW_MINIMUM` (with `minimumAmount`, `currency`), `INCIDENT_NOTE_REQUIRED`, `INVALID_OCCURRED_AT` (sync), `INVALID_CURRENCY`, `INVALID_RATE`, `VALIDATION_FAILED` (with `errors: [{field, constraint}]`, e.g. `{"field": "email", "constraint": "NotBlank"}`), `MALFORMED_REQUEST`, `INVALID_PARAMETER`, `AMOUNT_TOO_SMALL`, `BENEFICIARY_NOT_LINKED`, `BENEFICIARY_UNAVAILABLE`, `COURIER_REQUIRED`, `CUSTOMER_UNAVAILABLE`, `FEE_PERCENTAGE_TOO_HIGH`, `FIXED_RATE`, `INCORRECT_CURRENT_PASSWORD`, `INCORRECT_PIN`, `INVALID_AMOUNT`, `INVALID_COURIER`, `INVALID_FEE_RANGE`, `INVALID_PHONE`, `INVALID_POSTPONE_DATE`, `NO_ACTIVE_CORRIDOR`, `NO_BUSINESS_CASH`, `UNKNOWN_MUNICIPALITY`, `UNKNOWN_PERMISSIONS`, `UNKNOWN_ROLES` |
 | 401 | `AUTHENTICATION_REQUIRED` (no token, or account no longer active), `INVALID_TOKEN` (malformed or expired: refresh or log in again), `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN` |
 | 403 | `FORBIDDEN` (missing permission), `PERMISSION_ESCALATION`, `TRANSITION_FORBIDDEN` |
-| 404 | `NOT_FOUND` (unknown route), `BENEFICIARY_NOT_FOUND`, `CORRIDOR_NOT_FOUND`, `CUSTOMER_NOT_FOUND`, `REMITTANCE_NOT_FOUND`, `ROLE_NOT_FOUND`, `USER_NOT_FOUND` |
+| 404 | `NOT_FOUND` (unknown route), `BENEFICIARY_NOT_FOUND`, `EXCHANGE_NOT_FOUND`, `CORRIDOR_NOT_FOUND`, `CUSTOMER_NOT_FOUND`, `REMITTANCE_NOT_FOUND`, `ROLE_NOT_FOUND`, `USER_NOT_FOUND` |
 | 409 | `CONCURRENT_UPDATE` (retry), `ACTION_ID_CONFLICT` (sync), `REVIEW_NOT_PENDING`, `BENEFICIARY_INACTIVE`, `BUILT_IN_ROLE`, `CANNOT_DEACTIVATE_SELF`, `COURIER_NOT_ASSIGNED`, `EMAIL_TAKEN`, `LAST_ADMIN`, `NO_EXCHANGE_RATE`, `NO_FEE_RULE`, `PHONE_ALREADY_REGISTERED`, `REMITTANCE_ALREADY_COMPLETED`, `REMITTANCE_NOT_ASSIGNABLE`, `REMITTANCE_NOT_COMPLETABLE`, `ROLE_CODE_TAKEN`, `ROLE_IN_USE`, `TRANSITION_NOT_ALLOWED` |
 
 Other framework errors get the status name as code (e.g. `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE`).
