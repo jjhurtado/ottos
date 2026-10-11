@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +26,21 @@ public interface RemittanceRepository extends JpaRepository<Remittance, UUID>, J
     Optional<Remittance> findByIdempotencyKey(String idempotencyKey);
 
     List<Remittance> findByCourierIdAndStatusNotInOrderByExpectedDateAsc(UUID courierId, Collection<String> statuses);
+
+    /** Open remittances of a courier that changed after a moment, for the mobile app's incremental download. */
+    List<Remittance> findByCourierIdAndStatusNotInAndUpdatedAtAfterOrderByExpectedDateAsc(
+            UUID courierId, Collection<String> statuses, Instant since);
+
+    /**
+     * Remittances that changed after a moment and are no longer open and assigned to the user, although they were at
+     * some point (reassigned to someone else, or closed): the mobile app removes them.
+     */
+    @Query("""
+            select r.id from Remittance r
+            where r.updatedAt > :since
+              and (r.courierId is null or r.courierId <> :userId or r.status in :finalStatuses)
+              and exists (select e.id from RemittanceEvent e where e.remittanceId = r.id and e.courierId = :userId)""")
+    List<UUID> findNoLongerAssignedSince(UUID userId, Collection<String> finalStatuses, Instant since);
 
     List<Remittance> findByCustomerIdOrderByCreatedAtDesc(UUID customerId);
 

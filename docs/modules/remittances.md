@@ -12,8 +12,10 @@ historial y estadísticas.
 
 ## API pública
 
-- `RemittanceType`, `IncidentReason` y los eventos de `RemittanceEvents` (`RemittanceRegistered`,
+- `RemittanceType`, `IncidentReason`, `ReviewReason` y los eventos de `RemittanceEvents` (`RemittanceRegistered`,
   `RemittanceCompleted`), que escucha `payments` para mover la caja en la misma transacción.
+- Interfaz con nombre `application` (`RemittanceService`, `RemittanceView`, `Viewer`, tipos de sincronización), usada
+  solo por el módulo `sync`.
 
 ## Endpoints
 
@@ -27,13 +29,15 @@ historial y estadísticas.
 | `POST /remittances/{id}/deliver`, `/deliver-with-pin` | `remittances:deliver` |
 | `POST /remittances/{id}/incidents` | `remittances:report-incident` |
 | `POST /remittances/{id}/postpone` | `remittances:postpone` |
+| `POST /remittances/{id}/review/resolve` (con nota) | `remittances:review` |
 | `POST /remittances/{id}/transitions` | el permiso que exija la transición |
 | `GET /customers/{id}/stats`, `GET /beneficiaries/{id}/stats` | `remittances:read` |
 
 ## Datos
 
 `remittances`, `remittance_events`, `remittance_statuses`, `remittance_transitions` (`V6__remittances.sql`; incidencias
-en `V9__delivery_incidents.sql`).
+en `V9__delivery_incidents.sql`; revisión y `updated_at` en `V12__remittance_review.sql`), `synced_actions`
+(`V13__synced_actions.sql`).
 
 ## Reglas
 
@@ -54,14 +58,24 @@ en `V9__delivery_incidents.sql`).
 - **Visibilidad (`Viewer`):** `remittances:read` ve todo; `read-assigned` solo las suyas. El PIN solo con
   `remittances:read`. Comisión, tasa y totales de las recogidas solo con `remittances:read-financials`.
 - **Concurrencia:** `@Version` en `Remittance`; dos cambios simultáneos dan 409 `CONCURRENT_UPDATE`.
+- **Revisión:** una remesa puede quedar marcada (`review`: `DELIVERED_AFTER_REASSIGNMENT`, `PIN_MISMATCH`,
+  `DUPLICATE_DELIVERY`, `LATE_SYNC`) por una acción sincronizada desde la app móvil. Se lista con `review=true` y se
+  resuelve con una nota; ambos pasos quedan en el historial (`REVIEW_FLAGGED`, `REVIEW_RESOLVED`).
+- **Acciones sincronizadas** (`applySynced`, usado por el módulo `sync`): cada una en su transacción, a la hora
+  `occurredAt` (también en la caja). El id de la acción se guarda en `synced_actions` junto con su efecto: reenviarla da
+  `ALREADY_APPLIED`. `occurredAt` no puede ser futuro (más de 5 min) ni anterior a la remesa. Una entrega de quien tenía
+  la remesa a esa hora se acepta aunque la hayan reasignado (y pasa a ser suya); una segunda entrega se rechaza y marca
+  la remesa; un PIN incorrecto se rechaza con `strictPin` o se marca; las entregas de hace más de 7 días se marcan, el
+  resto de acciones tan antiguas se rechaza. Posponer o reportar incidencias exige que la remesa sea suya ahora.
 
 ## Dónde tocar
 
 - Estado nuevo del workflow: filas en `remittance_statuses` y `remittance_transitions` (migración), sin código.
 - Reglas de registro, asignación, completado e incidencias: `RemittanceServiceImpl`.
 - Qué ve cada usuario: `Viewer` y `RemittanceViews`.
+- Reglas de las acciones sincronizadas: `RemittanceServiceImpl.applySynced` (contrato en
+  `docs/contracts/offline-sync.md`).
 
 ## Pendiente
 
-App del repartidor offline-first: idempotencia en las acciones del repartidor, hora real de la acción y sincronización
-en lote (ver roadmap). Asignación por zona fuera de 1.0.
+Asignación por zona fuera de 1.0.

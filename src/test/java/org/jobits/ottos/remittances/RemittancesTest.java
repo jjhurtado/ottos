@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -303,6 +304,33 @@ class RemittancesTest extends ApiTestSupport {
     }
 
     @Test
+    void aFlaggedRemittanceIsListedAndResolvedWithANote() throws Exception {
+        String id = id(register("DELIVERY", "100", "CUP"));
+        assign(id, courier.getId().toString());
+        jdbc.update("UPDATE remittances SET review_reason = 'PIN_MISMATCH', review_flagged_at = CURRENT_TIMESTAMP WHERE id = ?",
+                UUID.fromString(id));
+
+        mvc.perform(get("/api/v1/remittances").param("review", "true").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].review.reason").value("PIN_MISMATCH"));
+        mvc.perform(get("/api/v1/remittances/assigned").header("Authorization", bearer(courierToken)))
+                .andExpect(jsonPath("$[0].review.reason").value("PIN_MISMATCH"));
+        resolveReview(id, "Llamé al beneficiario: recibió el dinero", courierToken).andExpect(status().isForbidden());
+
+        resolveReview(id, "Llamé al beneficiario: recibió el dinero", salesToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.review").doesNotExist());
+        mvc.perform(get("/api/v1/remittances").param("review", "true").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.totalItems").value(0));
+        mvc.perform(get("/api/v1/remittances/{id}/events", id).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$[2].type").value("REVIEW_RESOLVED"))
+                .andExpect(jsonPath("$[2].note").value("Llamé al beneficiario: recibió el dinero"));
+        resolveReview(id, "otra vez", salesToken)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REVIEW_NOT_PENDING"));
+    }
+
+    @Test
     void anAmountThatRoundsToNothingIsRejected() throws Exception {
         // 0.10 USD × 410 = 41 CUP, rounded down to the 50 CUP step: nothing to deliver
         register("DELIVERY", "0.10", "CUP").andExpect(status().isBadRequest());
@@ -455,6 +483,13 @@ class RemittancesTest extends ApiTestSupport {
                 .header("Authorization", bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"reason\": \"" + reason + "\"" + noteJson + "}"));
+    }
+
+    private ResultActions resolveReview(String id, String note, String token) throws Exception {
+        return mvc.perform(post("/api/v1/remittances/{id}/review/resolve", id)
+                .header("Authorization", bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"note\": \"" + note + "\"}"));
     }
 
     private ResultActions postpone(String id, LocalDate date, String token) throws Exception {

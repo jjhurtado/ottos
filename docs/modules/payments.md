@@ -8,7 +8,8 @@ Llevar el efectivo del negocio y el de cada repartidor, por moneda, en un libro 
 
 ## API pública
 
-Ninguna para otros módulos: escucha los eventos de `remittances`.
+Escucha los eventos de `remittances`. La interfaz con nombre `application` (`CashLedgerService`) la usa solo el módulo
+`sync`, para incluir la caja del repartidor en la descarga de la app móvil.
 
 ## Endpoints
 
@@ -34,6 +35,8 @@ Ninguna para otros módulos: escucha los eventos de `remittances`.
   - completar una entrega → `DELIVERY_PAYOUT`: el monto a entregar sale de la caja del repartidor;
   - completar una recogida → `PICKUP_COLLECTION`: los USD recogidos entran en la caja del repartidor.
 - La primera cuenta de un repartidor se crea al vuelo y sin colisiones (`INSERT … ON CONFLICT DO NOTHING`).
+- La fecha de un movimiento automático es la del evento: para una entrega sincronizada desde la app móvil, la hora en
+  que ocurrió (`occurredAt`), no la de la sincronización.
 
 ## Pendiente
 

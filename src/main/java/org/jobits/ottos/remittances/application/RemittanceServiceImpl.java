@@ -13,13 +13,17 @@ import org.jobits.ottos.rates.QuoteService;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceCompleted;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceRegistered;
 import org.jobits.ottos.remittances.IncidentReason;
+import org.jobits.ottos.remittances.ReviewReason;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.jobits.ottos.remittances.domain.Remittance;
+import org.jobits.ottos.remittances.domain.EventType;
 import org.jobits.ottos.remittances.domain.RemittanceEvent;
 import org.jobits.ottos.remittances.domain.RemittanceEventRepository;
 import org.jobits.ottos.remittances.domain.RemittanceRepository;
 import org.jobits.ottos.remittances.domain.RemittanceStatus;
 import org.jobits.ottos.remittances.domain.RemittanceTransition;
+import org.jobits.ottos.remittances.domain.SyncedAction;
+import org.jobits.ottos.remittances.domain.SyncedActionRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -47,11 +52,18 @@ class RemittanceServiceImpl implements RemittanceService {
 
     static final String SOURCE_CURRENCY = "USD";
     private static final String COURIER_PERMISSION = "remittances:deliver";
+    private static final String POSTPONE_PERMISSION = "remittances:postpone";
+    private static final String INCIDENT_PERMISSION = "remittances:report-incident";
+    /** A phone clock may run this far ahead of the server's. */
+    private static final Duration CLOCK_SKEW = Duration.ofMinutes(5);
+    /** Synced actions older than this: deliveries are flagged LATE_SYNC, the rest rejected. */
+    private static final Duration LATE_SYNC = Duration.ofDays(7);
     private static final String CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final RemittanceRepository remittances;
     private final RemittanceEventRepository events;
+    private final SyncedActionRepository syncedActions;
     private final ConfigurationService configuration;
     private final Workflow workflow;
     private final RemittanceViews views;
@@ -63,11 +75,13 @@ class RemittanceServiceImpl implements RemittanceService {
     private final Clock clock;
 
     RemittanceServiceImpl(RemittanceRepository remittances, RemittanceEventRepository events,
-                      ConfigurationService configuration, Workflow workflow, RemittanceViews views,
-                      CustomerService customers, BeneficiaryService beneficiaries, QuoteService quotes, StaffDirectoryService staff,
-                      ApplicationEventPublisher publisher, Clock clock) {
+                          SyncedActionRepository syncedActions, ConfigurationService configuration, Workflow workflow,
+                          RemittanceViews views, CustomerService customers, BeneficiaryService beneficiaries,
+                          QuoteService quotes, StaffDirectoryService staff, ApplicationEventPublisher publisher,
+                          Clock clock) {
         this.remittances = remittances;
         this.events = events;
+        this.syncedActions = syncedActions;
         this.configuration = configuration;
         this.workflow = workflow;
         this.views = views;
@@ -127,14 +141,14 @@ class RemittanceServiceImpl implements RemittanceService {
         Remittance r = findVisible(id, viewer);
         RemittanceTransition t = workflow.firstTransition(r.getStatus(), RemittanceStatus::isRequiresCourier)
                 .orElseThrow(() -> conflict("REMITTANCE_NOT_ASSIGNABLE", "Remittance " + r.getCode() + " cannot be assigned in status " + r.getStatus()));
-        return apply(r, t, courierId, note, viewer);
+        return apply(r, t, courierId, note, viewer, clock.instant());
     }
 
     @Override
     @Transactional
     public RemittanceView complete(UUID id, String note, Viewer viewer) {
         Remittance r = findVisible(id, viewer);
-        return apply(r, finalTransition(r), null, note, viewer);
+        return apply(r, finalTransition(r), null, note, viewer, clock.instant());
     }
 
     @Override
@@ -144,7 +158,7 @@ class RemittanceServiceImpl implements RemittanceService {
         if (!r.getPin().equals(pin)) {
             throw badRequest("INCORRECT_PIN", "Incorrect PIN");
         }
-        return apply(r, finalTransition(r), null, note, viewer);
+        return apply(r, finalTransition(r), null, note, viewer, clock.instant());
     }
 
     @Override
@@ -153,13 +167,16 @@ class RemittanceServiceImpl implements RemittanceService {
         Remittance r = findVisible(id, viewer);
         RemittanceTransition t = workflow.transition(r.getStatus(), toStatus)
                 .orElseThrow(() -> conflict("TRANSITION_NOT_ALLOWED", "Cannot move " + r.getCode() + " from " + r.getStatus() + " to " + toStatus));
-        return apply(r, t, courierId, note, viewer);
+        return apply(r, t, courierId, note, viewer, clock.instant());
     }
 
     @Override
     @Transactional
     public RemittanceView reportIncident(UUID id, IncidentReason reason, String note, Viewer viewer) {
-        Remittance r = findVisible(id, viewer);
+        return reportIncident(findVisible(id, viewer), reason, note, viewer, clock.instant());
+    }
+
+    private RemittanceView reportIncident(Remittance r, IncidentReason reason, String note, Viewer viewer, Instant at) {
         if (workflow.status(r.getStatus()).isFinalStatus()) {
             throw conflict("REMITTANCE_ALREADY_COMPLETED", "Remittance " + r.getCode() + " is already completed");
         }
@@ -170,29 +187,171 @@ class RemittanceServiceImpl implements RemittanceService {
         if (reason == IncidentReason.OTHER && cleanNote == null) {
             throw badRequest("INCIDENT_NOTE_REQUIRED", "Explain the incident in the note when the reason is OTHER");
         }
+        r.reportIncident(reason, cleanNote, at, viewer.userId());
+        events.save(RemittanceEvent.incidentReported(r, reason, viewer.userId(), at, cleanNote));
+        return views.of(r, viewer);
+    }
+
+    @Override
+    @Transactional
+    public SyncOutcome applySynced(SyncAction a, Viewer viewer) {
+        Optional<SyncedAction> done = syncedActions.findById(a.id());
+        if (done.isPresent()) {
+            if (!done.get().isSameAction(viewer.userId(), a.type().name(), a.remittanceId())) {
+                throw conflict("ACTION_ID_CONFLICT", "Action " + a.id() + " was already used for another action");
+            }
+            return SyncOutcome.alreadyApplied(views.of(remittances.findById(a.remittanceId()).orElseThrow(), viewer));
+        }
+        Remittance r = remittances.findById(a.remittanceId()).orElseThrow(RemittanceServiceImpl::notFound);
         Instant now = clock.instant();
-        r.reportIncident(reason, cleanNote, now, viewer.userId());
-        events.save(RemittanceEvent.incidentReported(r, reason, viewer.userId(), now, cleanNote));
+        Instant at = a.occurredAt();
+        if (at.isAfter(now.plus(CLOCK_SKEW)) || at.isBefore(r.getCreatedAt())) {
+            throw badRequest("INVALID_OCCURRED_AT", "occurredAt must not be in the future nor before the remittance");
+        }
+        boolean late = at.isBefore(now.minus(LATE_SYNC));
+
+        ReviewReason flag;
+        switch (a.type()) {
+            case DELIVER, DELIVER_WITH_PIN -> {
+                Optional<ReviewReason> outcome = completeSynced(r, a, viewer, late);
+                if (outcome.isPresent() && outcome.get() == ReviewReason.DUPLICATE_DELIVERY) {
+                    flag(r, ReviewReason.DUPLICATE_DELIVERY, viewer, now, a.id());
+                    return SyncOutcome.rejected("REMITTANCE_ALREADY_COMPLETED",
+                            "Remittance " + r.getCode() + " was already completed by someone else");
+                }
+                flag = outcome.orElse(null);
+            }
+            case POSTPONE -> {
+                requireRecentVisible(r, viewer, late, POSTPONE_PERMISSION);
+                postpone(r, a.newDate(), a.reason(), viewer, at);
+                flag = null;
+            }
+            case REPORT_INCIDENT -> {
+                requireRecentVisible(r, viewer, late, INCIDENT_PERMISSION);
+                reportIncident(r, a.incidentReason(), a.note(), viewer, at);
+                flag = null;
+            }
+            default -> throw new IllegalArgumentException("Unknown action " + a.type());
+        }
+        if (flag != null) {
+            flag(r, flag, viewer, now, a.id());
+        }
+        syncedActions.save(new SyncedAction(a.id(), viewer.userId(), a.type().name(), r.getId(), at, now,
+                blankToNull(a.deviceId())));
+        return SyncOutcome.applied(views.of(r, viewer), flag != null);
+    }
+
+    /**
+     * Completes a remittance from a synced delivery. Returns the review it needs, if any; DUPLICATE_DELIVERY means it
+     * was already completed by someone else and nothing was applied.
+     */
+    private Optional<ReviewReason> completeSynced(Remittance r, SyncAction a, Viewer viewer, boolean late) {
+        if (!viewer.has(COURIER_PERMISSION)) {
+            throw ApiException.forbidden("FORBIDDEN", "Delivering requires " + COURIER_PERMISSION);
+        }
+        if (workflow.status(r.getStatus()).isFinalStatus()) {
+            if (viewer.userId().equals(r.getCompletedBy())) {
+                throw conflict("REMITTANCE_ALREADY_COMPLETED", "Remittance " + r.getCode() + " is already completed");
+            }
+            return Optional.of(ReviewReason.DUPLICATE_DELIVERY);
+        }
+        ReviewReason flag = null;
+        if (!viewer.canSee(r)) {
+            // Reassigned while the phone was offline: the cash already changed hands, so it counts if it was theirs then
+            if (!wasAssignedAt(r, viewer.userId(), a.occurredAt())) {
+                throw notFound();
+            }
+            r.assignTo(viewer.userId());
+            flag = ReviewReason.DELIVERED_AFTER_REASSIGNMENT;
+        }
+        if (a.type() == SyncActionType.DELIVER_WITH_PIN && !r.getPin().equals(a.pin())) {
+            if (a.strictPin()) {
+                throw badRequest("INCORRECT_PIN", "Incorrect PIN");
+            }
+            flag = flag != null ? flag : ReviewReason.PIN_MISMATCH;
+        }
+        if (late && flag == null) {
+            flag = ReviewReason.LATE_SYNC;
+        }
+        apply(r, finalTransition(r), null, a.note(), viewer, a.occurredAt());
+        return Optional.ofNullable(flag);
+    }
+
+    /** Postponing and reporting incidents move no cash: they need the remittance to be theirs now and a recent action. */
+    private void requireRecentVisible(Remittance r, Viewer viewer, boolean late, String permission) {
+        if (!viewer.has(permission)) {
+            throw ApiException.forbidden("FORBIDDEN", "This action requires " + permission);
+        }
+        if (late) {
+            throw badRequest("INVALID_OCCURRED_AT", "Only deliveries can be synced more than 7 days later");
+        }
+        if (!viewer.canSee(r)) {
+            throw notFound();
+        }
+    }
+
+    private boolean wasAssignedAt(Remittance r, UUID userId, Instant at) {
+        return events.findFirstByRemittanceIdAndTypeAndOccurredAtLessThanEqualOrderByOccurredAtDesc(
+                        r.getId(), EventType.STATUS_CHANGED, at)
+                .map(e -> userId.equals(e.getCourierId()))
+                .orElse(false);
+    }
+
+    private void flag(Remittance r, ReviewReason reason, Viewer viewer, Instant now, UUID actionId) {
+        r.flagForReview(reason, now, actionId);
+        events.save(RemittanceEvent.reviewFlagged(r, reason, viewer.userId(), now));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AssignedChanges assignedChangesSince(Instant since, Viewer viewer) {
+        if (!viewer.has(Viewer.READ_ASSIGNED)) {
+            return new AssignedChanges(since == null, List.of(), List.of());
+        }
+        List<String> finals = workflow.finalCodes();
+        if (since == null || since.isBefore(clock.instant().minus(LATE_SYNC))) {
+            return new AssignedChanges(true, assignedTo(viewer), List.of());
+        }
+        List<Remittance> changed = remittances.findByCourierIdAndStatusNotInAndUpdatedAtAfterOrderByExpectedDateAsc(
+                viewer.userId(), finals, since);
+        List<UUID> removed = remittances.findNoLongerAssignedSince(viewer.userId(), finals, since);
+        return new AssignedChanges(false, views.of(changed, viewer), removed);
+    }
+
+    @Override
+    @Transactional
+    public RemittanceView resolveReview(UUID id, String note, Viewer viewer) {
+        Remittance r = findVisible(id, viewer);
+        if (r.getReviewReason() == null) {
+            throw conflict("REVIEW_NOT_PENDING", "Remittance " + r.getCode() + " has nothing to review");
+        }
+        r.resolveReview();
+        events.save(RemittanceEvent.reviewResolved(r, viewer.userId(), clock.instant(), note.trim()));
         return views.of(r, viewer);
     }
 
     @Override
     @Transactional
     public RemittanceView postpone(UUID id, LocalDate newDate, String reason, Viewer viewer) {
-        Remittance r = findVisible(id, viewer);
+        return postpone(findVisible(id, viewer), newDate, reason, viewer, clock.instant());
+    }
+
+    /** The new date must be after the current one and not before the day the action happened (business timezone). */
+    private RemittanceView postpone(Remittance r, LocalDate newDate, String reason, Viewer viewer, Instant at) {
         if (workflow.status(r.getStatus()).isFinalStatus()) {
             throw conflict("REMITTANCE_ALREADY_COMPLETED", "Remittance " + r.getCode() + " is already completed");
         }
-        if (!newDate.isAfter(r.getExpectedDate()) || newDate.isBefore(today())) {
+        if (!newDate.isAfter(r.getExpectedDate()) || newDate.isBefore(LocalDate.ofInstant(at, clock.getZone()))) {
             throw badRequest("INVALID_POSTPONE_DATE", "The new date must be after " + r.getExpectedDate() + " and not in the past");
         }
         LocalDate previous = r.getExpectedDate();
         r.postpone(newDate);
-        events.save(RemittanceEvent.postponed(r, previous, viewer.userId(), clock.instant(), reason.trim()));
+        events.save(RemittanceEvent.postponed(r, previous, viewer.userId(), at, reason.trim()));
         return views.of(r, viewer);
     }
 
-    private RemittanceView apply(Remittance r, RemittanceTransition t, UUID courierId, String note, Viewer viewer) {
+    private RemittanceView apply(Remittance r, RemittanceTransition t, UUID courierId, String note, Viewer viewer,
+                                 Instant at) {
         if (!viewer.has(t.getPermissionCode())) {
             throw ApiException.forbidden("TRANSITION_FORBIDDEN", "Moving to " + t.getToStatus() + " requires " + t.getPermissionCode());
         }
@@ -207,18 +366,17 @@ class RemittanceServiceImpl implements RemittanceService {
             }
             r.assignTo(courierId);
         }
-        Instant now = clock.instant();
         if (target.isFinalStatus()) {
             if (r.getCourierId() == null) {
                 throw conflict("COURIER_NOT_ASSIGNED", "Assign a courier before completing " + r.getCode());
             }
-            r.complete(now, viewer.userId());
+            r.complete(at, viewer.userId());
             publisher.publishEvent(new RemittanceCompleted(r.getId(), r.getCode(), r.getType(), r.getCourierId(),
-                    r.cashAmount(), r.cashCurrency(), viewer.userId(), now));
+                    r.cashAmount(), r.cashCurrency(), viewer.userId(), at));
         }
         String from = r.getStatus();
         r.moveTo(target.getCode());
-        events.save(RemittanceEvent.statusChanged(r, from, viewer.userId(), now, blankToNull(note)));
+        events.save(RemittanceEvent.statusChanged(r, from, viewer.userId(), at, blankToNull(note)));
         return views.of(r, viewer);
     }
 
@@ -317,6 +475,9 @@ class RemittanceServiceImpl implements RemittanceService {
             }
             if (f.createdTo() != null) {
                 where.add(cb.lessThan(root.get("createdAt"), f.createdTo().plusDays(1).atStartOfDay(zone).toInstant()));
+            }
+            if (f.review() != null) {
+                where.add(f.review() ? cb.isNotNull(root.get("reviewReason")) : cb.isNull(root.get("reviewReason")));
             }
             if (f.incident() != null) {
                 where.add(f.incident() ? cb.isNotNull(root.get("openIncidentReason"))

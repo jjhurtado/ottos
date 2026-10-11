@@ -1,5 +1,6 @@
 package org.jobits.ottos.identity.security;
 
+import org.jobits.ottos.identity.domain.ClientType;
 import org.jobits.ottos.identity.domain.RefreshToken;
 import org.jobits.ottos.identity.domain.RefreshTokenRepository;
 import org.springframework.stereotype.Service;
@@ -31,18 +32,24 @@ class RefreshTokenServiceImpl implements RefreshTokenService {
 
     @Override
     @Transactional
-    public IssuedRefreshToken issue(UUID userId) {
+    public IssuedRefreshToken issue(UUID userId, ClientType client) {
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         String value = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         Instant now = Instant.now();
-        tokens.save(new RefreshToken(userId, hash(value), now, now.plus(props.refreshTokenTtl())));
-        return new IssuedRefreshToken(value, props.refreshTokenTtl().toSeconds());
+        RefreshToken saved = tokens.save(new RefreshToken(userId, client, hash(value), now,
+                now.plus(props.refreshTokenTtl())));
+        return new IssuedRefreshToken(saved.getId(), value, props.refreshTokenTtl().toSeconds());
     }
 
     @Override
     public Optional<RefreshToken> find(String value) {
         return tokens.findByTokenHash(hash(value));
+    }
+
+    @Override
+    public Optional<RefreshToken> findById(UUID id) {
+        return tokens.findById(id);
     }
 
     @Override
