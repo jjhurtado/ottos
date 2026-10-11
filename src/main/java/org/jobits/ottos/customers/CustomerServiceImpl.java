@@ -101,7 +101,7 @@ class CustomerServiceImpl implements CustomerService {
         });
     }
 
-    /** Same phone, and the same name and address ignoring case and outer spaces (no address equals no address). */
+    /** Same phone, and the same name and address ignoring case and spaces (no address equals no address). */
     private Optional<Customer> identical(Customer.Details normalized, UUID exceptId) {
         return customers.findByPhone(normalized.phone()).stream()
                 .filter(c -> !c.getId().equals(exceptId))
@@ -109,10 +109,13 @@ class CustomerServiceImpl implements CustomerService {
                 .findFirst();
     }
 
+    /** Equal ignoring case and repeated or outer spaces ("Ana  Pérez" is "ana pérez"); no value equals no value. */
     private static boolean same(String a, String b) {
-        String x = a == null ? "" : a.trim();
-        String y = b == null ? "" : b.trim();
-        return x.equalsIgnoreCase(y);
+        return squash(a).equalsIgnoreCase(squash(b));
+    }
+
+    private static String squash(String value) {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ");
     }
 
     private static Customer.Details normalize(Customer.Details d) {

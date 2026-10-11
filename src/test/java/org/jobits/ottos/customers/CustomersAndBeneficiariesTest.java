@@ -39,7 +39,7 @@ class CustomersAndBeneficiariesTest extends ApiTestSupport {
         registerCustomer("Ana Pérez", "+1 305 555 0101", "Miami").andExpect(status().isCreated());
 
         // Same name, phone and address (ignoring case and spaces): the same customer
-        registerCustomer(" ana pérez ", "+1-305-555-0101", "MIAMI")
+        registerCustomer(" ana  pérez ", "+1-305-555-0101", "MIAMI")
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CUSTOMER_ALREADY_REGISTERED"))
                 .andExpect(jsonPath("$.customerId").isNotEmpty());

@@ -252,10 +252,13 @@ class CustomerTransferServiceImpl implements CustomerTransferService {
         return v;
     }
 
+    /** Equal ignoring case and repeated or outer spaces ("Ana  Pérez" is "ana pérez"); no value equals no value. */
     private static boolean same(String a, String b) {
-        String x = a == null ? "" : a.trim();
-        String y = b == null ? "" : b.trim();
-        return x.equalsIgnoreCase(y);
+        return squash(a).equalsIgnoreCase(squash(b));
+    }
+
+    private static String squash(String value) {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ");
     }
 
     /** Resolves a municipality given by code or by name (ignoring case and accents). */
