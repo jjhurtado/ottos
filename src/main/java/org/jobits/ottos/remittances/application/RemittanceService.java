@@ -54,6 +54,9 @@ public interface RemittanceService {
      */
     AssignedChanges assignedChangesSince(Instant since, Viewer viewer);
 
+    /** Sales figures of the remittances registered in [from, to); "completed" means completed before to. */
+    SalesSummary salesSummary(Instant from, Instant to);
+
     /** Clears the pending review of a remittance, leaving the note in its history. */
     RemittanceView resolveReview(UUID id, String note, Viewer viewer);
 
