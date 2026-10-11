@@ -198,6 +198,13 @@ través de `ConfigurationService`; nunca guardan sus propios ajustes. Un ajuste 
 migración), una constante en `Setting`, un método tipado en `ConfigurationService` y su campo en `SettingsView` y en
 `PUT /configuration/settings`.
 
+### Documentación de cada módulo
+
+Cada módulo tiene su documento en `docs/modules/<módulo>.md`: qué hace, su API pública, endpoints y permisos, datos,
+reglas de negocio, decisiones y dónde tocar para cambiar algo. Quien cambia un módulo actualiza su documento en la misma
+rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documento y una fila en
+`docs/modules/README.md`.
+
 ### Comunicación entre módulos
 
 - Solo a través de la interfaz de servicio pública del otro módulo (paquete raíz del módulo) o de eventos de dominio

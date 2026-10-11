@@ -146,6 +146,26 @@ Decisiones tomadas para llegar antes a la primera remesa real; lo que queda fuer
 | Sucursales | Una sola sucursal en 1.0; no hay gestión de sucursales | La caja del negocio es única; las cajas por sucursal se añaden cuando haya más de una |
 | Vencimiento de la cotización | Fuera de 1.0 | El cliente no usa el sistema en 1.0: Ventas cotiza y registra en el momento, y la remesa ya cobrada guarda la tasa y la comisión con que se registró. Se retoma con la App Cliente (Fase 2) |
 | Límites de monto | Solo un monto mínimo global en USD, configurable | Mantener la aplicación simple; los acumulados por cliente esperan a la revisión legal |
+| App del repartidor | **Offline-first** (entra en 1.0), ver la sección siguiente | Hay días en que el repartidor pasa la jornada entera sin internet |
+
+### App del repartidor offline-first
+
+La app del repartidor funciona sin conexión por defecto: guarda en el teléfono sus remesas asignadas y su caja, registra
+las acciones (entregar, posponer, reportar incidencias) en una cola local y las sincroniza cuando hay red. El backend se
+adapta así:
+
+| # | Decisión | Detalle |
+| --- | --- | --- |
+| 1 | **Sincronización en lote** | Un endpoint de sincronización recibe la cola completa de acciones, las aplica en orden y devuelve el resultado de cada una (aplicada, ya aplicada o rechazada con su código de error). Una acción rechazada no impide aplicar las siguientes. |
+| 2 | **Sesión de una jornada completa** | El repartidor debe poder trabajar todo el día sin conexión y sincronizar al final sin que su sesión haya caducado. Su token dura la jornada (orientativo: 14 h, configurable aparte del resto del personal, que sigue con 15 min). |
+| 3 | **Margen al reusar el refresh token** | Con mala red, la app puede reintentar un refresh cuya respuesta se perdió. Durante un margen corto (30–60 s) presentar el token recién usado devuelve el mismo par nuevo en vez de cerrar todas las sesiones. |
+| 4 | **Cada acción es idempotente** | Cada acción de la cola lleva un id único generado en el teléfono; si llega dos veces, se aplica una sola vez y se devuelve el mismo resultado. |
+| 5 | **Hora real de la acción** | Cada acción lleva la hora del teléfono (`occurredAt`), que se usa en la remesa, el historial y la caja. No puede ser futura, anterior a la asignación ni de hace más de unos días; el servidor guarda además la hora en que la recibió. |
+| 6 | **Conflictos: se acepta lo ya hecho** | Si mientras el repartidor estaba sin conexión Ventas reasignó o pospuso la remesa, una entrega sincronizada después se acepta si ese repartidor era el asignado a la hora de la acción (el dinero ya cambió de manos), y la remesa queda marcada para que Ventas la revise. |
+| 7 | **PIN sin conexión** | La app guarda el PIN que dice el beneficiario y el servidor lo comprueba al sincronizar; si no coincide, la entrega se registra marcada para revisión. Nunca se envía el PIN ni su hash al teléfono (6 dígitos se descifran al instante). |
+| 8 | **Descarga incremental** | La app pide solo lo que cambió desde su última sincronización, incluidas las remesas que dejaron de ser suyas (reasignadas), para quitarlas del teléfono. |
+
+Pendiente de cerrar con el frontend: el formato exacto de la cola y de la respuesta de sincronización.
 
 ## Plantilla de fase
 
