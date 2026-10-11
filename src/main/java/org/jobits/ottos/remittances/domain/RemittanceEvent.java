@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.jobits.ottos.remittances.IncidentReason;
+import org.jobits.ottos.remittances.ReviewReason;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -48,6 +49,10 @@ public class RemittanceEvent {
     @Enumerated(EnumType.STRING)
     @Column(name = "incident_reason", length = 30)
     private IncidentReason incidentReason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_reason", length = 40)
+    private ReviewReason reviewReason;
 
     @Column(length = 1000)
     private String note;
@@ -100,6 +105,17 @@ public class RemittanceEvent {
         return e;
     }
 
+    public static RemittanceEvent reviewFlagged(Remittance r, ReviewReason reason, UUID actorId, Instant at) {
+        RemittanceEvent e = new RemittanceEvent(r.getId(), EventType.REVIEW_FLAGGED, actorId, at, null);
+        e.reviewReason = reason;
+        e.courierId = r.getCourierId();
+        return e;
+    }
+
+    public static RemittanceEvent reviewResolved(Remittance r, UUID actorId, Instant at, String note) {
+        return new RemittanceEvent(r.getId(), EventType.REVIEW_RESOLVED, actorId, at, note);
+    }
+
     public UUID getId() {
         return id;
     }
@@ -130,6 +146,10 @@ public class RemittanceEvent {
 
     public IncidentReason getIncidentReason() {
         return incidentReason;
+    }
+
+    public ReviewReason getReviewReason() {
+        return reviewReason;
     }
 
     public LocalDate getNewDate() {

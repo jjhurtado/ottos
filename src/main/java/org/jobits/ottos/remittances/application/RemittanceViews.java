@@ -79,9 +79,14 @@ class RemittanceViews {
                     r.getCourierId(), courierName,
                     r.getExpectedDate(),
                     !status.isFinalStatus() && r.getExpectedDate().isBefore(today),
-                    r.getPostponements(), incident(r), r.getNotes(), r.getCreatedAt(), r.getCreatedBy(),
+                    r.getPostponements(), incident(r), review(r), r.getNotes(), r.getCreatedAt(), r.getCreatedBy(),
                     r.getCompletedAt());
         }).toList();
+    }
+
+    private static RemittanceView.PendingReview review(Remittance r) {
+        return r.getReviewReason() == null ? null
+                : new RemittanceView.PendingReview(r.getReviewReason(), r.getReviewFlaggedAt(), r.getReviewActionId());
     }
 
     private static RemittanceView.OpenIncident incident(Remittance r) {

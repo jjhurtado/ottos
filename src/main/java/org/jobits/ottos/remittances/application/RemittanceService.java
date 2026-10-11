@@ -2,6 +2,7 @@ package org.jobits.ottos.remittances.application;
 
 import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceType;
+import org.jobits.ottos.remittances.ReviewReason;
 import org.jobits.ottos.remittances.domain.RemittanceEvent;
 
 import java.math.BigDecimal;
@@ -39,6 +40,9 @@ public interface RemittanceService {
      */
     RemittanceView reportIncident(UUID id, IncidentReason reason, String note, Viewer viewer);
 
+    /** Clears the pending review of a remittance, leaving the note in its history. */
+    RemittanceView resolveReview(UUID id, String note, Viewer viewer);
+
     /** Moves the expected date later. Allowed for any open remittance; recorded with its reason. */
     RemittanceView postpone(UUID id, LocalDate newDate, String reason, Viewer viewer);
 
@@ -72,13 +76,13 @@ public interface RemittanceService {
     }
 
     record EventView(UUID id, String type, String fromStatus, String toStatus, UUID courierId,
-                     LocalDate previousDate, LocalDate newDate, IncidentReason incidentReason, String note,
-                     UUID actorId, Instant occurredAt) {
+                     LocalDate previousDate, LocalDate newDate, IncidentReason incidentReason,
+                     ReviewReason reviewReason, String note, UUID actorId, Instant occurredAt) {
 
         static EventView of(RemittanceEvent e) {
             return new EventView(e.getId(), e.getType().name(), e.getFromStatus(), e.getToStatus(), e.getCourierId(),
-                    e.getPreviousDate(), e.getNewDate(), e.getIncidentReason(), e.getNote(), e.getActorId(),
-                    e.getOccurredAt());
+                    e.getPreviousDate(), e.getNewDate(), e.getIncidentReason(), e.getReviewReason(), e.getNote(),
+                    e.getActorId(), e.getOccurredAt());
         }
     }
 }

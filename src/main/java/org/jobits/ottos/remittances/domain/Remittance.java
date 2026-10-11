@@ -7,10 +7,13 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceType;
+import org.jobits.ottos.remittances.ReviewReason;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -119,6 +122,21 @@ public class Remittance {
     @Column(name = "open_incident_by")
     private UUID openIncidentBy;
 
+    /** Why Sales must check it after a sync from the mobile app; null when nothing is pending. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_reason", length = 40)
+    private ReviewReason reviewReason;
+
+    @Column(name = "review_flagged_at")
+    private Instant reviewFlaggedAt;
+
+    @Column(name = "review_action_id")
+    private UUID reviewActionId;
+
+    /** Last change of any kind; the mobile app downloads what changed since its last sync. */
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
     @Column(length = 1000)
     private String notes;
 
@@ -206,6 +224,25 @@ public class Remittance {
         this.openIncidentBy = by;
     }
 
+    /** Marks it for Sales to check; a newer flag replaces a pending one. */
+    public void flagForReview(ReviewReason reason, Instant at, UUID actionId) {
+        this.reviewReason = reason;
+        this.reviewFlaggedAt = at;
+        this.reviewActionId = actionId;
+    }
+
+    public void resolveReview() {
+        this.reviewReason = null;
+        this.reviewFlaggedAt = null;
+        this.reviewActionId = null;
+    }
+
+    @PrePersist
+    @PreUpdate
+    void touch() {
+        this.updatedAt = Instant.now();
+    }
+
     private void closeIncident() {
         this.openIncidentReason = null;
         this.openIncidentNote = null;
@@ -236,6 +273,22 @@ public class Remittance {
 
     public UUID getOpenIncidentBy() {
         return openIncidentBy;
+    }
+
+    public ReviewReason getReviewReason() {
+        return reviewReason;
+    }
+
+    public Instant getReviewFlaggedAt() {
+        return reviewFlaggedAt;
+    }
+
+    public UUID getReviewActionId() {
+        return reviewActionId;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 
     public UUID getId() {

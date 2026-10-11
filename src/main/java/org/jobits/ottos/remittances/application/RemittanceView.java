@@ -2,6 +2,7 @@ package org.jobits.ottos.remittances.application;
 
 import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceType;
+import org.jobits.ottos.remittances.ReviewReason;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -11,7 +12,8 @@ import java.util.UUID;
 /**
  * A remittance as a given viewer may see it. Fields the viewer is not allowed to see are null:
  * fee, total, rate and amountToDeliver (financials) and pin. cashAmount and cashCurrency are always present:
- * what the courier hands over (delivery) or collects (pickup). incident is the open incident, null when there is none.
+ * what the courier hands over (delivery) or collects (pickup). incident is the open incident and review
+ * the pending review, null when there is none.
  */
 public record RemittanceView(
         UUID id,
@@ -46,6 +48,7 @@ public record RemittanceView(
         boolean late,
         int postponements,
         OpenIncident incident,
+        PendingReview review,
         String notes,
         Instant createdAt,
         UUID createdBy,
@@ -53,5 +56,9 @@ public record RemittanceView(
 
     /** A delivery attempt that failed and nobody has acted on yet. */
     public record OpenIncident(IncidentReason reason, String note, Instant reportedAt, UUID reportedBy) {
+    }
+
+    /** Applied from the mobile app but needs Sales to check it. actionId is the synced action that caused it. */
+    public record PendingReview(ReviewReason reason, Instant flaggedAt, UUID actionId) {
     }
 }

@@ -178,6 +178,18 @@ class RemittanceServiceImpl implements RemittanceService {
 
     @Override
     @Transactional
+    public RemittanceView resolveReview(UUID id, String note, Viewer viewer) {
+        Remittance r = findVisible(id, viewer);
+        if (r.getReviewReason() == null) {
+            throw conflict("REVIEW_NOT_PENDING", "Remittance " + r.getCode() + " has nothing to review");
+        }
+        r.resolveReview();
+        events.save(RemittanceEvent.reviewResolved(r, viewer.userId(), clock.instant(), note.trim()));
+        return views.of(r, viewer);
+    }
+
+    @Override
+    @Transactional
     public RemittanceView postpone(UUID id, LocalDate newDate, String reason, Viewer viewer) {
         Remittance r = findVisible(id, viewer);
         if (workflow.status(r.getStatus()).isFinalStatus()) {
@@ -317,6 +329,9 @@ class RemittanceServiceImpl implements RemittanceService {
             }
             if (f.createdTo() != null) {
                 where.add(cb.lessThan(root.get("createdAt"), f.createdTo().plusDays(1).atStartOfDay(zone).toInstant()));
+            }
+            if (f.review() != null) {
+                where.add(f.review() ? cb.isNotNull(root.get("reviewReason")) : cb.isNull(root.get("reviewReason")));
             }
             if (f.incident() != null) {
                 where.add(f.incident() ? cb.isNotNull(root.get("openIncidentReason"))
