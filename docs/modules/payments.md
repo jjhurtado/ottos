@@ -15,7 +15,7 @@ Escucha los eventos de `remittances`. La interfaz con nombre `application` (`Cas
 
 | Endpoint | Permiso |
 | --- | --- |
-| `GET /cash/business`, `/cash/business/movements`, `/cash/couriers`, `/cash/couriers/{id}`, `/cash/remittances/{id}/movements` | `cash:read` |
+| `GET /cash/business`, `/cash/business/movements`, `/cash/couriers` (todos los repartidores actuales, también sin movimientos, y quien aún tenga caja de repartidor; nunca administradores), `/cash/couriers/{id}`, `/cash/remittances/{id}/movements` | `cash:read` |
 | `GET /cash/me` (mi caja, como repartidor) | `cash:read-own` |
 | `POST /cash/couriers/{id}/funding` (entregar efectivo al repartidor), `/returns` (lo que devuelve) | `cash:write` |
 | `POST /cash/business/deposits`, `/withdrawals` (capital, cambio de moneda, gastos; con nota) | `cash:adjust` |
