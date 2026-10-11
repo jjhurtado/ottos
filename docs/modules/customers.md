@@ -23,9 +23,8 @@ Las estadísticas de un cliente (`GET /customers/{id}/stats`) viven en `remittan
 
 ## Datos
 
-`customers` (`V1__baseline.sql`, sección *customers*; teléfono y documento dejan de ser únicos en
-`V4__customer_import_export.sql`): nombre, teléfono, correo, documento,
-dirección, notas, activo.
+`customers` (`V1__baseline.sql`, sección *customers*; ni el teléfono ni el documento son únicos): nombre, teléfono,
+correo, documento, dirección, notas, activo.
 
 ## Reglas
 

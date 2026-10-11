@@ -1,7 +1,7 @@
 # Contrato: app móvil offline-first
 
 Estado: **cerrado con el frontend e implementado** (2026-10-10; módulo `sync`, ver `docs/modules/sync.md`). Decisiones de fondo en
-[ROADMAP.md › App del repartidor offline-first](../../ROADMAP.md).
+[ROADMAP.md › App del repartidor sin conexión](../../ROADMAP.md).
 
 De día, Ventas y los repartidores usan la misma app móvil; lo que cada uno puede hacer depende de sus permisos, no de su
 rol. De noche, Ventas y Admin usan el panel web. La app guarda en el teléfono lo que necesita, registra las acciones en

@@ -1,7 +1,7 @@
 # Contrato: cambio de moneda del repartidor
 
-Estado: **cerrado con el frontend e implementado** (2026-10-11; módulo `payments`, migración `V2__courier_exchanges.sql`). Contexto en
-[ROADMAP.md › Funcionalidades pedidas en diseño](../../ROADMAP.md).
+Estado: **cerrado con el frontend e implementado** (2026-10-11; módulo `payments`, sección *payments* de `V1__baseline.sql`). Contexto en
+[ROADMAP.md › Reglas del negocio decididas en 1.0](../../ROADMAP.md).
 
 El negocio trabaja en USD. Si hay que entregar en CUP, el repartidor cambia los USD durante el viaje a la tasa que
 consigue en ese momento, lo registra en la app (con o sin conexión) y su caja se actualiza al instante. Un cambio

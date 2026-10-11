@@ -1,227 +1,220 @@
-# App de Remesas — Arquitectura y Roadmap
+# Ottos — Roadmap
 
-> Fuente: doc "App de Remesas — Arquitectura y Roadmap" (https://claude.ai/code/artifact/f5b0a1ca-40c2-463d-a531-e2276fc2cce2), copiado el 2026-10-01.
+> Origen: doc "App de Remesas — Arquitectura y Roadmap"
+> (https://claude.ai/code/artifact/f5b0a1ca-40c2-463d-a531-e2276fc2cce2), copiado el 2026-10-01 y mantenido aquí desde
+> entonces. Cómo se trabaja (Git Flow, commits, arquitectura, tests): [STANDARDS.md](STANDARDS.md).
 
-## Resumen del proyecto
+## 1. Dónde estamos
 
-La plataforma gestiona el envío de remesas de punta a punta para cuatro actores, con backend en Java + Spring Boot y frontend en Flutter. Se construye por fases: primero el flujo mínimo (registrar remesa → cobrar → asignar repartidor → entregar al beneficiario → confirmar) y después lo que lo hace escalable.
+**Versión actual: `1.0.0-rc.1`.** La Fase 1 (MVP de remesas) está completa en el backend y se revisa la arquitectura
+antes de dar la versión por estable. En una RC solo entran arreglos y el refactor que salga de esa revisión.
 
-| Actor | Qué hace en el sistema | Dónde lo usa |
+Lo que falta para `1.0.0`:
+
+| # | Paso | Quién |
 | --- | --- | --- |
-| Admin | Configura tasas de cambio, comisiones, límites, sucursales y zonas; gestiona usuarios y roles; ve reportes y auditoría | Panel web (Flutter Web) |
-| Ventas | Registra remesas en nombre del remitente, cobra, emite comprobantes, cierra caja | App móvil |
-| Delivery | Ve sus remesas asignadas, entrega el dinero al beneficiario, confirma con firma o código, reporta incidencias, rinde el efectivo | App móvil |
-| Cliente | Cotiza, envía remesas, guarda beneficiarios, sigue el estado, recibe notificaciones, consulta su historial | App móvil |
+| 1 | Revisión de arquitectura y refactor sobre la RC (nuevas `rc.N` si hace falta) | Usuario y backend |
+| 2 | Pantallas de importar/exportar y de auditoría en el panel, si entran en 1.0 | Usuario decide, frontend |
+| 3 | Entorno de producción: base de datos con copias de seguridad, dominio, CORS, secretos | Infraestructura |
+| 4 | Datos de cada entorno: tasa USD-CUP de entrega, monto mínimo, comisión de recogida a 0, importar los beneficiarios | Admin del negocio |
+| 5 | Revisión legal (licencias, conocer al cliente, antilavado) antes de mover dinero real | Negocio |
+| 6 | Primera remesa real en producción: hito de la Fase 1 y versión `1.0.0` | Todos |
 
-Supuestos: Ventas es personal interno (agentes o sucursales). Delivery entrega la remesa en efectivo en el domicilio del beneficiario o, en las remesas de recogida, recoge USD del beneficiario. Por ahora solo La Habana.
+## 2. El producto
 
-## Arquitectura propuesta
+Plataforma para gestionar remesas de punta a punta: Ventas registra y cobra, un repartidor entrega el efectivo en el
+domicilio del beneficiario (o lo recoge, en las recogidas) y el negocio lleva la caja. Por ahora solo La Habana y una
+sola sucursal.
 
-Recomendación: un **monolito modular en Spring Boot**, no microservicios. Con un equipo pequeño y un producto que aún está definiéndose, un solo despliegue es más barato de construir, probar y operar; los módulos bien separados permiten extraer un servicio más adelante (por ejemplo, Pagos y caja) si la carga o la regulación lo piden.
-
-```
-App Cliente (Android/iOS) ─┐
-App Repartidor (Android) ──┼──► API REST (Spring Boot, monolito modular, 9 módulos) ──► PostgreSQL
-Panel de Operaciones (Web) ┘                                                        └─► S3 (archivos), FCM/SMS/correo
-```
-
-Las tres apps usan la misma API; el rol del token decide qué puede hacer cada usuario.
-
-| Opción | A favor | En contra |
-| --- | --- | --- |
-| Monolito modular (recomendada) | Un despliegue, transacciones simples, rápido de arrancar | Escala como un todo; exige disciplina entre módulos |
-| Microservicios | Escala y despliegue por servicio | Red, colas, trazas y despliegues múltiples desde el día uno |
-
-## Módulos del backend
-
-Cada módulo es un paquete de Spring con su propio dominio, servicios, repositorios y controladores REST. Los módulos solo se hablan por interfaces públicas o eventos, nunca accediendo a las tablas de otro.
-
-| Módulo | Responsabilidad | Actores que lo usan | Fase |
+| Actor | Qué hace | Dónde | En 1.0 |
 | --- | --- | --- | --- |
-| Identidad y acceso | Login, JWT, refresh tokens, roles y permisos | Todos | 0 |
-| Usuarios y sucursales | Alta de empleados, clientes, sucursales y zonas de entrega | Admin, Ventas | 0–1 |
-| Tasas y comisiones | Tipo de cambio vigente, comisión por monto y zona, límites; cotizador | Admin, Ventas, Cliente | 1 |
-| Beneficiarios | Datos y documento del beneficiario, dirección de entrega, beneficiarios frecuentes | Ventas, Cliente | 1 |
-| Remesas | Crear remesa, código de seguimiento, máquina de estados, historial de eventos | Ventas, Cliente, Delivery | 1 |
-| Asignación y entregas | Asignar remesas a repartidores por zona, prueba de entrega (firma, código, foto), incidencias | Admin, Delivery | 1 |
-| Pagos y caja | Cobro al remitente, efectivo entregado a cada repartidor, cierre de caja, conciliación | Ventas, Admin, Delivery | 1 y 3 |
-| Notificaciones | Push (Firebase Cloud Messaging), correo, SMS ante cambios de estado | Cliente, Delivery | 2 |
-| Reportes y auditoría | Indicadores, exportes, registro de quién hizo qué | Admin | 4 |
+| Admin | Configura tasas, comisiones y límites; gestiona usuarios y roles; ve informes y auditoría | Panel web | Sí |
+| Ventas | Registra remesas en nombre del remitente, cobra, asigna repartidores, resuelve revisiones | Panel web y app móvil | Sí |
+| Repartidor | Ve sus remesas, entrega o recoge, reporta incidencias, cambia moneda, lleva su caja; **sin conexión** | App móvil | Sí |
+| Cliente | Cotiza, envía y sigue sus remesas por su cuenta | App móvil | No (Fase 2) |
 
-Estados de una remesa (configurables en la base de datos): **Pagada → Asignada → Entregada**. Una remesa está atrasada si no se ha entregado y pasó su fecha prevista (2 días tras el pago); se puede atrasar con motivo. Sin cancelaciones por ahora.
-
-## Estructura del frontend en Flutter
-
-Recomendación: tres apps que comparten un paquete común, dentro de un solo repositorio (monorepo con Melos). Así el cliente no descarga pantallas de empleados y cada app se publica a su ritmo.
-
-| App | Plataforma | Rol(es) | Por qué separada |
-| --- | --- | --- | --- |
-| App Cliente | Android, iOS | Cliente | Es la app pública de tiendas; debe ser ligera y cuidar la marca |
-| App Repartidor | Android (iOS opcional) | Delivery | Necesita cámara, modo sin conexión y sincronización |
-| Panel de Operaciones | Flutter Web | Admin, Ventas | Pantallas con tablas y formularios largos; el menú cambia según el rol |
-| `core` (paquete compartido) | — | — | Modelos, cliente HTTP, autenticación, tema visual, validaciones, traducciones |
-
-Estructura interna sugerida para cada app: carpetas por funcionalidad (`features/beneficiarios`, `features/remesas`…), cada una con capas `data` (repositorios, DTO), `domain` (entidades, casos de uso) y `presentation` (pantallas, estado).
-
-- Gestión de estado: Riverpod o Bloc; elegir uno y usarlo en las tres apps.
-- Navegación: go_router, con guardas por rol.
-- Contrato con el backend: OpenAPI generado por springdoc, y cliente Dart generado a partir de él.
-
-Alternativa más simple: una sola app con menús por rol. Sirve si el equipo es de 1–2 personas, a costa de una app más pesada y permisos más difíciles de auditar.
-
-## Decisiones técnicas
-
-Propuesta inicial; cada fila es una decisión que conviene confirmar en la Fase 0.
-
-| Tema | Propuesta | Motivo |
-| --- | --- | --- |
-| Backend | Spring Boot 3, Java 21, Spring Web, Spring Data JPA, Spring Security | Estándar maduro, buena documentación |
-| Base de datos | PostgreSQL + migraciones con Flyway | Transacciones fiables para dinero y estados |
-| Autenticación | JWT con refresh token; roles ADMIN, VENTAS, DELIVERY, CLIENTE | Funciona igual en web y móvil |
-| Archivos | Almacenamiento de objetos (S3 o compatible) para firmas, fotos de entrega y comprobantes | No guardar binarios en la base de datos |
-| Notificaciones | Firebase Cloud Messaging; correo y SMS vía proveedor externo | Push nativo en Android e iOS |
-| Tareas en segundo plano | Eventos internos de Spring y tareas programadas | Notificar y recalcular sin bloquear peticiones |
-| Documentación API | springdoc-openapi (Swagger) | Contrato compartido con Flutter |
-| Pruebas | JUnit 5, Testcontainers (backend); tests de widgets e integración (Flutter) | Probar contra PostgreSQL real |
-| Despliegue | Docker; CI/CD con GitHub Actions; entornos dev, staging y producción | Entregas repetibles desde la Fase 0 |
-| Observabilidad | Spring Actuator, logs estructurados, Sentry o similar | Detectar fallos de entrega y pagos |
-
-Todo el sistema maneja dinero: montos con `BigDecimal`, operaciones idempotentes (una clave por solicitud) y auditoría de cada cambio desde la Fase 1.
-
-## Roadmap por fases
-
-Cinco fases: la Fase 1 ya entrega valor real (remesas registradas por Ventas y entregadas por Delivery) y cada fase siguiente suma un actor o una capacidad. Ninguna fase empieza sin pasar el hito de control de la anterior.
-
-| Fase | Contenido | Hito de salida |
-| --- | --- | --- |
-| **0 · Fundamentos** | Repos y CI/CD · Auth y roles · Modelo de datos · Entornos y Docker | **Base lista** — API con login por rol |
-| **1 · MVP de remesas** | Tasas y comisiones · Clientes y beneficiarios · Entregas y recogidas · Asignar y atrasar · Flujo de efectivo | **Primera remesa real** — flujo de punta a punta |
-| **2 · App Cliente** | Cotizar y enviar · Pago en línea · Estado de la remesa · Notificaciones push · Historial | **Clientes autónomos** — app en tiendas |
-| **3 · Caja y control** | Cierre de caja · Conciliación · Prueba de entrega con foto o firma · Verificar identidad · Devoluciones | **Caja cuadrada** — conciliación correcta |
-| **4 · Consolidación** | Reportes y KPIs · Auditoría · Seguridad y carga · Lanzamiento | — |
-
-| Fase | Objetivo | Actores que reciben valor | Duración estimada |
-| --- | --- | --- | --- |
-| 0 · Fundamentos | Esqueleto del sistema desplegable, con seguridad por rol | Equipo de desarrollo | Por definir |
-| 1 · MVP de remesas | Registrar remesas pagadas y recogidas, asignarlas, atrasarlas y entregarlas; llevar el efectivo del negocio y de cada mensajero | Admin, Ventas, Delivery | En curso |
-| 2 · App Cliente | El remitente cotiza, paga y sigue sus remesas sin pasar por Ventas | Cliente | Por definir |
-| 3 · Caja y control | Cerrar y conciliar la caja, probar la entrega con foto o firma, verificar identidad, gestionar devoluciones | Admin, Ventas, Delivery | Por definir |
-| 4 · Consolidación | Medir, auditar, reforzar seguridad y lanzar al público | Admin, todos | Por definir |
-
-Fuera del roadmap (futuro): todo lo relacionado con mapas — ubicación del repartidor en tiempo real, rutas optimizadas y seguimiento de la entrega sobre un mapa. Mientras tanto, la asignación se hace por zona o municipio, sin geolocalización.
-
-## Versionado
+## 3. Versionado
 
 Versionado semántico (`MAYOR.MENOR.PARCHE`) con etiquetas de pre-release. La versión vive en `build.gradle`, se sube en
 la rama `release/` o `hotfix/` de Git Flow y cada versión publicada lleva su tag en `main`, sin prefijo
-(`1.0.0-beta.1`). Detalles del flujo en [STANDARDS.md](STANDARDS.md).
+(`1.0.0-rc.1`).
 
 | Etapa | Formato | Significa | Qué entra |
 | --- | --- | --- | --- |
 | Beta | `1.0.0-beta.N` | Fase 1 en construcción; se prueba en local o staging, sin dinero real | Funcionalidad nueva, refactors y arreglos |
-| Release candidate | `1.0.0-rc.N` | Fase 1 completa según su hito; candidata a producción | Solo arreglos. Revisión de arquitectura y refactor antes de la primera RC |
-| Estable | `1.0.0` | Primera remesa real en producción (hito de la Fase 1) | — |
+| Release candidate | `1.0.0-rc.N` | Fase 1 completa; candidata a producción | Solo arreglos y el refactor de la revisión de arquitectura |
+| Estable | `1.0.0` | Primera remesa real en producción | — |
 | Parche | `1.0.X` | Arreglo urgente en producción (rama `hotfix/`) | Solo el arreglo |
 | Menor | `1.X.0` | Cada fase siguiente, con su propio ciclo beta → rc → estable | Funcionalidad nueva compatible con la API |
 | Mayor | `X.0.0` | Cambio incompatible del contrato de la API (rutas, campos, códigos de error) | Solo con migración planificada para las apps |
 
-Correspondencia prevista con las fases:
+Historial: `1.0.0-beta.1` (Fase 1 en construcción) → `1.0.0-rc.1` (Fase 1 completa, migraciones fusionadas en
+`V1__baseline.sql`).
 
-| Versión | Fase |
-| --- | --- |
-| `1.0.0` | 1 · MVP de remesas |
-| `1.1.0` | 2 · App Cliente (o 3, según el orden que se confirme) |
-| `1.2.0` | 3 · Caja y control |
-| `1.3.0` | 4 · Consolidación y lanzamiento público |
+## 4. Fases
 
-**Versión actual: `1.0.0-beta.1`** (Fase 1 en curso).
+| Fase | Contenido | Hito de salida | Versión | Estado |
+| --- | --- | --- | --- | --- |
+| 0 · Fundamentos | Repositorio y CI · Auth y roles · Modelo de datos · Docker | API con login por rol | — | Hecha |
+| 1 · MVP de remesas | Tasas y comisiones · Clientes y beneficiarios · Entregas y recogidas · Asignar y atrasar · Caja · App del repartidor sin conexión | Primera remesa real | `1.0.0` | RC |
+| 2 · App Cliente | Cotizar y enviar · Pago en línea · Estado de la remesa · Notificaciones push · Historial | App en tiendas | `1.1.0` | — |
+| 3 · Caja y control | Cierre de caja · Conciliación · Prueba de entrega con foto o firma · Verificar identidad · Devoluciones | Caja cuadrada | `1.2.0` | — |
+| 4 · Consolidación | Informes y KPIs · Seguridad y carga · Lanzamiento público | — | `1.3.0` | — |
 
-### Alcance de la versión 1.0
+El orden de las fases 2 y 3 está por confirmar. Ninguna fase empieza sin pasar el hito de la anterior.
 
-Decisiones tomadas para llegar antes a la primera remesa real; lo que queda fuera vuelve a evaluarse después de `1.0.0`.
+## 5. Versión 1.0
+
+### Qué incluye
+
+Cada módulo tiene su documento en [docs/modules](docs/modules/README.md); lo acordado con el frontend, en
+[docs/contracts](docs/contracts).
+
+| Área | Qué hace | Módulo |
+| --- | --- | --- |
+| Acceso | Login con JWT y refresh token de un solo uso; sesión de jornada completa en el móvil; roles y permisos editables; límite de intentos fallidos por cuenta y por IP | `identity` |
+| Configuración | Monto mínimo, días de entrega, tolerancia de tasa; por corredor (USD-CUP, USD-USD), tasas y comisiones de entrega y de recogida, con historial | `configuration`, `rates` |
+| Clientes y beneficiarios | Alta, búsqueda, vínculos N:M, borrado lógico y restauración; beneficiarios sin cliente que se vinculan al enviarles una remesa; importar y exportar ([contrato](docs/contracts/customer-transfer.md)) | `customers`, `beneficiaries` |
+| Remesas | Entregas y recogidas, estados y transiciones como datos, PIN, asignar, atrasar con motivo, incidencias, revisiones; tasa propia en cada recogida ([contrato](docs/contracts/pickup-rate.md)) | `remittances` |
+| Caja | Libro de doble entrada: caja del negocio y de cada repartidor, fondeo y devoluciones, cambio de moneda del repartidor ([contrato](docs/contracts/courier-exchange.md)) | `payments` |
+| Sin conexión | Descarga incremental y cola de acciones sincronizada en lote, idempotente ([contrato](docs/contracts/offline-sync.md)) | `sync` |
+| Avisos | Feed de remesas completadas para las notificaciones locales de Ventas ([contrato](docs/contracts/completed-feed.md)) | `remittances` |
+| Informes y auditoría | Informe mensual de ventas ([contrato](docs/contracts/monthly-report.md)); registro de quién hizo qué | `reporting` |
+
+### Qué queda fuera, y por qué
 
 | Tema | Decisión para 1.0 | Por qué |
 | --- | --- | --- |
-| Asignación por zona | Fuera de 1.0. Ventas asigna a mano desde la lista de repartidores (`GET /couriers`) | Una sola ciudad y pocos repartidores; el módulo `dispatch` queda para después |
-| Sucursales | Una sola sucursal en 1.0; no hay gestión de sucursales | La caja del negocio es única; las cajas por sucursal se añaden cuando haya más de una |
-| Vencimiento de la cotización | Fuera de 1.0 | El cliente no usa el sistema en 1.0: Ventas cotiza y registra en el momento, y la remesa ya cobrada guarda la tasa y la comisión con que se registró. Se retoma con la App Cliente (Fase 2) |
-| Límites de monto | Solo un monto mínimo global en USD, configurable | Mantener la aplicación simple; los acumulados por cliente esperan a la revisión legal |
-| App del repartidor | **Offline-first** (entra en 1.0), ver la sección siguiente | Hay días en que el repartidor pasa la jornada entera sin internet |
+| Asignación por zona | Ventas asigna a mano desde la lista de repartidores; el módulo `dispatch` queda vacío | Una sola ciudad y pocos repartidores |
+| Sucursales | Una sola; sin gestión de sucursales | La caja del negocio es única |
+| Vencimiento de la cotización | No hay | Ventas cotiza y registra en el momento; la remesa guarda la tasa y la comisión con que se cobró. Vuelve con la App Cliente |
+| Límites de monto | Solo un mínimo global en USD, configurable | Los acumulados por cliente esperan a la revisión legal |
+| Notificaciones push | No hay Firebase: la app genera notificaciones locales al consultar al servidor | Sin coste ni dependencia externa; el módulo `notifications` queda vacío |
+| Comprobantes de venta | Los genera el frontend con los datos de la remesa | No necesitan numeración ni almacenamiento en el servidor |
+| Archivos (fotos, firmas) | No hay almacenamiento de archivos | La prueba de entrega con foto o firma es de la Fase 3 |
+| Mapas y geolocalización | Fuera del roadmap | Futuro sin fase asignada |
 
-### App del repartidor offline-first
+## 6. Reglas del negocio decididas en 1.0
 
-La app del repartidor funciona sin conexión por defecto: guarda en el teléfono sus remesas asignadas y su caja, registra
-las acciones (entregar, posponer, reportar incidencias) en una cola local y las sincroniza cuando hay red. El backend se
-adapta así:
+**Dinero y tasas**
+
+- El negocio trabaja en **USD**: todo se cobra en USD. Si hay que entregar en CUP, el repartidor cambia los USD durante
+  el viaje a la tasa que consigue y lo registra; un cambio que se aleja más del 20 % (configurable) de la tasa
+  configurada se guarda igual pero queda marcado para revisión.
+- Las tasas se expresan siempre como unidades de la otra moneda por 1 USD. El monto en CUP se redondea hacia abajo a
+  múltiplos de 50.
+- Valores concretos (monto mínimo, tasas, comisiones) se configuran por la API, nunca en una migración.
+
+**Recogidas**
+
+- Se hacen cuando al negocio le interesa tener efectivo, normalmente 1x1 y para montos grandes: **no dejan ganancia**.
+  Ventas indica la tasa de cada recogida al registrarla (si no, la configurada) y la comisión de recogida debe
+  configurarse en 0.
+
+**Clientes y beneficiarios**
+
+- Un cliente ya existe solo si coinciden **nombre, teléfono y dirección**. La misma persona con otra dirección es otro
+  cliente, a propósito: no hay modelo de varias direcciones.
+- Un beneficiario ya existe si coinciden nombre, teléfono, calle, número y municipio. Puede no tener cliente: el negocio
+  tiene la lista de beneficiarios pero no la de sus remitentes, y se vinculan al registrar una remesa.
+
+**Remesas**
+
+- Estados configurables en la base: **Pagada → Asignada → Entregada**. Una remesa está atrasada si pasó su fecha prevista
+  (2 días tras el registro, configurable); se puede atrasar con motivo. Sin cancelaciones.
+- El repartidor puede entregar con o sin PIN.
+
+**Informe mensual**
+
+- Cuenta por **fecha de registro**, en hora de Cuba, en USD. Las comisiones de las recogidas también son ganancia. La
+  diferencia es lo cobrado menos lo entregado convertido a USD con la tasa de cada remesa. El PDF lo genera el frontend.
+
+**Permisos delicados**
+
+- Exportar e importar clientes es solo para ADMIN y queda en la auditoría. La auditoría nunca guarda secretos.
+
+### App del repartidor sin conexión (offline-first)
+
+Hay días en que el repartidor pasa la jornada entera sin internet. La app guarda en el teléfono sus remesas y su caja,
+registra las acciones en una cola local y las sincroniza cuando hay red.
 
 | # | Decisión | Detalle |
 | --- | --- | --- |
-| 1 | **Sincronización en lote** | Un endpoint de sincronización recibe la cola completa de acciones, las aplica en orden y devuelve el resultado de cada una (aplicada, ya aplicada o rechazada con su código de error). Una acción rechazada no impide aplicar las siguientes. |
-| 2 | **Sesión de una jornada completa** | El repartidor debe poder trabajar todo el día sin conexión y sincronizar al final sin que su sesión haya caducado. Su token dura la jornada (orientativo: 14 h, configurable aparte del resto del personal, que sigue con 15 min). |
-| 3 | **Margen al reusar el refresh token** | Con mala red, la app puede reintentar un refresh cuya respuesta se perdió. Durante un margen corto (30–60 s) presentar el token recién usado devuelve el mismo par nuevo en vez de cerrar todas las sesiones. |
-| 4 | **Cada acción es idempotente** | Cada acción de la cola lleva un id único generado en el teléfono; si llega dos veces, se aplica una sola vez y se devuelve el mismo resultado. |
-| 5 | **Hora real de la acción** | Cada acción lleva la hora del teléfono (`occurredAt`), que se usa en la remesa, el historial y la caja. No puede ser futura, anterior a la asignación ni de hace más de unos días; el servidor guarda además la hora en que la recibió. |
-| 6 | **Conflictos: se acepta lo ya hecho** | Si mientras el repartidor estaba sin conexión Ventas reasignó o pospuso la remesa, una entrega sincronizada después se acepta si ese repartidor era el asignado a la hora de la acción (el dinero ya cambió de manos), y la remesa queda marcada para que Ventas la revise. |
-| 7 | **PIN sin conexión** | La app guarda el PIN que dice el beneficiario y el servidor lo comprueba al sincronizar; si no coincide, la entrega se registra marcada para revisión. Nunca se envía el PIN ni su hash al teléfono (6 dígitos se descifran al instante). |
-| 8 | **Descarga incremental** | La app pide solo lo que cambió desde su última sincronización, incluidas las remesas que dejaron de ser suyas (reasignadas), para quitarlas del teléfono. |
+| 1 | Sincronización en lote | Un endpoint recibe la cola completa, aplica las acciones en orden y devuelve el resultado de cada una; una rechazada no frena las siguientes |
+| 2 | Sesión de una jornada | El token del móvil dura 14 h (configurable aparte del resto del personal) |
+| 3 | Margen al reusar el refresh token | Con mala red, repetir un refresh en los 60 s siguientes devuelve el mismo par nuevo en vez de cerrar las sesiones |
+| 4 | Acciones idempotentes | Cada acción lleva un id generado en el teléfono; si llega dos veces, se aplica una sola vez |
+| 5 | Hora real de la acción | Se usa la hora del teléfono (`occurredAt`) en la remesa, el historial y la caja; no puede ser futura, anterior a la remesa ni de hace más de unos días |
+| 6 | Se acepta lo ya hecho | Una entrega sincronizada tras una reasignación se acepta si ese repartidor la tenía a la hora de la acción, y queda marcada para revisión |
+| 7 | PIN sin conexión | El servidor comprueba el PIN al sincronizar; si no coincide, la entrega queda marcada para revisión. El PIN nunca viaja al teléfono |
+| 8 | Descarga incremental | La app pide solo lo que cambió, incluidas las remesas que dejaron de ser suyas |
 
-Contrato cerrado con el frontend e implementado en el backend: [docs/contracts/offline-sync.md](docs/contracts/offline-sync.md) (módulo `sync`).
+## 7. Arquitectura
 
-### Funcionalidades pedidas en diseño
+**Monolito modular** en Spring Boot (Spring Modulith), no microservicios: un solo despliegue es más barato de
+construir, probar y operar con un equipo pequeño, y los módulos bien separados permiten extraer un servicio más
+adelante si hiciera falta. Los módulos solo se hablan por interfaces públicas o eventos, nunca leyendo las tablas de
+otro; un test lo comprueba.
 
-Pedidas por el negocio durante la beta; se cierran con el frontend en un contrato antes de implementarlas, como el
-modo offline.
+```
+Panel web (Flutter Web) ─┐
+                         ├──► API REST /api/v1 (Spring Boot, monolito modular) ──► PostgreSQL
+App móvil (Flutter) ─────┘
+```
 
-**Informe mensual de ventas** (el más importante para el negocio, exportable a PDF)
+| Módulo | Responsabilidad | Fase |
+| --- | --- | --- |
+| `identity` | Login, tokens, usuarios del personal, roles y permisos | 0 |
+| `branches` | Provincias y municipios (zonas) | 0–1 |
+| `customers` | Remitentes | 1 |
+| `beneficiaries` | Beneficiarios, vínculos con clientes, importar y exportar | 1 |
+| `configuration` | Ajustes, corredores, tasas y comisiones | 1 |
+| `rates` | Cotizador | 1 |
+| `remittances` | Remesas, estados, historial, incidencias, revisiones, feed de completadas | 1 |
+| `payments` | Caja del negocio y de los repartidores, cambios de moneda | 1 y 3 |
+| `sync` | Sincronización de la app sin conexión | 1 |
+| `reporting` | Auditoría e informes | 1 y 4 |
+| `dispatch` | Asignación automática por zona (vacío en 1.0) | Después de 1.0 |
+| `notifications` | Push, correo, SMS (vacío en 1.0) | 2 |
 
-- Por mes, en hora de Cuba: dinero cobrado, dinero entregado, diferencia, ganancias (comisiones) y número de remesas.
-- Decidido: todo cuenta por **fecha de registro**; las comisiones de las **recogidas también cuentan** como ganancia;
-  el negocio trabaja en **USD** (lo entregado en CUP se expresa en USD); la **diferencia** es lo cobrado menos lo
-  entregado convertido a USD con la tasa de cada remesa (comisiones más margen de redondeo). El PDF lo genera el
-  frontend a partir del JSON, para no cargar el servidor.
-- Endpoint propuesto: `GET /reports/monthly?month=AAAA-MM` con un permiso nuevo `reports:read` (ADMIN y SALES), en el
-  módulo `reporting`.
-- **Recogidas con tasa propia por remesa** (implementado, [docs/contracts/pickup-rate.md](docs/contracts/pickup-rate.md)): al registrar una recogida se indica el tipo de cambio de ese momento (1x1
-  u otro), en vez de usar siempre el configurado, y la caja se comporta según esa tasa. Las recogidas se hacen cuando
-  al negocio le interesa tener efectivo, normalmente 1x1 y para montos grandes: **no dejan ganancia**. Por eso la
-  comisión de recogida debe configurarse en 0 desde Configuración (es un dato, no va en una migración).
+| Tema | Elegido | Motivo |
+| --- | --- | --- |
+| Backend | Java 21, Spring Boot 3, Spring Modulith, Spring Security, Spring Data JPA | Estándar maduro |
+| Base de datos | PostgreSQL 16 con Flyway | Transacciones fiables para dinero y estados |
+| Autenticación | JWT de corta duración y refresh token opaco; permisos dinámicos por rol | Igual en web y móvil |
+| Errores | ProblemDetail con un `code` estable; textos en inglés que el frontend traduce por código | Contrato estable entre apps |
+| Pruebas | JUnit 5 y Testcontainers con PostgreSQL real | Probar contra la base de verdad |
+| Documentación API | springdoc-openapi (Swagger, solo fuera de producción) | Contrato compartido con Flutter |
+| Despliegue | Docker; CI con GitHub Actions; hosting en Railway | Entregas repetibles; recursos ligeros |
+| Observabilidad | Spring Actuator y logs estructurados (ECS) en producción | Detectar fallos de entrega y caja |
+| Frontend | Panel web y app móvil en Flutter, con menús por rol | Mismo código para Ventas y repartidores |
 
-**Cambio de moneda del repartidor**
+Todo el sistema maneja dinero: montos con `BigDecimal`, operaciones idempotentes y auditoría de los cambios.
 
-- El negocio entrega en USD; si hay que entregar en CUP, el repartidor cambia los USD durante el viaje a la tasa que
-  consigue, lo registra en la app y su caja se actualiza al momento.
-- En `payments`: un movimiento de cambio con dos patas en la caja del repartidor (sale USD, entra CUP) y la tasa
-  obtenida, sin tocar la caja del negocio. Online (`POST /cash/me/exchanges`) y offline (acción nueva en
-  `POST /sync/actions`), con permiso propio para el repartidor. El panel lo ve en el estado de caja del repartidor.
-- Decidido: un cambio con una tasa que se aleja más de un porcentaje (20 % por defecto, en Configuración) de la tasa
-  configurada se registra igual pero queda **marcado para revisión**, como las entregas sincronizadas.
+## 8. Después de 1.0
 
-**Importar y exportar clientes con sus beneficiarios** — implementado
-([docs/contracts/customer-transfer.md](docs/contracts/customer-transfer.md))
+Ideas ya habladas, sin compromiso de fecha; se ordenan al planificar cada fase.
 
-- Exportar: todos los clientes con sus beneficiarios y vínculos, para respaldo o para llevarlos a otra herramienta.
-- Importar: cargar clientes y beneficiarios desde un archivo (por ejemplo, desde el sistema que el negocio usa hoy),
-  con vista previa antes de aplicar y un resultado por fila (creado, actualizado, omitido o con error y su código).
-- Lo que hace falta definir y construir:
-  - **Formato (decidido):** Excel o CSV, leído y generado en el frontend; el backend recibe y devuelve JSON, como con
-    el PDF, para no cargar el servidor con librerías de hojas de cálculo.
-  - **Columnas:** las del cliente (nombre, teléfono, correo, documento, dirección, notas) y las del beneficiario
-    (nombre, teléfonos, calle, número, entre calles, reparto, municipio por código o nombre, referencia, documento,
-    notas), y cómo se relaciona cada beneficiario con su cliente (una fila por vínculo).
-  - **Coincidencias (decidido):** un cliente ya existe si coinciden **nombre, teléfono y dirección**. El mismo nombre y
-    teléfono con otra dirección es otro cliente: queda duplicado a propósito, porque una persona puede tener dos
-    direcciones y no se implementará un modelo de varias direcciones. Hoy el teléfono del cliente es único
-    (`PHONE_ALREADY_REGISTERED`): se cambió esa regla, ahora solo se rechaza un cliente idéntico
-    (`CUSTOMER_ALREADY_REGISTERED`).
-  - **Validación por fila** con los mismos códigos que la API (`INVALID_PHONE`, `UNKNOWN_MUNICIPALITY`…), sin que un
-    error bloquee las demás filas; límite de filas por envío.
-  - **Permisos:** exportar datos personales de todos los clientes es delicado; propuesta: permisos propios
-    (`customers:import`, `customers:export`) solo para ADMIN, y cada importación y exportación registrada en la
-    auditoría.
+- Asignación automática por zona (`dispatch`) y varias sucursales con su propia caja.
+- App Cliente con cotización con vencimiento, pago en línea y notificaciones push (Fase 2).
+- Cierre de caja diario, conciliación, prueba de entrega con foto o firma, devoluciones (Fase 3).
+- Límites acumulados por cliente, según la revisión legal.
+- Informes adicionales (por día, por repartidor) y KPIs (Fase 4).
 
-## Plantilla de fase
+## 9. Riesgos
 
-Copia este bloque una vez por fase y rellénalo antes de empezarla; se cierra solo cuando se cumplen sus criterios de salida.
+| Riesgo | Impacto | Mitigación |
+| --- | --- | --- |
+| Requisitos legales de remesas (licencias, conocer al cliente, antilavado) | Puede bloquear la salida a producción | Consultar con un asesor legal antes de `1.0.0` |
+| Efectivo en manos de los repartidores | Pérdidas o descuadres | Caja por repartidor con doble entrada; entregas y cambios dudosos marcados para revisión; cierre diario en la Fase 3 |
+| Conectividad débil de los repartidores | Entregas sin confirmar | App sin conexión con cola de sincronización (en 1.0) |
+| Alcance que crece dentro de una fase | Retrasos en cadena | Respetar el "No incluye" de cada fase; en una RC solo arreglos |
+| Permisos mal aplicados entre roles | Fugas de datos | Tests de permisos por rol; permisos propios para datos personales |
+
+## 10. Plantilla de fase
+
+Copia este bloque una vez por fase y rellénalo antes de empezarla; se cierra solo cuando se cumplen sus criterios de
+salida.
 
 ```markdown
 # Fase N — <Nombre>
@@ -234,12 +227,8 @@ Fechas: <inicio> → <fin>      Responsable: <nombre>
 - No incluye: <lo que queda para fases siguientes>
 
 ## Historias por actor
-| Actor | Historia (Como… quiero… para…) | Prioridad | Estimación |
-| --- | --- | --- | --- |
-| Admin | | | |
-| Ventas | | | |
-| Delivery | | | |
-| Cliente | | | |
+| Actor | Historia (Como… quiero… para…) | Prioridad |
+| --- | --- | --- |
 
 ## Entregables
 - Backend: <endpoints, módulos, migraciones>
@@ -253,33 +242,13 @@ Fechas: <inicio> → <fin>      Responsable: <nombre>
 ## Criterios de salida
 - [ ] Flujo principal probado de punta a punta en staging
 - [ ] Pruebas automáticas en verde
-- [ ] Documentación de API actualizada
+- [ ] Contratos con el frontend en docs/contracts
 - [ ] Demo validada por <quien decide>
 ```
 
-Definición de terminado para cada historia, en todas las fases:
+Definición de terminado para cada historia:
 
-- [ ] Código revisado por otra persona
-- [ ] Pruebas unitarias y de integración
-- [ ] Endpoint documentado en Swagger
-- [ ] Permisos por rol verificados
-- [ ] Desplegado en staging
-
-## Riesgos y decisiones pendientes
-
-| Riesgo | Impacto | Mitigación |
-| --- | --- | --- |
-| Requisitos legales de remesas (licencias, conocer al cliente, antilavado) | Puede bloquear la salida a producción del MVP | Consultar con un asesor legal durante la Fase 0 |
-| Efectivo en manos de los repartidores | Pérdidas o descuadres | Límite de efectivo por ruta, entrega con firma o código, cierre diario por repartidor |
-| Cambios del tipo de cambio entre cotización y pago | Pérdida en la comisión | Cotización con vencimiento y tasa guardada en cada remesa |
-| Conectividad débil de los repartidores | Entregas sin confirmar | Modo sin conexión con cola de sincronización en la App Repartidor |
-| Alcance que crece dentro de una fase | Retrasos en cadena | Respetar el "No incluye" de la plantilla |
-| Permisos mal aplicados entre roles | Fugas de datos | Pruebas de seguridad por rol en la definición de terminado |
-
-## Próximos pasos
-
-- [ ] Confirmar el orden de las fases 2 y 3 (¿App Cliente o Caja y control primero?)
-- [ ] Confirmar tres apps Flutter o una sola
-- [ ] Definir tamaño del equipo y fechas de la Fase 0
-- [x] Modelo de datos inicial (remesa, cliente, beneficiario, usuario, tasas, caja)
-- [x] Repositorio (github.com/jjhurtado/ottos) y pipeline de CI
+- [ ] Pruebas de integración, incluidos los permisos por rol
+- [ ] Endpoint documentado en Swagger y en el README
+- [ ] Documento del módulo actualizado
+- [ ] Frontend avisado del cambio

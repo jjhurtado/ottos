@@ -1,7 +1,7 @@
 # Contrato: informe mensual de ventas
 
 Estado: **cerrado con el frontend e implementado** (2026-10-11; módulo `reporting`, cifras de `remittances`). Decisiones del negocio en
-[ROADMAP.md › Funcionalidades pedidas en diseño](../../ROADMAP.md).
+[ROADMAP.md › Reglas del negocio decididas en 1.0](../../ROADMAP.md).
 
 El informe más importante para el negocio. El backend devuelve los números en JSON y el panel genera el PDF.
 
@@ -29,8 +29,8 @@ GET /api/v1/reports/monthly?month=2026-10        permiso reports:read (nuevo; AD
 - **Diferencia** (`difference`): `cobrado − entregado en USD`. Equivale a las comisiones más el margen del redondeo a
   50 CUP.
 - **Margen de redondeo:** `diferencia − comisiones`; no viene en la respuesta, lo calcula el panel.
-- **Recogidas:** entran con su tasa y su comisión tal como quedaron en la remesa. Cuando se pueda indicar la tasa de
-  cada recogida al registrarla, el informe usará la que se indicó; la forma de la respuesta no cambia.
+- **Recogidas:** entran con su tasa y su comisión tal como quedaron en la remesa, incluida la tasa indicada a mano al
+  registrarla ([pickup-rate.md](pickup-rate.md)).
 
 ## Respuesta 200
 

@@ -81,7 +81,7 @@ Un commit, un cambio lógico; el build debe pasar en cada commit. Los mensajes s
 
 ### Versionado
 
-Ver [ROADMAP.md › Versionado](ROADMAP.md#versionado). La versión vive en `build.gradle` (`version = …`) y se sube en la
+Ver [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). La versión vive en `build.gradle` (`version = …`) y se sube en la
 rama `release/` o `hotfix/` correspondiente.
 
 ### Changelog

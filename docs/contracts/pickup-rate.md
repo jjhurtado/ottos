@@ -1,7 +1,7 @@
 # Contrato: tasa propia de cada recogida
 
-Estado: **cerrado con el frontend e implementado** (2026-10-11; migración `V5__pickup_rate.sql`). Contexto en
-[ROADMAP.md › Funcionalidades pedidas en diseño](../../ROADMAP.md).
+Estado: **cerrado con el frontend e implementado** (2026-10-11; columna `rate_overridden` en `V1__baseline.sql`). Contexto en
+[ROADMAP.md › Reglas del negocio decididas en 1.0](../../ROADMAP.md).
 
 Las recogidas se hacen cuando al negocio le interesa tener efectivo, normalmente 1x1 y para montos grandes, y no dejan
 ganancia. Al registrar una recogida, Ventas indica la tasa de ese momento (1x1 u otra); si no la indica, se usa la tasa

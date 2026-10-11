@@ -1,6 +1,6 @@
 # Contrato: aviso de remesas completadas (notificaciones de Ventas)
 
-Estado: **implementado** (2026-10-11; migración `V6__completed_feed.sql`). Propuesta del frontend; decisiones del
+Estado: **implementado** (2026-10-11; columna `completion_recorded_at` en `V1__baseline.sql`). Propuesta del frontend; decisiones del
 usuario: lo ven todas las personas con `remittances:read` (no solo quien registró la remesa) y entran también las
 recogidas.
 

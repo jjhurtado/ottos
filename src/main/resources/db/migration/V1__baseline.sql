@@ -1,6 +1,6 @@
 -- Ottos · Baseline schema for version 1.0.
 --
--- Built from the 14 migrations of the betas, merged before the first release because no environment had real data
+-- Built from every migration of the betas, merged before the first release because no environment had real data
 -- yet. From now on the schema only changes with new migrations (V2, V3…), never by editing this one.
 -- Sections follow the modules: identity, branches, customers, beneficiaries, configuration, remittances, payments,
 -- reporting.
@@ -132,7 +132,9 @@ INSERT INTO municipalities (code, province_code, name) VALUES
 -- customers · remittance senders, kept apart from staff users
 --
 -- They have no login yet; customer sign-up (Phase 2) will add its own credentials table instead of touching users.
--- Phones are stored normalized (digits only, with an optional leading +) and identify the customer.
+-- Phones are stored normalized (digits only, with an optional leading +). Neither the phone nor the document is unique:
+-- a person with two addresses is two customers with the same name and phone (there is no multi-address model). Only
+-- an identical customer (same name, phone and address) is rejected, by the application.
 -- =====================================================================================================================
 
 CREATE TABLE customers (
@@ -146,20 +148,23 @@ CREATE TABLE customers (
     notes           VARCHAR(1000),
     active          BOOLEAN                  NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_by      UUID,
-    CONSTRAINT uk_customers_phone UNIQUE (phone),
-    CONSTRAINT uk_customers_document UNIQUE (document_type, document_number)
+    created_by      UUID
 );
+
+CREATE INDEX ix_customers_phone ON customers (phone);
 
 INSERT INTO permissions (code, module, description) VALUES
     ('customers:read',  'customers', 'View customers and beneficiaries'),
-    ('customers:write', 'customers', 'Create and update customers and beneficiaries, link beneficiaries to customers');
+    ('customers:write', 'customers', 'Create and update customers and beneficiaries, link beneficiaries to customers'),
+    ('customers:export', 'customers', 'Export every customer with their beneficiaries (personal data)'),
+    ('customers:import', 'customers', 'Import customers and beneficiaries');
 
 -- =====================================================================================================================
 -- beneficiaries · the people who receive (or hand over, in pickups) the money
 --
--- A beneficiary is one person, shared by every customer that sends to them (customer_beneficiaries). Deleting one
--- only deactivates it, because remittances point at it.
+-- A beneficiary is one person, shared by every customer that sends to them (customer_beneficiaries). A beneficiary can
+-- have no customer yet: they are linked when a customer sends them a remittance. Deleting one only deactivates it,
+-- because remittances point at it.
 -- =====================================================================================================================
 
 CREATE TABLE beneficiaries (
@@ -206,6 +211,8 @@ CREATE INDEX ix_customer_beneficiaries_beneficiary ON customer_beneficiaries (be
 
 -- minimum_amount: smallest amount a remittance can send, in USD (0 = no minimum)
 -- default_delivery_days: days from registration to the expected delivery date
+-- exchange_rate_tolerance_percent: a courier exchange whose rate strays more than this from the configured delivery
+--   rate is recorded but flagged for review
 CREATE TABLE settings (
     setting_key   VARCHAR(50)              PRIMARY KEY,
     setting_value VARCHAR(255)             NOT NULL,
@@ -259,7 +266,8 @@ CREATE INDEX ix_fee_rules_corridor ON fee_rules (corridor_code, remittance_type,
 
 INSERT INTO settings (setting_key, setting_value) VALUES
     ('minimum_amount', '0'),
-    ('default_delivery_days', '2');
+    ('default_delivery_days', '2'),
+    ('exchange_rate_tolerance_percent', '20');
 
 INSERT INTO corridors (code, source_currency, target_currency, delivery_rounding) VALUES
     ('USD-CUP', 'USD', 'CUP', 50),
@@ -336,6 +344,8 @@ CREATE TABLE remittances (
     fee                           NUMERIC(19, 2)           NOT NULL,
     total                         NUMERIC(19, 2)           NOT NULL,
     rate                          NUMERIC(19, 6)           NOT NULL,
+    -- the rate was entered by hand when registering (pickups only) instead of the configured one
+    rate_overridden               BOOLEAN                  NOT NULL DEFAULT FALSE,
     amount_to_deliver             NUMERIC(19, 2)           NOT NULL,
     exchange_rate_id              UUID                     NOT NULL,
     fee_rule_id                   UUID                     NOT NULL,
@@ -358,6 +368,9 @@ CREATE TABLE remittances (
     created_by                    UUID                     NOT NULL,
     completed_at                  TIMESTAMP WITH TIME ZONE,
     completed_by                  UUID,
+    -- server time when the completion was recorded: later than completed_at for a delivery synced late from the
+    -- mobile app; Sales' completed feed polls on it so it never misses one
+    completion_recorded_at        TIMESTAMP WITH TIME ZONE,
     -- last change of any kind: the mobile app downloads what changed since its last sync
     updated_at                    TIMESTAMP WITH TIME ZONE NOT NULL,
     version                       BIGINT                   NOT NULL DEFAULT 0,
@@ -383,6 +396,8 @@ CREATE INDEX ix_remittances_courier ON remittances (courier_id, status);
 CREATE INDEX ix_remittances_courier_updated ON remittances (courier_id, updated_at);
 CREATE INDEX ix_remittances_open_incident ON remittances (open_incident_at);
 CREATE INDEX ix_remittances_review ON remittances (review_flagged_at);
+CREATE INDEX ix_remittances_completion_recorded ON remittances (completion_recorded_at)
+    WHERE completion_recorded_at IS NOT NULL;
 
 -- History of a remittance: who did what and when. Never edited.
 CREATE TABLE remittance_events (
@@ -450,6 +465,11 @@ INSERT INTO remittance_transitions (from_status, to_status, permission_code) VAL
 --   BUSINESS  the business cash box, one per currency (a single branch in 1.0)
 --   COURIER   the cash a courier carries, one per courier and currency; may go negative
 --   EXTERNAL  the outside world (senders, beneficiaries), one per currency
+--
+-- Courier currency exchanges: the business works in USD; when a delivery is in CUP, the courier changes USD on the way
+-- at the rate they get and records it, online or from the offline queue. An exchange moves cash only inside the
+-- courier's cash (two legs: one currency out, another in) and the business box does not change. rate is always units
+-- of the other currency per 1 USD, in both directions.
 -- =====================================================================================================================
 
 CREATE TABLE cash_accounts (
@@ -463,6 +483,38 @@ CREATE TABLE cash_accounts (
     CONSTRAINT ck_cash_accounts_type CHECK (type IN ('BUSINESS', 'COURIER', 'EXTERNAL'))
 );
 
+CREATE TABLE cash_exchanges (
+    id                UUID PRIMARY KEY,
+    courier_id        UUID                     NOT NULL,
+    from_currency     VARCHAR(3)               NOT NULL,
+    from_amount       NUMERIC(19, 2)           NOT NULL,
+    to_currency       VARCHAR(3)               NOT NULL,
+    to_amount         NUMERIC(19, 2)           NOT NULL,
+    rate              NUMERIC(19, 6)           NOT NULL,
+    -- the configured delivery rate it was compared with, and how far it strayed (null: no rate configured)
+    configured_rate   NUMERIC(19, 6),
+    deviation_percent NUMERIC(9, 2),
+    note              VARCHAR(1000),
+    occurred_at       TIMESTAMP WITH TIME ZONE NOT NULL,
+    recorded_by       UUID                     NOT NULL,
+    recorded_at       TIMESTAMP WITH TIME ZONE NOT NULL,
+    -- id generated by the phone for an exchange synced from the offline queue: sending it again is harmless
+    client_action_id  UUID,
+    review_reason     VARCHAR(40),
+    review_flagged_at TIMESTAMP WITH TIME ZONE,
+    resolved_at       TIMESTAMP WITH TIME ZONE,
+    resolved_by       UUID,
+    resolution_note   VARCHAR(1000),
+    CONSTRAINT uk_cash_exchanges_client_action UNIQUE (client_action_id),
+    CONSTRAINT fk_cash_exchanges_courier FOREIGN KEY (courier_id) REFERENCES users (id),
+    CONSTRAINT ck_cash_exchanges_amounts CHECK (from_amount > 0 AND to_amount > 0 AND rate > 0),
+    CONSTRAINT ck_cash_exchanges_currencies CHECK (from_currency <> to_currency),
+    CONSTRAINT ck_cash_exchanges_review_reason CHECK (review_reason IN ('UNUSUAL_EXCHANGE_RATE', 'LATE_SYNC'))
+);
+
+CREATE INDEX ix_cash_exchanges_courier ON cash_exchanges (courier_id, occurred_at);
+CREATE INDEX ix_cash_exchanges_review ON cash_exchanges (review_flagged_at);
+
 CREATE TABLE cash_movements (
     id              UUID PRIMARY KEY,
     type            VARCHAR(30)              NOT NULL,
@@ -471,12 +523,16 @@ CREATE TABLE cash_movements (
     amount          NUMERIC(19, 2)           NOT NULL,
     currency        VARCHAR(3)               NOT NULL,
     remittance_id   UUID,
+    -- both legs of a courier exchange point at it and carry its rate
+    exchange_id     UUID,
+    rate            NUMERIC(19, 6),
     note            VARCHAR(1000),
     actor_id        UUID                     NOT NULL,
     occurred_at     TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT fk_cash_movements_from FOREIGN KEY (from_account_id) REFERENCES cash_accounts (id),
     CONSTRAINT fk_cash_movements_to FOREIGN KEY (to_account_id) REFERENCES cash_accounts (id),
     CONSTRAINT fk_cash_movements_remittance FOREIGN KEY (remittance_id) REFERENCES remittances (id),
+    CONSTRAINT fk_cash_movements_exchange FOREIGN KEY (exchange_id) REFERENCES cash_exchanges (id),
     CONSTRAINT ck_cash_movements_amount CHECK (amount > 0),
     CONSTRAINT ck_cash_movements_accounts CHECK (from_account_id <> to_account_id)
 );
@@ -484,6 +540,7 @@ CREATE TABLE cash_movements (
 CREATE INDEX ix_cash_movements_from ON cash_movements (from_account_id, occurred_at);
 CREATE INDEX ix_cash_movements_to ON cash_movements (to_account_id, occurred_at);
 CREATE INDEX ix_cash_movements_remittance ON cash_movements (remittance_id);
+CREATE INDEX ix_cash_movements_exchange ON cash_movements (exchange_id);
 
 INSERT INTO cash_accounts (id, account_key, type, currency, created_at) VALUES
     ('00000000-0000-0000-0003-000000000001', 'BUSINESS:USD', 'BUSINESS', 'USD', CURRENT_TIMESTAMP),
@@ -495,10 +552,12 @@ INSERT INTO permissions (code, module, description) VALUES
     ('cash:read',     'payments', 'View the business cash, every courier''s cash and all movements'),
     ('cash:read-own', 'payments', 'View one''s own cash as a courier'),
     ('cash:write',    'payments', 'Hand cash to couriers and register the cash they return'),
-    ('cash:adjust',   'payments', 'Register deposits into and withdrawals from the business cash box (capital, currency exchange, expenses)');
+    ('cash:adjust',   'payments', 'Register deposits into and withdrawals from the business cash box (capital, currency exchange, expenses)'),
+    ('cash:exchange-own', 'payments', 'Record currency exchanges of one''s own cash as a courier'),
+    ('cash:review',       'payments', 'Resolve courier currency exchanges flagged for review');
 
 -- =====================================================================================================================
--- reporting · audit log: who did what and when
+-- reporting · audit log (who did what and when) and business reports
 --
 -- Modules publish an AuditEvent for every change that must leave a trace (staff users and roles, own password
 -- changes, the initial administrator); reporting stores it here in the same transaction. Entries are never edited nor
@@ -521,7 +580,8 @@ CREATE INDEX ix_audit_log_target ON audit_log (target_type, target_id, occurred_
 CREATE INDEX ix_audit_log_actor ON audit_log (actor_id, occurred_at);
 
 INSERT INTO permissions (code, module, description) VALUES
-    ('audit:read', 'reporting', 'View the audit log: who changed users, roles and other audited records, and when');
+    ('audit:read',   'reporting', 'View the audit log: who changed users, roles and other audited records, and when'),
+    ('reports:read', 'reporting', 'View the business reports, such as the monthly sales report');
 
 -- =====================================================================================================================
 -- Initial grants. ADMIN holds every permission; SALES and DELIVERY start with these and can be changed through the API.
@@ -537,10 +597,11 @@ WHERE r.code = 'SALES' AND p.code IN (
     'configuration:read', 'rates:read',
     'remittances:read', 'remittances:create', 'remittances:assign', 'remittances:postpone',
     'remittances:report-incident', 'remittances:review',
-    'cash:read', 'cash:write');
+    'cash:read', 'cash:write', 'cash:review',
+    'reports:read');
 
 INSERT INTO role_permissions (role_id, permission_code)
 SELECT r.id, p.code FROM roles r CROSS JOIN permissions p
 WHERE r.code = 'DELIVERY' AND p.code IN (
     'remittances:read-assigned', 'remittances:deliver', 'remittances:postpone', 'remittances:report-incident',
-    'cash:read-own');
+    'cash:read-own', 'cash:exchange-own');

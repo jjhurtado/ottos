@@ -26,8 +26,7 @@ Escucha los eventos de `remittances`. La interfaz con nombre `application` (`Cas
 
 ## Datos
 
-`cash_accounts`, `cash_movements` (`V1__baseline.sql`, sección *payments*), `cash_exchanges` y las columnas
-`exchange_id` y `rate` de `cash_movements` (`V2__courier_exchanges.sql`).
+`cash_accounts`, `cash_movements` y `cash_exchanges` (`V1__baseline.sql`, sección *payments*).
 
 ## Reglas
 

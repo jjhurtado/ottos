@@ -76,7 +76,7 @@ package are its public API; sub-packages are internal.
 
 Inside each module: `domain` (entities, repositories), services as an interface plus its `Impl` (in the module root for the
 public API, or in `application`, `management`, `security`) and `web` (controllers). Conventions for Git, layers and
-services: [STANDARDS.md](STANDARDS.md). What each module does: [docs/modules](docs/modules/README.md). Versions: [ROADMAP.md](ROADMAP.md#versionado).
+services: [STANDARDS.md](STANDARDS.md). What each module does: [docs/modules](docs/modules/README.md). Versions: [ROADMAP.md](ROADMAP.md#3-versionado).
 
 ## Environment variables
 
