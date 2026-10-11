@@ -88,9 +88,9 @@ public interface RemittanceService {
      */
     CompletedFeed completedSince(Instant since, Viewer viewer);
 
-    /** rate: entered by hand for a pickup (null uses the configured one); not allowed for deliveries. */
+    /** rate and fee: entered by hand for a pickup (null uses the configured ones); not allowed for deliveries. */
     record NewRemittance(RemittanceType type, UUID customerId, UUID beneficiaryId, BigDecimal amount,
-                         String targetCurrency, BigDecimal rate, String notes, String idempotencyKey) {
+                         String targetCurrency, BigDecimal rate, BigDecimal fee, String notes, String idempotencyKey) {
     }
 
     record CourierView(UUID id, String name, String email, long openRemittances) {

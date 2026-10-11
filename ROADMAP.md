@@ -16,7 +16,7 @@ Lo que falta para `1.0.0`:
 | 1 | Revisión de arquitectura y refactor sobre la RC (nuevas `rc.N` si hace falta) | Usuario y backend |
 | 2 | Pantallas de importar/exportar y de auditoría en el panel, si entran en 1.0 | Usuario decide, frontend |
 | 3 | Entorno de producción: base de datos con copias de seguridad, dominio, CORS, secretos | Infraestructura |
-| 4 | Datos de cada entorno: tasa USD-CUP de entrega, monto mínimo, comisión de recogida a 0, importar los beneficiarios | Admin del negocio |
+| 4 | Datos de cada entorno: tasa USD-CUP de entrega, monto mínimo, comisión de recogida por defecto, importar los beneficiarios | Admin del negocio |
 | 5 | Revisión legal (licencias, conocer al cliente, antilavado) antes de mover dinero real | Negocio |
 | 6 | Primera remesa real en producción: hito de la Fase 1 y versión `1.0.0` | Todos |
 
@@ -75,7 +75,7 @@ Cada módulo tiene su documento en [docs/modules](docs/modules/README.md); lo ac
 | Acceso | Login con JWT y refresh token de un solo uso; sesión de jornada completa en el móvil; roles y permisos editables; límite de intentos fallidos por cuenta y por IP | `identity` |
 | Configuración | Monto mínimo, días de entrega, tolerancia de tasa; por corredor (USD-CUP, USD-USD), tasas y comisiones de entrega y de recogida, con historial | `configuration`, `rates` |
 | Clientes y beneficiarios | Alta, búsqueda, vínculos N:M, borrado lógico y restauración; beneficiarios sin cliente que se vinculan al enviarles una remesa; importar y exportar ([contrato](docs/contracts/customer-transfer.md)) | `customers`, `beneficiaries` |
-| Remesas | Entregas y recogidas, estados y transiciones como datos, PIN, asignar, atrasar con motivo, incidencias, revisiones; tasa propia en cada recogida ([contrato](docs/contracts/pickup-rate.md)) | `remittances` |
+| Remesas | Entregas y recogidas, estados y transiciones como datos, PIN, asignar, atrasar con motivo, incidencias, revisiones; tasa y comisión propias en cada recogida ([contrato](docs/contracts/pickup-rate.md)) | `remittances` |
 | Caja | Libro de doble entrada: caja del negocio y de cada repartidor, fondeo y devoluciones, cambio de moneda del repartidor ([contrato](docs/contracts/courier-exchange.md)) | `payments` |
 | Sin conexión | Descarga incremental y cola de acciones sincronizada en lote, idempotente ([contrato](docs/contracts/offline-sync.md)) | `sync` |
 | Avisos | Feed de remesas completadas para las notificaciones locales de Ventas ([contrato](docs/contracts/completed-feed.md)) | `remittances` |
@@ -107,9 +107,11 @@ Cada módulo tiene su documento en [docs/modules](docs/modules/README.md); lo ac
 
 **Recogidas**
 
-- Se hacen cuando al negocio le interesa tener efectivo, normalmente 1x1 y para montos grandes: **no dejan ganancia**.
-  Ventas indica la tasa de cada recogida al registrarla (si no, la configurada) y la comisión de recogida debe
-  configurarse en 0.
+- Son variables y casi siempre las registra el admin, el único que conoce sus condiciones: indica la tasa y la
+  comisión de cada una (si no, las configuradas). Solo quien ve las cifras financieras ve la comisión y la tasa.
+- El repartidor solo **recoge el monto**; en una recogida **no se entrega nada** y la tasa es solo informativa.
+- La comisión la paga a veces el cliente (fuera del país) y a veces el beneficiario (va incluida en lo que se recoge).
+  Nunca pasa por la caja del repartidor ni sale en su resumen: solo cuenta como ganancia en el informe.
 
 **Clientes y beneficiarios**
 

@@ -28,7 +28,7 @@ class ReportServiceImpl implements ReportService {
         Instant to = month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant();
         SalesSummary s = remittances.salesSummary(from, to);
         return new MonthlyReport(month.toString(), month.atDay(1), month.atEndOfMonth(), clock.instant(),
-                s.remittances(), s.collected(), s.fees(), s.deliveredUsd(), s.difference(), s.delivered(),
+                s.remittances(), s.collected(), s.fees(), s.deliveredUsd(), s.difference(), s.roundingMargin(), s.pickups(), s.delivered(),
                 s.byCurrency(), s.byType());
     }
 }

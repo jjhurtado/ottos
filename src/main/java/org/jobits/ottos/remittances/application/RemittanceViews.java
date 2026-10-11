@@ -71,6 +71,7 @@ class RemittanceViews {
                     r.getSourceCurrency(), r.getTargetCurrency(),
                     r.getAmount(),
                     financials ? r.getFee() : null,
+                    financials ? r.isFeeOverridden() : null,
                     financials ? r.getTotal() : null,
                     financials ? r.getRate() : null,
                     financials ? r.isRateOverridden() : null,

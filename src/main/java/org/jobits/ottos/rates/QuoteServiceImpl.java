@@ -27,12 +27,18 @@ class QuoteServiceImpl implements QuoteService {
     @Override
     @Transactional(readOnly = true)
     public Quote quote(ServiceType remittanceType, String sourceCurrency, String targetCurrency, BigDecimal amount,
-                       BigDecimal customRate) {
+                       BigDecimal customRate, BigDecimal customFee) {
         if (customRate != null && remittanceType != ServiceType.PICKUP) {
             throw ApiException.badRequest("RATE_NOT_ALLOWED", "Only pickups can carry a rate entered by hand");
         }
         if (customRate != null && (customRate.signum() <= 0 || customRate.stripTrailingZeros().scale() > 6)) {
             throw ApiException.badRequest("VALIDATION_FAILED", "rate must be positive with at most 6 decimals");
+        }
+        if (customFee != null && remittanceType != ServiceType.PICKUP) {
+            throw ApiException.badRequest("FEE_NOT_ALLOWED", "Only pickups can carry a fee entered by hand");
+        }
+        if (customFee != null && (customFee.signum() < 0 || customFee.stripTrailingZeros().scale() > 2)) {
+            throw ApiException.badRequest("VALIDATION_FAILED", "fee must be zero or positive with at most 2 decimals");
         }
         if (amount == null || amount.signum() <= 0 || amount.stripTrailingZeros().scale() > 2) {
             throw ApiException.badRequest("INVALID_AMOUNT", "Amount must be positive with at most 2 decimals");
@@ -52,15 +58,16 @@ class QuoteServiceImpl implements QuoteService {
             throw ApiException.conflict("NO_FEE_RULE", "No " + remittanceType + " fee rule set for " + corridor.code());
         }
 
-        BigDecimal fee = feeFor(feeRule, sent);
+        BigDecimal fee = customFee != null ? customFee.setScale(2, RoundingMode.UNNECESSARY) : feeFor(feeRule, sent);
         BigDecimal applied = customRate != null ? customRate : rate.rate();
         BigDecimal toDeliver = roundForDelivery(sent.multiply(applied), corridor.deliveryRounding());
-        if (toDeliver.signum() <= 0) {
+        if (toDeliver.signum() <= 0 && remittanceType == ServiceType.DELIVERY) {
             throw ApiException.badRequest("AMOUNT_TOO_SMALL",
                     "Amount too small: it rounds down to 0 " + corridor.targetCurrency() + " to deliver");
         }
         return new Quote(remittanceType, corridor.code(), corridor.sourceCurrency(), corridor.targetCurrency(),
-                sent, fee, sent.add(fee), applied, customRate != null, toDeliver, rate.id(), feeRule.id());
+                sent, fee, customFee != null, sent.add(fee), applied, customRate != null, toDeliver, rate.id(),
+                feeRule.id());
     }
 
     /** The configured minimum is in USD and applies to every corridor sending USD; zero means no minimum. */

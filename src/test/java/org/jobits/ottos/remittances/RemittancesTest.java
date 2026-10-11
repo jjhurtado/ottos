@@ -344,17 +344,30 @@ class RemittancesTest extends ApiTestSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"type": "PICKUP", "customerId": "%s", "beneficiaryId": "%s", "amount": 5000,
-                                 "targetCurrency": "USD", "rate": 1}
+                                 "targetCurrency": "USD", "rate": 1, "fee": 0}
                                 """.formatted(customerId, beneficiaryId)))
                 .andExpect(status().isCreated()));
 
         mvc.perform(get("/api/v1/remittances/{id}", id).header("Authorization", bearer(adminToken)))
                 .andExpect(jsonPath("$.rate").value(1))
                 .andExpect(jsonPath("$.rateOverridden").value(true))
+                .andExpect(jsonPath("$.fee").value(0))
+                .andExpect(jsonPath("$.feeOverridden").value(true))
+                .andExpect(jsonPath("$.total").value(5000.00))
+                .andExpect(jsonPath("$.cashAmount").value(5000.00))
                 .andExpect(jsonPath("$.amountToDeliver").value(5000.00));
         // Sales does not see the financials of pickups
         mvc.perform(get("/api/v1/remittances/{id}", id).header("Authorization", bearer(salesToken)))
                 .andExpect(jsonPath("$.rateOverridden").doesNotExist());
+        mvc.perform(post("/api/v1/remittances")
+                        .header("Authorization", bearer(salesToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type": "DELIVERY", "customerId": "%s", "beneficiaryId": "%s", "amount": 100,
+                                 "targetCurrency": "CUP", "fee": 0}
+                                """.formatted(customerId, beneficiaryId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("FEE_NOT_ALLOWED"));
         mvc.perform(post("/api/v1/remittances")
                         .header("Authorization", bearer(salesToken))
                         .contentType(MediaType.APPLICATION_JSON)

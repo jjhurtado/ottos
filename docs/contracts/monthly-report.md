@@ -20,17 +20,18 @@ GET /api/v1/reports/monthly?month=2026-10        permiso reports:read (nuevo; AD
   Todo el informe cuenta por fecha de registro, también lo entregado.
 - **Moneda:** el negocio trabaja en USD. Todos los importes de cobro, comisión y diferencia están en USD (la moneda de
   origen de todas las remesas). Lo entregado se da en su moneda y convertido a USD.
-- **Cobrado** (`collected`): `monto + comisión` de cada remesa (lo que se cobra por ella).
+- **Cobrado** (`collected`): `monto + comisión` de cada **entrega** (lo que se cobra por ella).
 - **Comisiones / ganancias** (`fees`): suma de comisiones, de entregas **y de recogidas**.
-- **Entregado** (`delivered`): el monto a entregar de cada remesa del mes, **completada o no**, en su moneda (CUP o
+- **Entregado** (`delivered`): el monto a entregar de cada entrega del mes, **completada o no**, en su moneda (CUP o
   USD). Así la diferencia es coherente con lo cobrado; las pendientes se ven en `remittances.open`.
 - **Entregado en USD** (`deliveredUsd`): cada monto entregado convertido con **la tasa de su propia remesa**
   (`montoAEntregar ÷ tasa`, 2 decimales, mitad hacia arriba, y luego sumado).
-- **Diferencia** (`difference`): `cobrado − entregado en USD`. Equivale a las comisiones más el margen del redondeo a
-  50 CUP.
-- **Margen de redondeo:** `diferencia − comisiones`; no viene en la respuesta, lo calcula el panel.
-- **Recogidas:** entran con su tasa y su comisión tal como quedaron en la remesa, incluida la tasa indicada a mano al
-  registrarla ([pickup-rate.md](pickup-rate.md)).
+- **Diferencia** (`difference`): `cobrado − entregado en USD` de las entregas. Equivale a las comisiones de las
+  entregas más el margen del redondeo a 50 CUP.
+- **Margen de redondeo** (`roundingMargin`): `diferencia − comisiones de las entregas`.
+- **Recogidas** (decidido con el negocio, [pickup-rate.md](pickup-rate.md)): en una recogida no se entrega nada y su
+  tasa es solo informativa. No entran en cobrado, entregado, diferencia ni `byCurrency`; su comisión suma a `fees` y sus
+  cifras salen en `pickups`: cuántas, lo recogido por los repartidores (`collected`, USD) y sus comisiones.
 
 ## Respuesta 200
 
@@ -40,26 +41,31 @@ Forma acordada con el frontend:
 {
   "month": "2026-10", "from": "2026-10-01", "to": "2026-10-31", "generatedAt": "2026-11-01T13:05:00Z",
   "remittances": { "total": 24, "delivery": 18, "pickup": 6, "completed": 21, "open": 3, "withIncident": 1 },
-  "collected": 2640.00,
-  "fees": 240.00,
-  "deliveredUsd": 2399.00,
-  "difference": 241.00,
-  "delivered": [ { "currency": "CUP", "amount": 1367240.00 }, { "currency": "USD", "amount": 600.00 } ],
+  "collected": 1980.00,
+  "fees": 220.00,
+  "deliveredUsd": 1799.00,
+  "difference": 181.00,
+  "roundingMargin": 1.00,
+  "pickups": { "remittances": 6, "collected": 30000.00, "fees": 40.00 },
+  "delivered": [ { "currency": "CUP", "amount": 737950.00 } ],
   "byCurrency": [
-    { "currency": "CUP", "remittances": 16, "sent": 1800.00, "fees": 180.00, "collected": 1980.00,
-      "delivered": 1367240.00, "deliveredUsd": 1799.00 }
+    { "currency": "CUP", "remittances": 18, "sent": 1800.00, "fees": 180.00, "collected": 1980.00,
+      "delivered": 737950.00, "deliveredUsd": 1799.00 }
   ],
-  "byType": [ { "type": "DELIVERY", "remittances": 18, "collected": 1980.00, "fees": 180.00 } ]
+  "byType": [ { "type": "DELIVERY", "remittances": 18, "collected": 1980.00, "fees": 180.00 },
+              { "type": "PICKUP", "remittances": 6, "collected": 30000.00, "fees": 40.00 } ]
 }
 ```
 
 | Campo | Contenido |
 | --- | --- |
 | `remittances` | Remesas registradas en el mes: `total`, por tipo (`delivery`, `pickup`), `completed` = completadas hasta el último instante del mes, `open` = el resto, `withIncident` = con una incidencia abierta en el momento de pedir el informe |
-| `collected`, `fees`, `deliveredUsd`, `difference` | En USD, según las reglas de arriba. El margen de redondeo es `difference − fees` |
-| `delivered` | Monto a entregar de **todas** las remesas del mes (completadas o no), por moneda de entrega, en su moneda |
-| `byCurrency` | Por moneda de entrega: `sent` (montos enviados, USD), `fees`, `collected`, `delivered` (en su moneda) y `deliveredUsd` |
-| `byType` | Por tipo de remesa, en USD |
+| `collected`, `deliveredUsd`, `difference`, `roundingMargin` | En USD, solo entregas, según las reglas de arriba |
+| `fees` | Ganancias en USD: comisiones de entregas y recogidas |
+| `pickups` | Recogidas: `remittances`, `collected` (lo recogido, USD) y `fees` |
+| `delivered` | Monto a entregar de **todas** las entregas del mes (completadas o no), por moneda de entrega, en su moneda |
+| `byCurrency` | Entregas por moneda de entrega: `sent` (montos enviados, USD), `fees`, `collected`, `delivered` (en su moneda) y `deliveredUsd` |
+| `byType` | Por tipo de remesa, en USD; `collected` es monto + comisión en las entregas y lo recogido en las recogidas |
 
 - Todo en USD salvo `delivered` y `byCurrency[].delivered`, que van en su propia moneda.
 - Listas siempre presentes (vacías si no hay datos), ordenadas por moneda o tipo. Importes con 2 decimales.
