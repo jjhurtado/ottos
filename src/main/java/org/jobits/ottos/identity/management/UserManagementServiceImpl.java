@@ -8,6 +8,7 @@ import org.jobits.ottos.identity.domain.User;
 import org.jobits.ottos.identity.domain.UserRepository;
 import org.jobits.ottos.identity.management.Views.UserView;
 import org.jobits.ottos.identity.security.RefreshTokenService;
+import org.jobits.ottos.identity.security.StaffAudit;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,13 +27,15 @@ class UserManagementServiceImpl implements UserManagementService {
     private final RoleRepository roles;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokens;
+    private final StaffAudit audit;
 
     UserManagementServiceImpl(UserRepository users, RoleRepository roles, PasswordEncoder passwordEncoder,
-                          RefreshTokenService refreshTokens) {
+                          RefreshTokenService refreshTokens, StaffAudit audit) {
         this.users = users;
         this.roles = roles;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokens = refreshTokens;
+        this.audit = audit;
     }
 
     @Override
@@ -57,14 +60,18 @@ class UserManagementServiceImpl implements UserManagementService {
         actor.requireAll(permissionsOf(assigned));
         User user = new User(email, passwordEncoder.encode(password), name);
         user.replaceRoles(assigned);
-        return UserView.of(users.save(user));
+        User saved = users.save(user);
+        audit.userCreated(saved, actor.userId());
+        return UserView.of(saved);
     }
 
     @Override
     @Transactional
-    public UserView rename(UUID id, String name) {
+    public UserView rename(UUID id, String name, Actor actor) {
         User user = find(id);
+        String previous = user.getName();
         user.rename(name);
+        audit.userRenamed(user, previous, actor.userId());
         return UserView.of(user);
     }
 
@@ -86,7 +93,9 @@ class UserManagementServiceImpl implements UserManagementService {
         if (losesAdmin && user.isActive()) {
             requireAnotherActiveAdmin(user);
         }
+        List<String> before = List.copyOf(user.roleCodes());
         user.replaceRoles(assigned);
+        audit.userRolesChanged(user, before, actor.userId());
         return UserView.of(user);
     }
 
@@ -102,23 +111,26 @@ class UserManagementServiceImpl implements UserManagementService {
         }
         user.deactivate();
         refreshTokens.revokeAll(user.getId());
+        audit.userDeactivated(user, actor.userId());
         return UserView.of(user);
     }
 
     @Override
     @Transactional
-    public UserView activate(UUID id) {
+    public UserView activate(UUID id, Actor actor) {
         User user = find(id);
         user.activate();
+        audit.userActivated(user, actor.userId());
         return UserView.of(user);
     }
 
     @Override
     @Transactional
-    public void resetPassword(UUID id, String password) {
+    public void resetPassword(UUID id, String password, Actor actor) {
         User user = find(id);
         user.changePasswordHash(passwordEncoder.encode(password));
         refreshTokens.revokeAll(user.getId());
+        audit.userPasswordReset(user, actor.userId());
     }
 
     private User find(UUID id) {

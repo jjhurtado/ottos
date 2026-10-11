@@ -23,14 +23,16 @@ class AuthenticationServiceImpl implements AuthenticationService {
     private final TokenService tokens;
     private final RefreshTokenService refreshTokens;
     private final JwtProperties props;
+    private final StaffAudit audit;
 
     AuthenticationServiceImpl(UserRepository users, PasswordEncoder passwordEncoder, TokenService tokens,
-                              RefreshTokenService refreshTokens, JwtProperties props) {
+                              RefreshTokenService refreshTokens, JwtProperties props, StaffAudit audit) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.tokens = tokens;
         this.refreshTokens = refreshTokens;
         this.props = props;
+        this.audit = audit;
     }
 
     @Override
@@ -88,6 +90,7 @@ class AuthenticationServiceImpl implements AuthenticationService {
         }
         user.changePasswordHash(passwordEncoder.encode(newPassword));
         refreshTokens.revokeAll(userId);
+        audit.passwordChanged(user);
     }
 
     private Session openSession(User user, ClientType client) {

@@ -64,8 +64,9 @@ class UserAdminController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('users:write')")
     @Operation(summary = "Update a staff user's details")
-    UserView update(@PathVariable UUID id, @Valid @RequestBody UpdateUserRequest request) {
-        return users.rename(id, request.name());
+    UserView update(@PathVariable UUID id, @Valid @RequestBody UpdateUserRequest request,
+                    @AuthenticationPrincipal Jwt jwt) {
+        return users.rename(id, request.name(), Actors.from(jwt));
     }
 
     @PutMapping("/{id}/roles")
@@ -85,16 +86,17 @@ class UserAdminController {
     @PostMapping("/{id}/activate")
     @PreAuthorize("hasAuthority('users:write')")
     @Operation(summary = "Reactivate a staff user")
-    UserView activate(@PathVariable UUID id) {
-        return users.activate(id);
+    UserView activate(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        return users.activate(id, Actors.from(jwt));
     }
 
     @PutMapping("/{id}/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('users:write')")
     @Operation(summary = "Set a new password for a staff user and revoke their sessions")
-    void resetPassword(@PathVariable UUID id, @Valid @RequestBody PasswordRequest request) {
-        users.resetPassword(id, request.password());
+    void resetPassword(@PathVariable UUID id, @Valid @RequestBody PasswordRequest request,
+                       @AuthenticationPrincipal Jwt jwt) {
+        users.resetPassword(id, request.password(), Actors.from(jwt));
     }
 
     record CreateUserRequest(@NotBlank @Email @Size(max = 255) String email,
