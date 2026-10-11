@@ -72,7 +72,7 @@ package are its public API; sub-packages are internal.
 | Dispatch and deliveries (routes, proof photos, assignment by zone) | `dispatch` | after 1.0; manual assignment lives in `remittances` |
 | Payments and cash (cash ledger) | `payments` | 1 (ledger implemented); closing and reconciliation in 3 |
 | Notifications | `notifications` | 2 |
-| Reporting and audit | `reporting` | 4 |
+| Reporting and audit (audit log; KPIs later) | `reporting` | 1 (audit log implemented); KPIs in 4 |
 
 Inside each module: `domain` (entities, repositories), services as an interface plus its `Impl` (in the module root for the
 public API, or in `application`, `management`, `security`) and `web` (controllers). Conventions for Git, layers and
@@ -138,6 +138,7 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Courier work | `GET /remittances/assigned`, `POST /remittances/{id}/deliver`, `/deliver-with-pin` | `remittances:read-assigned`, `remittances:deliver` |
 | Incidents | `POST /remittances/{id}/incidents` (`{reason, note}`) | `remittances:report-incident` |
 | Review | `GET /remittances?review=true`, `POST /remittances/{id}/review/resolve` | `remittances:read`, `remittances:review` |
+| Audit | `GET /audit?targetType=&targetId=&actorId=&action=&from=&to=` (who changed users and roles, and when) | `audit:read` (ADMIN) |
 | Mobile sync | `GET /sync/state?since=`, `POST /sync/actions` (contract: `docs/contracts/offline-sync.md`) | authenticated; each action needs its endpoint's permission |
 | Workflow | `GET /couriers` (assignable staff and their open remittances), `POST /remittances/{id}/assign`, `/transitions`, `/postpone` | `remittances:assign`, the transition's permission, `remittances:postpone` |
 | Statistics | `GET /customers/{id}/stats`, `GET /beneficiaries/{id}/stats` | `remittances:read` |

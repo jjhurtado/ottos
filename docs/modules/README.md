@@ -16,7 +16,7 @@ cambiar algo. Se actualiza en la misma rama que cambia el módulo (ver `STANDARD
 | [payments](payments.md) | Caja del negocio y de cada repartidor (doble entrada) | Libro implementado; cierre en Fase 3 |
 | [dispatch](dispatch.md) | Asignación por zona, prueba de entrega | Vacío (después de 1.0) |
 | [notifications](notifications.md) | Push, correo, SMS | Vacío (Fase 2) |
-| [reporting](reporting.md) | KPIs, exportes, auditoría | Vacío (Fase 4) |
+| [reporting](reporting.md) | Registro de auditoría; KPIs y exportes | Auditoría implementada; KPIs en Fase 4 |
 
 Dependencias entre módulos (solo por su API pública o eventos):
 
@@ -26,4 +26,5 @@ rates       → configuration
 beneficiaries → customers, branches
 payments    → identity  (+ escucha eventos de remittances)
 sync        → remittances.application, payments.application  (interfaces con nombre)
+reporting   → identity  (+ escucha AuditEvent del paquete raíz)
 ```
