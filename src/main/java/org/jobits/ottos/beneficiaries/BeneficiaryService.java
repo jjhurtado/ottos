@@ -28,6 +28,12 @@ public interface BeneficiaryService {
     /** Creates a beneficiary and links it to the customer who sends to them. */
     BeneficiaryInfo create(UUID customerId, Beneficiary.Details details, UUID actorId);
 
+    /**
+     * Creates a beneficiary no customer is linked to yet. It is found by the global search and linked to a customer
+     * later, at the latest when that customer sends them a remittance.
+     */
+    BeneficiaryInfo create(Beneficiary.Details details, UUID actorId);
+
     BeneficiaryInfo update(UUID id, Beneficiary.Details details);
 
     /** Links an existing beneficiary to another customer. Linking twice is harmless. */

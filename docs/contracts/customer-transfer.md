@@ -111,6 +111,63 @@ Lo que no coincide se crea, aunque comparta teléfono con otro.
   `null`.
 - Una importación real queda en la auditoría (`CUSTOMERS_IMPORTED`, con el resumen). La vista previa no.
 
+## 4. Beneficiarios sin cliente
+
+El negocio tiene la lista de todos los beneficiarios (un chat de WhatsApp) pero no la de sus remitentes. Los
+beneficiarios se cargan sueltos y se van vinculando a los clientes poco a poco.
+
+### Importar beneficiarios sueltos
+
+```
+POST /beneficiaries/import   permiso customers:import (solo ADMIN)
+```
+
+```json
+{
+  "dryRun": true,
+  "beneficiaries": [
+    { "ref": "fila 2", "fullName": "Rosa Martínez", "phone": "53 5222 3344", "alternatePhone": null,
+      "street": "Calle 10", "houseNumber": "512", "betweenStreets": "Línea y 23", "neighborhood": null,
+      "municipality": "Plaza de la Revolución", "reference": null, "documentNumber": null, "notes": null }
+  ]
+}
+```
+
+- Cada beneficiario tiene los mismos campos, obligatorios (`fullName`, `phone`, `street`, `municipality`), coincidencias
+  y rechazos que en la importación de clientes. Un beneficiario existente pero borrado se rechaza con
+  `BENEFICIARY_INACTIVE`. Máximo 500 por petición; cada uno en su propia transacción.
+- No se vincula a ningún cliente. Si después se importa un cliente con ese mismo beneficiario, se reutiliza y se vincula.
+
+Respuesta 200:
+
+```json
+{
+  "dryRun": false,
+  "summary": { "created": 1, "existing": 0, "rejected": 0 },
+  "results": [
+    { "index": 0, "ref": "fila 2", "status": "CREATED", "beneficiaryId": "…", "linked": false, "code": null, "message": null }
+  ]
+}
+```
+
+`results` tiene la misma forma que los beneficiarios de la importación de clientes; `linked` siempre es `false`. Una
+importación real queda en la auditoría (`BENEFICIARIES_IMPORTED`, con el resumen).
+
+### Crear un beneficiario suelto
+
+```
+POST /beneficiaries          permiso customers:write
+```
+
+El mismo cuerpo que `POST /customers/{id}/beneficiaries` (`municipalityCode`). Devuelve 201 con el beneficiario, sin
+vincularlo a ningún cliente.
+
+### Vinculación gradual
+
+- `GET /beneficiaries?q=` ya busca en **todos** los beneficiarios activos (nombre o teléfono), estén vinculados o no.
+- **Registrar una remesa vincula al cliente con el beneficiario** si no lo estaban. Ya no hace falta vincular antes con
+  `PUT /customers/{id}/beneficiaries/{beneficiaryId}`, y desaparece el error `BENEFICIARY_NOT_LINKED`.
+
 ## Permisos nuevos
 
 | Permiso | Para qué | Roles iniciales |
@@ -120,4 +177,5 @@ Lo que no coincide se crea, aunque comparta teléfono con otro.
 
 ## Códigos
 
-Nuevo: `CUSTOMER_ALREADY_REGISTERED`. Deja de usarse: `PHONE_ALREADY_REGISTERED`.
+Nuevo: `CUSTOMER_ALREADY_REGISTERED`. Dejan de usarse: `PHONE_ALREADY_REGISTERED` y `BENEFICIARY_NOT_LINKED` (las
+remesas vinculan solas).

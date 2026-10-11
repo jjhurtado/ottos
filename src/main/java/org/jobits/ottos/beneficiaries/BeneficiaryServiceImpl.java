@@ -103,6 +103,12 @@ class BeneficiaryServiceImpl implements BeneficiaryService {
 
     @Override
     @Transactional
+    public BeneficiaryInfo create(Beneficiary.Details details, UUID actorId) {
+        return info(beneficiaries.save(new Beneficiary(validate(details), clock.instant(), actorId)));
+    }
+
+    @Override
+    @Transactional
     public BeneficiaryInfo update(UUID id, Beneficiary.Details details) {
         Beneficiary beneficiary = beneficiaries.findById(id).orElseThrow(BeneficiaryServiceImpl::notFound);
         beneficiary.update(validate(details));

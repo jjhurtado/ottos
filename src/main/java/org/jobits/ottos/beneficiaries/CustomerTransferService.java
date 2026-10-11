@@ -20,6 +20,12 @@ public interface CustomerTransferService {
      */
     ImportResult importCustomers(boolean dryRun, List<ImportCustomer> customers, UUID actorId);
 
+    /**
+     * Imports beneficiaries without a customer, each in its own transaction, with the same matching and rejections as
+     * {@link #importCustomers}. They are linked to customers later. With dryRun, nothing is saved.
+     */
+    BeneficiaryImportResult importBeneficiaries(boolean dryRun, List<ImportBeneficiary> beneficiaries, UUID actorId);
+
     record CustomerExport(Instant exportedAt, List<ExportedCustomer> customers) {
     }
 
@@ -58,12 +64,18 @@ public interface CustomerTransferService {
                    long beneficiariesExisting, long beneficiariesRejected, long linksCreated) {
     }
 
+    record BeneficiaryImportResult(boolean dryRun, BeneficiarySummary summary, List<BeneficiaryResult> results) {
+    }
+
+    record BeneficiarySummary(long created, long existing, long rejected) {
+    }
+
     /** customerId is null when rejected, or in a dry run for a customer that would be created. */
     record CustomerResult(int index, String ref, ItemStatus status, UUID customerId, String code, String message,
                           List<BeneficiaryResult> beneficiaries) {
     }
 
-    /** linked: the link to the customer was created by this import. */
+    /** linked: the link to the customer was created by this import (always false without a customer). */
     record BeneficiaryResult(int index, String ref, ItemStatus status, UUID beneficiaryId, boolean linked, String code,
                              String message) {
     }

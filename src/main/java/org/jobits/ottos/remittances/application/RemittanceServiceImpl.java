@@ -112,9 +112,8 @@ class RemittanceServiceImpl implements RemittanceService {
         BeneficiaryInfo beneficiary = beneficiaries.find(request.beneficiaryId())
                 .filter(BeneficiaryInfo::active)
                 .orElseThrow(() -> badRequest("BENEFICIARY_UNAVAILABLE", "Unknown or inactive beneficiary"));
-        if (!beneficiaries.isLinked(customer.id(), beneficiary.id())) {
-            throw badRequest("BENEFICIARY_NOT_LINKED", "The beneficiary is not linked to this customer; link them first");
-        }
+        // Sending to a beneficiary links them to the customer (beneficiaries loaded without a customer get linked here)
+        beneficiaries.link(customer.id(), beneficiary.id());
         QuoteService.Quote quote = quotes.quote(ServiceType.valueOf(request.type().name()), SOURCE_CURRENCY,
                 request.targetCurrency(), request.amount(), request.rate());
 

@@ -129,6 +129,36 @@ class CustomerTransferServiceImpl implements CustomerTransferService {
         return new ImportResult(dryRun, summary, results);
     }
 
+    @Override
+    public BeneficiaryImportResult importBeneficiaries(boolean dryRun, List<ImportBeneficiary> items, UUID actorId) {
+        Municipalities municipalities = new Municipalities(zones);
+        List<BeneficiaryResult> results = new ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            ImportBeneficiary item = items.get(i);
+            int index = i;
+            results.add(transactions.execute(status -> {
+                BeneficiaryResult r = importBeneficiary(index, item, null, actorId, municipalities, dryRun);
+                if (dryRun) {
+                    status.setRollbackOnly();
+                }
+                return r;
+            }));
+        }
+        Map<ItemStatus, Long> counts = results.stream()
+                .collect(Collectors.groupingBy(BeneficiaryResult::status, Collectors.counting()));
+        BeneficiarySummary summary = new BeneficiarySummary(counts.getOrDefault(ItemStatus.CREATED, 0L),
+                counts.getOrDefault(ItemStatus.EXISTING, 0L), counts.getOrDefault(ItemStatus.REJECTED, 0L));
+        if (!dryRun) {
+            Map<String, Object> details = new LinkedHashMap<>();
+            details.put("beneficiariesCreated", summary.created());
+            details.put("beneficiariesExisting", summary.existing());
+            details.put("beneficiariesRejected", summary.rejected());
+            publisher.publishEvent(new AuditEvent("BENEFICIARIES_IMPORTED", "BENEFICIARIES",
+                    UUID.randomUUID().toString(), "import", actorId, clock.instant(), details));
+        }
+        return new BeneficiaryImportResult(dryRun, summary, results);
+    }
+
     private CustomerResult importOne(int index, ImportCustomer item, UUID actorId, Municipalities municipalities,
                                      boolean dryRun) {
         CustomerData details = new CustomerData(
@@ -151,7 +181,7 @@ class CustomerTransferServiceImpl implements CustomerTransferService {
     }
 
     /**
-     * Rejections only reject this beneficiary. They are all checked here before calling BeneficiaryService: an
+     * customerId null: a beneficiary without a customer, nothing is linked. Rejections only reject this beneficiary. They are all checked here before calling BeneficiaryService: an
      * exception thrown from inside a transactional call would mark the customer's whole transaction for rollback.
      */
     private BeneficiaryResult importBeneficiary(int index, ImportBeneficiary item, UUID customerId, UUID actorId,
@@ -172,15 +202,17 @@ class CustomerTransferServiceImpl implements CustomerTransferService {
                     throw ApiException.conflict("BENEFICIARY_INACTIVE", "The beneficiary was deleted");
                 }
                 UUID id = existing.get().getId();
-                boolean link = !beneficiaryService.isLinked(customerId, id);
+                boolean link = customerId != null && !beneficiaryService.isLinked(customerId, id);
                 if (link) {
                     beneficiaryService.link(customerId, id);
                 }
                 return new BeneficiaryResult(index, item.ref(), ItemStatus.EXISTING, id, link, null, null);
             }
-            UUID created = beneficiaryService.create(customerId, details, actorId).id();
-            return new BeneficiaryResult(index, item.ref(), ItemStatus.CREATED, dryRun ? null : created, true, null,
-                    null);
+            UUID created = customerId == null
+                    ? beneficiaryService.create(details, actorId).id()
+                    : beneficiaryService.create(customerId, details, actorId).id();
+            return new BeneficiaryResult(index, item.ref(), ItemStatus.CREATED, dryRun ? null : created,
+                    customerId != null, null, null);
         } catch (ApiException e) {
             return new BeneficiaryResult(index, item.ref(), ItemStatus.REJECTED, null, false, e.getCode(), e.getReason());
         }

@@ -145,6 +145,62 @@ class CustomerTransferTest extends ApiTestSupport {
         importCustomers(false, tooMany).andExpect(status().isBadRequest());
     }
 
+    @Test
+    void beneficiariesAreImportedWithoutACustomerAndLinkedWhenOneSendsThemMoney() throws Exception {
+        importBeneficiaries(true, ROSA)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.results[0].status").value("CREATED"))
+                .andExpect(jsonPath("$.results[0].beneficiaryId").doesNotExist());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM beneficiaries", Integer.class)).isZero();
+
+        importBeneficiaries(false, ROSA,
+                """
+                {"ref": "B2", "fullName": "Sin calle", "phone": "5350000000", "municipality": "2302"}""")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.summary.created").value(1))
+                .andExpect(jsonPath("$.summary.rejected").value(1))
+                .andExpect(jsonPath("$.results[0].ref").value("B1"))
+                .andExpect(jsonPath("$.results[0].linked").value(false))
+                .andExpect(jsonPath("$.results[1].code").value("VALIDATION_FAILED"));
+        importBeneficiaries(false, ROSA)
+                .andExpect(jsonPath("$.results[0].status").value("EXISTING"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customer_beneficiaries", Integer.class)).isZero();
+        mvc.perform(get("/api/v1/audit").param("action", "BENEFICIARIES_IMPORTED").header("Authorization", bearer(adminToken)))
+                .andExpect(jsonPath("$.totalItems").value(2));
+
+        // The global search finds them; a customer's import links the same beneficiary instead of duplicating it
+        mvc.perform(get("/api/v1/beneficiaries").param("q", "5222 3344").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$", hasSize(1)));
+        importCustomers(false, customer("C1", "Ana Pérez", "+13055550101", null, ROSA))
+                .andExpect(jsonPath("$.results[0].beneficiaries[0].status").value("EXISTING"))
+                .andExpect(jsonPath("$.results[0].beneficiaries[0].linked").value(true));
+
+        mvc.perform(post("/api/v1/beneficiaries/import").header("Authorization", bearer(salesToken))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"beneficiaries\": []}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void aBeneficiaryCanBeCreatedWithoutACustomer() throws Exception {
+        mvc.perform(post("/api/v1/beneficiaries")
+                        .header("Authorization", bearer(salesToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fullName": "Rosa Martínez", "phone": "53 5222 3344", "street": "Calle 10",
+                                 "municipalityCode": "2302"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.phone").value("5352223344"))
+                .andExpect(jsonPath("$.municipalityName").value("Plaza de la Revolución"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customer_beneficiaries", Integer.class)).isZero();
+    }
+
+    private ResultActions importBeneficiaries(boolean dryRun, String... beneficiaries) throws Exception {
+        return mvc.perform(post("/api/v1/beneficiaries/import")
+                .header("Authorization", bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dryRun\": " + dryRun + ", \"beneficiaries\": [" + String.join(",", beneficiaries) + "]}"));
+    }
+
     private ResultActions importCustomers(boolean dryRun, String... customers) throws Exception {
         return mvc.perform(post("/api/v1/customers/import")
                 .header("Authorization", bearer(adminToken))
