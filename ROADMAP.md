@@ -182,8 +182,9 @@ modo offline.
 - Endpoint propuesto: `GET /reports/monthly?month=AAAA-MM` con un permiso nuevo `reports:read` (ADMIN y SALES), en el
   módulo `reporting`.
 - **Recogidas con tasa propia por remesa:** al registrar una recogida se indica el tipo de cambio de ese momento (1x1
-  u otro), en vez de usar siempre el configurado, y la caja se comporta según esa tasa. Por definir: cómo fluye el
-  dinero de una recogida y qué parte es ganancia.
+  u otro), en vez de usar siempre el configurado, y la caja se comporta según esa tasa. Las recogidas se hacen cuando
+  al negocio le interesa tener efectivo, normalmente 1x1 y para montos grandes: **no dejan ganancia**. Por eso la
+  comisión de recogida debe configurarse en 0 desde Configuración (es un dato, no va en una migración).
 
 **Cambio de moneda del repartidor**
 
@@ -206,9 +207,10 @@ modo offline.
   - **Columnas:** las del cliente (nombre, teléfono, correo, documento, dirección, notas) y las del beneficiario
     (nombre, teléfonos, calle, número, entre calles, reparto, municipio por código o nombre, referencia, documento,
     notas), y cómo se relaciona cada beneficiario con su cliente (una fila por vínculo).
-  - **Coincidencias:** el cliente se identifica por teléfono (ya es único); falta decidir cómo reconocer un
-    beneficiario ya existente (¿teléfono? ¿nombre y teléfono?) y si una fila que coincide actualiza los datos o se
-    omite.
+  - **Coincidencias (decidido):** un cliente ya existe si coinciden **nombre, teléfono y dirección**. El mismo nombre y
+    teléfono con otra dirección es otro cliente: queda duplicado a propósito, porque una persona puede tener dos
+    direcciones y no se implementará un modelo de varias direcciones. Hoy el teléfono del cliente es único
+    (`PHONE_ALREADY_REGISTERED`), así que importar exige cambiar esa regla.
   - **Validación por fila** con los mismos códigos que la API (`INVALID_PHONE`, `UNKNOWN_MUNICIPALITY`…), sin que un
     error bloquee las demás filas; límite de filas por envío.
   - **Permisos:** exportar datos personales de todos los clientes es delicado; propuesta: permisos propios
