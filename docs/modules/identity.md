@@ -53,6 +53,10 @@ permisos (RBAC dinámico). Los clientes (remitentes) no tienen cuenta todavía.
   existe ninguno.
 - Los roles semilla y las descripciones de permisos están en inglés; el frontend traduce por código.
 
+- **Auditoría:** cada cambio de usuarios y roles, el cambio de la propia contraseña y la creación del primer admin
+  publican un `AuditEvent` (`security.StaffAudit`) que `reporting` guarda en la misma transacción (ver
+  `reporting.md`). Por eso todos los métodos de administración reciben el `Actor`.
+
 ## Dónde tocar
 
 - Duración de tokens: `JwtProperties` / `application*.yml`.
@@ -62,4 +66,4 @@ permisos (RBAC dinámico). Los clientes (remitentes) no tienen cuenta todavía.
 
 ## Pendiente
 
-Auditoría de cambios de usuarios y roles (antes de la RC).
+Nada para 1.0.

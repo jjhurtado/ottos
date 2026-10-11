@@ -225,6 +225,13 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 - Los códigos (`AMOUNT_TOO_SMALL`, `REMITTANCE_NOT_FOUND`…) son contrato con el frontend: no se renombran; se añaden.
 - El catálogo de códigos está en el README (sección *Errors*).
 
+### Auditoría
+
+- Todo cambio de datos de administración (usuarios, roles, y lo que se añada) publica un `org.jobits.ottos.AuditEvent`
+  dentro de la transacción del cambio; `reporting` lo guarda en `audit_log` y lo sirve en `GET /audit`.
+- `details` dice qué cambió (antes/después, añadido/quitado) y nunca lleva secretos.
+- Las `action` son códigos estables, como los de error: no se renombran.
+
 ### Idioma y traducción
 
 - El backend no traduce: todo texto que devuelve (`detail` de los errores, descripciones de permisos, nombres y

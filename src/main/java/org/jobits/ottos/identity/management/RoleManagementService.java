@@ -21,9 +21,9 @@ public interface RoleManagementService {
 
     RoleView create(String code, String name, String description, Set<String> permissionCodes, Actor actor);
 
-    RoleView describe(UUID id, String name, String description);
+    RoleView describe(UUID id, String name, String description, Actor actor);
 
     RoleView replacePermissions(UUID id, Set<String> permissionCodes, Actor actor);
 
-    void delete(UUID id);
+    void delete(UUID id, Actor actor);
 }

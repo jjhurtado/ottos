@@ -73,8 +73,9 @@ class RoleAdminController {
     @PutMapping("/roles/{id}")
     @PreAuthorize("hasAuthority('roles:write')")
     @Operation(summary = "Update a role's name and description")
-    RoleView update(@PathVariable UUID id, @Valid @RequestBody UpdateRoleRequest request) {
-        return roles.describe(id, request.name(), request.description());
+    RoleView update(@PathVariable UUID id, @Valid @RequestBody UpdateRoleRequest request,
+                    @AuthenticationPrincipal Jwt jwt) {
+        return roles.describe(id, request.name(), request.description(), Actors.from(jwt));
     }
 
     @PutMapping("/roles/{id}/permissions")
@@ -89,8 +90,8 @@ class RoleAdminController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAuthority('roles:write')")
     @Operation(summary = "Delete a role that no user holds")
-    void delete(@PathVariable UUID id) {
-        roles.delete(id);
+    void delete(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        roles.delete(id, Actors.from(jwt));
     }
 
     record CreateRoleRequest(

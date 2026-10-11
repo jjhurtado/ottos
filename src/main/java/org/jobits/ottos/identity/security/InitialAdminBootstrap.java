@@ -27,17 +27,20 @@ class InitialAdminBootstrap implements ApplicationRunner {
     private final UserRepository users;
     private final RoleRepository roles;
     private final PasswordEncoder passwordEncoder;
+    private final StaffAudit audit;
     private final String email;
     private final String password;
 
     InitialAdminBootstrap(UserRepository users,
                           RoleRepository roles,
                           PasswordEncoder passwordEncoder,
+                          StaffAudit audit,
                           @Value("${ottos.admin.email:}") String email,
                           @Value("${ottos.admin.password:}") String password) {
         this.users = users;
         this.roles = roles;
         this.passwordEncoder = passwordEncoder;
+        this.audit = audit;
         this.email = email;
         this.password = password;
     }
@@ -56,7 +59,7 @@ class InitialAdminBootstrap implements ApplicationRunner {
                 .orElseThrow(() -> new IllegalStateException("Role ADMIN missing; check the Flyway migrations"));
         User user = new User(email, passwordEncoder.encode(password), "Administrator");
         user.replaceRoles(List.of(admin));
-        users.save(user);
+        audit.initialAdminCreated(users.save(user));
         log.info("Initial administrator created: {}", User.normalizeEmail(email));
     }
 }

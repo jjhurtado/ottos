@@ -17,14 +17,14 @@ public interface UserManagementService {
 
     UserView create(String email, String name, String password, Set<UUID> roleIds, Actor actor);
 
-    UserView rename(UUID id, String name);
+    UserView rename(UUID id, String name, Actor actor);
 
     UserView replaceRoles(UUID id, Set<UUID> roleIds, Actor actor);
 
     UserView deactivate(UUID id, Actor actor);
 
-    UserView activate(UUID id);
+    UserView activate(UUID id, Actor actor);
 
     /** Sets a new password chosen by an administrator and signs the user out of every device. */
-    void resetPassword(UUID id, String password);
+    void resetPassword(UUID id, String password, Actor actor);
 }

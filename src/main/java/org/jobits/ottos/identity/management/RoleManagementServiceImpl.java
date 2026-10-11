@@ -6,6 +6,7 @@ import org.jobits.ottos.identity.domain.PermissionRepository;
 import org.jobits.ottos.identity.domain.Role;
 import org.jobits.ottos.identity.domain.RoleRepository;
 import org.jobits.ottos.identity.domain.UserRepository;
+import org.jobits.ottos.identity.security.StaffAudit;
 import org.jobits.ottos.identity.management.Views.PermissionView;
 import org.jobits.ottos.identity.management.Views.RoleView;
 import org.springframework.stereotype.Service;
@@ -24,11 +25,14 @@ class RoleManagementServiceImpl implements RoleManagementService {
     private final RoleRepository roles;
     private final PermissionRepository permissions;
     private final UserRepository users;
+    private final StaffAudit audit;
 
-    RoleManagementServiceImpl(RoleRepository roles, PermissionRepository permissions, UserRepository users) {
+    RoleManagementServiceImpl(RoleRepository roles, PermissionRepository permissions, UserRepository users,
+                              StaffAudit audit) {
         this.roles = roles;
         this.permissions = permissions;
         this.users = users;
+        this.audit = audit;
     }
 
     @Override
@@ -59,14 +63,19 @@ class RoleManagementServiceImpl implements RoleManagementService {
         actor.requireAll(permissionCodes);
         Role role = new Role(code, name, description);
         role.replacePermissions(granted);
-        return RoleView.of(roles.save(role));
+        Role saved = roles.save(role);
+        audit.roleCreated(saved, actor.userId());
+        return RoleView.of(saved);
     }
 
     @Override
     @Transactional
-    public RoleView describe(UUID id, String name, String description) {
+    public RoleView describe(UUID id, String name, String description, Actor actor) {
         Role role = findEditable(id);
+        String previousName = role.getName();
+        String previousDescription = role.getDescription();
         role.describe(name, description);
+        audit.roleDescribed(role, previousName, previousDescription, actor.userId());
         return RoleView.of(role);
     }
 
@@ -82,19 +91,22 @@ class RoleManagementServiceImpl implements RoleManagementService {
             }
         });
         actor.requireAll(changed);
+        List<String> before = role.getPermissions().stream().map(Permission::getCode).toList();
         role.replacePermissions(granted);
+        audit.rolePermissionsChanged(role, before, actor.userId());
         return RoleView.of(role);
     }
 
     @Override
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID id, Actor actor) {
         Role role = findEditable(id);
         long holders = users.countByRoles_Id(id);
         if (holders > 0) {
             throw ApiException.conflict("ROLE_IN_USE",
                     "Role " + role.getCode() + " is assigned to " + holders + " user(s); remove it from them first");
         }
+        audit.roleDeleted(role, actor.userId());
         roles.delete(role);
     }
 

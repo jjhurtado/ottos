@@ -43,6 +43,7 @@ public abstract class ApiTestSupport {
     private static final List<String> RESET = List.of(
             "DELETE FROM cash_movements",
             "DELETE FROM cash_accounts WHERE account_key NOT IN ('BUSINESS:USD', 'BUSINESS:CUP', 'EXTERNAL:USD', 'EXTERNAL:CUP')",
+            "DELETE FROM audit_log",
             "DELETE FROM synced_actions",
             "DELETE FROM remittance_events",
             "DELETE FROM remittances",
