@@ -87,6 +87,7 @@ services: [STANDARDS.md](STANDARDS.md). What each module does: [docs/modules](do
 | `OTTOS_JWT_SECRET` | Base64 HMAC key, at least 32 bytes (`openssl rand -base64 32`) | Required |
 | `OTTOS_ADMIN_EMAIL` / `OTTOS_ADMIN_PASSWORD` | Creates the first ADMIN if none exists | empty |
 | `PORT` | HTTP port | `8080` |
+| `OTTOS_CLIENT_IP_HEADER` | `prod` only: header the hosting's proxy sets with the client's real IP, used by the per-IP login limit | `X-Real-Ip` |
 | `OTTOS_CORS_ALLOWED_ORIGINS` | Browser origins allowed to call the API, comma-separated (the web panel's domain) | empty: no CORS |
 | `SPRING_PROFILES_ACTIVE` | `dev` locally; `prod` in staging and production | — |
 

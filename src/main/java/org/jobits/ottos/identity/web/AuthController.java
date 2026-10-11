@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.jobits.ottos.identity.domain.ClientType;
 import org.jobits.ottos.identity.security.AuthenticationService;
+import org.jobits.ottos.identity.security.ClientIp;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -29,16 +30,18 @@ import java.util.UUID;
 class AuthController {
 
     private final AuthenticationService authentication;
+    private final ClientIp clientIp;
 
-    AuthController(AuthenticationService authentication) {
+    AuthController(AuthenticationService authentication, ClientIp clientIp) {
         this.authentication = authentication;
+        this.clientIp = clientIp;
     }
 
     @PostMapping("/login")
     @Operation(summary = "Log in with email and password and get an access token and a refresh token; repeated failures lock the email or IP for a while (429)")
     TokenResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         ClientType client = request.client() == null ? ClientType.WEB : request.client();
-        return TokenResponse.of(authentication.login(request.email(), request.password(), client, http.getRemoteAddr()));
+        return TokenResponse.of(authentication.login(request.email(), request.password(), client, clientIp.of(http)));
     }
 
     @PostMapping("/refresh")

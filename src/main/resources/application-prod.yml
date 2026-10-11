@@ -4,9 +4,6 @@
 
 server:
   shutdown: graceful
-  # Behind the hosting's proxy: take the client's IP from X-Forwarded-For, so the per-IP login limit counts each client
-  # and not the proxy. The header can be forged, which only dodges the per-IP limit; the per-account one still holds.
-  forward-headers-strategy: framework
   tomcat:
     threads:
       max: 20
@@ -20,6 +17,12 @@ spring:
       minimum-idle: 1
   lifecycle:
     timeout-per-shutdown-phase: 20s
+
+# Behind the hosting's proxy, the per-IP login limit reads the client's IP from the header the proxy sets with the real
+# address (Railway: X-Real-Ip). Never the leftmost X-Forwarded-For entry, which the client can forge.
+ottos:
+  security:
+    client-ip-header: ${OTTOS_CLIENT_IP_HEADER:X-Real-Ip}
 
 # No public API docs outside development
 springdoc:
