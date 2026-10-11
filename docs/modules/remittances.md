@@ -26,7 +26,7 @@ historial y estadísticas.
 | `GET /remittances/{id}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:read` o `read-assigned` |
 | `GET /remittances/completed?since=` (completadas que el servidor registró después de `since`, para las notificaciones de Ventas; contrato `docs/contracts/completed-feed.md`) | `remittances:read` |
 | `GET /remittances/assigned` (las mías, como repartidor) | `remittances:read-assigned` |
-| `GET /couriers` (personal asignable con sus remesas abiertas), `POST /remittances/{id}/assign` | `remittances:assign` |
+| `GET /couriers` (personal asignable con sus remesas abiertas: activo, con `remittances:deliver` y sin ser administrador), `POST /remittances/{id}/assign` | `remittances:assign` |
 | `POST /remittances/{id}/deliver`, `/deliver-with-pin` | `remittances:deliver` |
 | `POST /remittances/{id}/incidents` | `remittances:report-incident` |
 | `POST /remittances/{id}/postpone` | `remittances:postpone` |

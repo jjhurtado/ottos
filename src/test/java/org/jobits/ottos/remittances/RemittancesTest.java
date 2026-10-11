@@ -203,16 +203,20 @@ class RemittancesTest extends ApiTestSupport {
         mvc.perform(post("/api/v1/remittances/{id}/deliver", delivered).header("Authorization", bearer(courierToken)))
                 .andExpect(status().isOk());
 
-        // Same rule as assigning: active with remittances:deliver, so ADMIN (who holds every permission) is listed too
+        // Same rule as assigning: active with remittances:deliver and not an administrator (ADMIN holds every
+        // permission but is not a courier)
         mvc.perform(get("/api/v1/couriers").header("Authorization", bearer(salesToken)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(3)))
-                .andExpect(jsonPath("$[0].name").value("User admin@ottos.test"))
-                .andExpect(jsonPath("$[1].id").value(courier.getId().toString()))
-                .andExpect(jsonPath("$[1].name").value("User courier@ottos.test"))
-                .andExpect(jsonPath("$[1].openRemittances").value(1))
-                .andExpect(jsonPath("$[2].id").value(idle.getId().toString()))
-                .andExpect(jsonPath("$[2].openRemittances").value(0));
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].id").value(courier.getId().toString()))
+                .andExpect(jsonPath("$[0].name").value("User courier@ottos.test"))
+                .andExpect(jsonPath("$[0].openRemittances").value(1))
+                .andExpect(jsonPath("$[1].id").value(idle.getId().toString()))
+                .andExpect(jsonPath("$[1].openRemittances").value(0));
+        User admin = users.findByEmail("admin@ottos.test").orElseThrow();
+        assign(open, admin.getId().toString())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_COURIER"));
         mvc.perform(get("/api/v1/couriers").header("Authorization", bearer(courierToken)))
                 .andExpect(status().isForbidden());
     }

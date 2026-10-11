@@ -140,9 +140,7 @@ class CashLedgerServiceImpl implements CashLedgerService {
     @Override
     @Transactional
     public ExchangeView recordExchange(UUID courierId, NewExchange exchange, UUID actorId) {
-        if (!courierId.equals(actorId)) {
-            requireCourier(courierId);
-        }
+        requireCourier(courierId);
         Instant now = clock.instant();
         return view(exchange(courierId, exchange, now, now, actorId, null, false));
     }
@@ -273,7 +271,9 @@ class CashLedgerServiceImpl implements CashLedgerService {
     public List<CourierCash> couriers() {
         Map<UUID, List<CashAccount>> byCourier = accounts.findByTypeOrderByCurrency(AccountType.COURIER).stream()
                 .collect(Collectors.groupingBy(CashAccount::getOwnerId));
+        // Administrators are not couriers; they cannot get courier cash anyway (requireCourier)
         return byCourier.entrySet().stream()
+                .filter(e -> staff.find(e.getKey()).map(m -> !m.administrator()).orElse(true))
                 .map(e -> courierCash(e.getKey(), e.getValue()))
                 .sorted(Comparator.comparing(CourierCash::name, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
@@ -338,10 +338,10 @@ class CashLedgerServiceImpl implements CashLedgerService {
     }
 
     private void requireCourier(UUID courierId) {
-        boolean eligible = staff.find(courierId).map(m -> m.can(COURIER_PERMISSION)).orElse(false);
+        boolean eligible = staff.find(courierId).map(m -> m.worksWith(COURIER_PERMISSION)).orElse(false);
         if (!eligible) {
             throw ApiException.badRequest("INVALID_COURIER",
-                    "The courier must be an active user with permission " + COURIER_PERMISSION);
+                    "The courier must be an active user with permission " + COURIER_PERMISSION + ", not an administrator");
         }
     }
 

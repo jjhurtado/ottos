@@ -10,13 +10,23 @@ public interface StaffDirectoryService {
 
     Optional<StaffMember> find(UUID id);
 
-    /** Active staff members holding the permission through any of their roles, by name. */
-    List<StaffMember> activeWith(String permission);
+    /**
+     * Staff who can be given work that needs the permission (e.g. couriers): active, holding it, and not
+     * administrators. Administrators hold every permission through the built-in role, but are not couriers. By name.
+     */
+    List<StaffMember> workersWith(String permission);
 
-    record StaffMember(UUID id, String name, String email, boolean active, Set<String> permissions) {
+    /** administrator: holds the built-in ADMIN role (and with it every permission). */
+    record StaffMember(UUID id, String name, String email, boolean active, boolean administrator,
+                       Set<String> permissions) {
 
         public boolean can(String permission) {
             return active && permissions.contains(permission);
+        }
+
+        /** Can be given work that needs the permission: see {@link StaffDirectoryService#workersWith}. */
+        public boolean worksWith(String permission) {
+            return can(permission) && !administrator;
         }
     }
 }

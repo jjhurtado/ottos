@@ -153,7 +153,7 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Reports | `GET /reports/monthly?month=YYYY-MM` (monthly sales report; contract: `docs/contracts/monthly-report.md`) | `reports:read` (ADMIN, SALES) |
 | Audit | `GET /audit?targetType=&targetId=&actorId=&action=&from=&to=` (who changed users and roles, and when) | `audit:read` (ADMIN) |
 | Mobile sync | `GET /sync/state?since=`, `POST /sync/actions` (contract: `docs/contracts/offline-sync.md`) | authenticated; each action needs its endpoint's permission |
-| Workflow | `GET /couriers` (assignable staff and their open remittances), `POST /remittances/{id}/assign`, `/transitions`, `/postpone` | `remittances:assign`, the transition's permission, `remittances:postpone` |
+| Workflow | `GET /couriers` (assignable staff and their open remittances: active, with `remittances:deliver`, not administrators), `POST /remittances/{id}/assign`, `/transitions`, `/postpone` | `remittances:assign`, the transition's permission, `remittances:postpone` |
 | Statistics | `GET /customers/{id}/stats`, `GET /beneficiaries/{id}/stats` | `remittances:read` |
 | Cash | `GET /cash/business`, `/cash/business/movements`, `/cash/couriers`, `/cash/couriers/{id}`, `/cash/remittances/{id}/movements`; `POST /cash/couriers/{id}/funding`, `/returns` | `cash:read`, `cash:write` |
 | Own cash | `GET /cash/me` | `cash:read-own` |
