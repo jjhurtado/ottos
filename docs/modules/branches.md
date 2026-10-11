@@ -19,7 +19,7 @@ Catálogo de zonas de entrega: provincias y municipios oficiales de Cuba. Hoy so
 
 ## Datos
 
-`provinces`, `municipalities` (`V3__zones.sql`, códigos de la división político-administrativa).
+`provinces`, `municipalities` (`V1__baseline.sql`, sección *branches*; códigos de la división político-administrativa).
 
 ## Reglas
 

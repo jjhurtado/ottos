@@ -216,6 +216,9 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 - Entidades JPA con constructor protegido para JPA, sin setters públicos: el estado cambia con métodos con nombre
   (`assignTo`, `complete`, `postpone`).
 - El esquema solo cambia con migraciones Flyway (`V<n>__<descripcion>.sql`); `ddl-auto: validate`.
+- `V1__baseline.sql` es el esquema de la versión 1.0: las migraciones de las betas se fusionaron en ella antes del
+  primer release, porque ningún entorno tenía datos reales. Desde que un entorno tenga datos reales, una migración
+  aplicada no se edita nunca: los cambios van en una migración nueva.
 - Dinero siempre en `BigDecimal`; las tasas y comisiones nunca se editan, se inserta una fila nueva.
 - Concurrencia: `@Version` en entidades que se modifican desde varias peticiones.
 

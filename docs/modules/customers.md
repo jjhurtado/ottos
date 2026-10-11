@@ -23,7 +23,7 @@ Las estadísticas de un cliente (`GET /customers/{id}/stats`) viven en `remittan
 
 ## Datos
 
-`customers` (`V2__customers.sql`, `V5__customers_and_beneficiaries.sql`): nombre, teléfono, correo, documento,
+`customers` (`V1__baseline.sql`, sección *customers*): nombre, teléfono, correo, documento,
 dirección, notas, activo.
 
 ## Reglas

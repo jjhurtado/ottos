@@ -19,7 +19,7 @@ Hoy: el **registro de auditoría**, quién cambió qué y cuándo. Más adelante
 
 ## Datos
 
-`audit_log` (`V14__audit_log.sql`): hora, actor (null = el sistema), acción, tipo, id y nombre legible del objetivo, y
+`audit_log` (`V1__baseline.sql`, sección *reporting*): hora, actor (null = el sistema), acción, tipo, id y nombre legible del objetivo, y
 `details` (JSON con lo que cambió).
 
 ## Reglas
