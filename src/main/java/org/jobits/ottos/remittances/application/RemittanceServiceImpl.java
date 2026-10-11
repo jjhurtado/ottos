@@ -117,7 +117,7 @@ class RemittanceServiceImpl implements RemittanceService {
         // Sending to a beneficiary links them to the customer (beneficiaries loaded without a customer get linked here)
         beneficiaries.link(customer.id(), beneficiary.id());
         QuoteService.Quote quote = quotes.quote(ServiceType.valueOf(request.type().name()), SOURCE_CURRENCY,
-                request.targetCurrency(), request.amount(), request.rate());
+                request.targetCurrency(), request.amount(), request.rate(), request.fee());
 
         Instant now = clock.instant();
         Remittance remittance = new Remittance(
@@ -126,7 +126,8 @@ class RemittanceServiceImpl implements RemittanceService {
                         beneficiary.alternatePhone(), beneficiary.addressLine(), beneficiary.municipalityCode(),
                         beneficiary.reference()),
                 new Remittance.QuoteSnapshot(quote.corridor(), quote.sourceCurrency(), quote.targetCurrency(),
-                        quote.amount(), quote.fee(), quote.total(), quote.rate(), quote.rateOverridden(),
+                        quote.amount(), quote.fee(), quote.feeOverridden(), quote.total(), quote.rate(),
+                        quote.rateOverridden(),
                         quote.amountToDeliver(), quote.exchangeRateId(), quote.feeRuleId()),
                 newPin(), today().plusDays(configuration.defaultDeliveryDays()), blankToNull(request.notes()),
                 request.idempotencyKey(), now, viewer.userId());
@@ -326,28 +327,38 @@ class RemittanceServiceImpl implements RemittanceService {
     public SalesSummary salesSummary(Instant from, Instant to) {
         List<Remittance> registered = remittances.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(from, to);
         BigDecimal collected = BigDecimal.ZERO;
-        BigDecimal fees = BigDecimal.ZERO;
+        BigDecimal deliveryFees = BigDecimal.ZERO;
         BigDecimal deliveredUsd = BigDecimal.ZERO;
+        BigDecimal pickupCollected = BigDecimal.ZERO;
+        BigDecimal pickupFees = BigDecimal.ZERO;
         long delivery = 0;
         long completed = 0;
         long withIncident = 0;
         Map<String, CurrencyTotals> byCurrency = new TreeMap<>();
         Map<RemittanceType, TypeTotals> byType = new TreeMap<>();
         for (Remittance r : registered) {
-            BigDecimal usd = r.getAmountToDeliver().divide(r.getRate(), 2, RoundingMode.HALF_UP);
-            collected = collected.add(r.getTotal());
-            fees = fees.add(r.getFee());
-            deliveredUsd = deliveredUsd.add(usd);
-            delivery += r.getType() == RemittanceType.DELIVERY ? 1 : 0;
             completed += r.getCompletedAt() != null && r.getCompletedAt().isBefore(to) ? 1 : 0;
             withIncident += r.getOpenIncidentReason() != null ? 1 : 0;
-            byCurrency.computeIfAbsent(r.getTargetCurrency(), c -> new CurrencyTotals()).add(r, usd);
             byType.computeIfAbsent(r.getType(), t -> new TypeTotals()).add(r);
+            if (r.getType() == RemittanceType.PICKUP) {
+                // Nothing is delivered: the courier collects the amount and the fee is income (the rate is informative)
+                pickupCollected = pickupCollected.add(r.getAmount());
+                pickupFees = pickupFees.add(r.getFee());
+                continue;
+            }
+            BigDecimal usd = r.getAmountToDeliver().divide(r.getRate(), 2, RoundingMode.HALF_UP);
+            collected = collected.add(r.getTotal());
+            deliveryFees = deliveryFees.add(r.getFee());
+            deliveredUsd = deliveredUsd.add(usd);
+            delivery++;
+            byCurrency.computeIfAbsent(r.getTargetCurrency(), c -> new CurrencyTotals()).add(r, usd);
         }
         long total = registered.size();
+        BigDecimal difference = collected.subtract(deliveredUsd);
         return new SalesSummary(
                 new SalesSummary.Counts(total, delivery, total - delivery, completed, total - completed, withIncident),
-                collected, fees, deliveredUsd, collected.subtract(deliveredUsd),
+                collected, deliveryFees.add(pickupFees), deliveredUsd, difference, difference.subtract(deliveryFees),
+                new SalesSummary.Pickups(total - delivery, pickupCollected, pickupFees),
                 byCurrency.entrySet().stream()
                         .map(e -> new SalesSummary.CurrencyAmount(e.getKey(), e.getValue().delivered)).toList(),
                 byCurrency.entrySet().stream().map(e -> e.getValue().view(e.getKey())).toList(),
@@ -385,7 +396,7 @@ class RemittanceServiceImpl implements RemittanceService {
 
         void add(Remittance r) {
             remittances++;
-            collected = collected.add(r.getTotal());
+            collected = collected.add(r.getType() == RemittanceType.PICKUP ? r.getAmount() : r.getTotal());
             fees = fees.add(r.getFee());
         }
 

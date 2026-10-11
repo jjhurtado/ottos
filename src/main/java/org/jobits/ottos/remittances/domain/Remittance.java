@@ -87,6 +87,10 @@ public class Remittance {
     @Column(nullable = false, precision = 19, scale = 6)
     private BigDecimal rate;
 
+    /** The fee was entered by hand (pickups) instead of the configured rule. */
+    @Column(name = "fee_overridden", nullable = false)
+    private boolean feeOverridden;
+
     /** The rate was entered by hand (pickups) instead of the configured one. */
     @Column(name = "rate_overridden", nullable = false)
     private boolean rateOverridden;
@@ -189,6 +193,7 @@ public class Remittance {
         this.targetCurrency = quote.targetCurrency();
         this.amount = quote.amount();
         this.fee = quote.fee();
+        this.feeOverridden = quote.feeOverridden();
         this.total = quote.total();
         this.rate = quote.rate();
         this.rateOverridden = quote.rateOverridden();
@@ -377,6 +382,10 @@ public class Remittance {
         return rate;
     }
 
+    public boolean isFeeOverridden() {
+        return feeOverridden;
+    }
+
     public boolean isRateOverridden() {
         return rateOverridden;
     }
@@ -434,7 +443,8 @@ public class Remittance {
     }
 
     public record QuoteSnapshot(String corridor, String sourceCurrency, String targetCurrency, BigDecimal amount,
-                                BigDecimal fee, BigDecimal total, BigDecimal rate, boolean rateOverridden,
+                                BigDecimal fee, boolean feeOverridden, BigDecimal total, BigDecimal rate,
+                                boolean rateOverridden,
                                 BigDecimal amountToDeliver, UUID exchangeRateId, UUID feeRuleId) {
     }
 }

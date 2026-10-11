@@ -36,13 +36,14 @@ class QuoteController {
     QuoteService.Quote quote(@Valid @RequestBody QuoteRequest request) {
         ServiceType remittanceType = request.remittanceType() == null ? ServiceType.DELIVERY : request.remittanceType();
         return quotes.quote(remittanceType, request.sourceCurrency(), request.targetCurrency(), request.amount(),
-                request.rate());
+                request.rate(), request.fee());
     }
 
     record QuoteRequest(@NotNull @Pattern(regexp = "[A-Z]{3}") String sourceCurrency,
                         @NotNull @Pattern(regexp = "[A-Z]{3}") String targetCurrency,
                         @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal amount,
                         ServiceType remittanceType,
-                        @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate) {
+                        @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate,
+                        @DecimalMin("0") @Digits(integer = 15, fraction = 2) BigDecimal fee) {
     }
 }

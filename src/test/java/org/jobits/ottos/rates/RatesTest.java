@@ -158,7 +158,19 @@ class RatesTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.rate").value(0.97))
                 .andExpect(jsonPath("$.rateOverridden").value(true))
                 .andExpect(jsonPath("$.amountToDeliver").value(950.00));
-        quote("USD", "CUP", "1000", "PICKUP").andExpect(jsonPath("$.rateOverridden").value(false));
+        quote("USD", "CUP", "1000", "PICKUP")
+                .andExpect(jsonPath("$.rateOverridden").value(false))
+                .andExpect(jsonPath("$.feeOverridden").value(false));
+        mvc.perform(post("/api/v1/quotes")
+                        .header("Authorization", bearer(salesToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sourceCurrency": "USD", "targetCurrency": "USD", "amount": 1000, "remittanceType": "PICKUP",
+                                 "fee": 12.5}
+                                """))
+                .andExpect(jsonPath("$.fee").value(12.50))
+                .andExpect(jsonPath("$.feeOverridden").value(true))
+                .andExpect(jsonPath("$.total").value(1012.50));
         mvc.perform(post("/api/v1/quotes")
                         .header("Authorization", bearer(salesToken))
                         .contentType(MediaType.APPLICATION_JSON)

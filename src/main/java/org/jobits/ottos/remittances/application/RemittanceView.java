@@ -36,6 +36,7 @@ public record RemittanceView(
         String targetCurrency,
         BigDecimal amount,
         BigDecimal fee,
+        Boolean feeOverridden,
         BigDecimal total,
         BigDecimal rate,
         Boolean rateOverridden,

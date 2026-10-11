@@ -56,7 +56,7 @@ class MonthlyReportTest extends ApiTestSupport {
         String withIncident = register("DELIVERY", "37", "CUP");
         // 100 USD → 100 USD; fee 10; collected 110
         register("DELIVERY", "100", "USD");
-        // pickup of 200 USD at the pickup rate 1 → 200 CUP (200.00 USD); fee 20; collected 220
+        // pickup of 200 USD: the courier collects 200 USD, nothing is delivered; fee 20 is income only
         register("PICKUP", "200", "CUP");
         assign(delivered);
         mvc.perform(post("/api/v1/remittances/{id}/deliver", delivered).header("Authorization", bearer(courierToken)))
@@ -81,22 +81,26 @@ class MonthlyReportTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.remittances.completed").value(1))
                 .andExpect(jsonPath("$.remittances.open").value(3))
                 .andExpect(jsonPath("$.remittances.withIncident").value(1))
-                .andExpect(jsonPath("$.collected").value(487.00))
+                .andExpect(jsonPath("$.collected").value(267.00))
                 .andExpect(jsonPath("$.fees").value(50.00))
-                .andExpect(jsonPath("$.deliveredUsd").value(436.95))
-                .andExpect(jsonPath("$.difference").value(50.05))
+                .andExpect(jsonPath("$.deliveredUsd").value(236.95))
+                .andExpect(jsonPath("$.difference").value(30.05))
+                .andExpect(jsonPath("$.roundingMargin").value(0.05))
+                .andExpect(jsonPath("$.pickups.remittances").value(1))
+                .andExpect(jsonPath("$.pickups.collected").value(200.00))
+                .andExpect(jsonPath("$.pickups.fees").value(20.00))
                 .andExpect(jsonPath("$.delivered", hasSize(2)))
                 .andExpect(jsonPath("$.delivered[0].currency").value("CUP"))
-                .andExpect(jsonPath("$.delivered[0].amount").value(56350.00))
+                .andExpect(jsonPath("$.delivered[0].amount").value(56150.00))
                 .andExpect(jsonPath("$.delivered[1].currency").value("USD"))
                 .andExpect(jsonPath("$.delivered[1].amount").value(100.00))
                 .andExpect(jsonPath("$.byCurrency[0].currency").value("CUP"))
-                .andExpect(jsonPath("$.byCurrency[0].remittances").value(3))
-                .andExpect(jsonPath("$.byCurrency[0].sent").value(337.00))
-                .andExpect(jsonPath("$.byCurrency[0].fees").value(40.00))
-                .andExpect(jsonPath("$.byCurrency[0].collected").value(377.00))
-                .andExpect(jsonPath("$.byCurrency[0].delivered").value(56350.00))
-                .andExpect(jsonPath("$.byCurrency[0].deliveredUsd").value(336.95))
+                .andExpect(jsonPath("$.byCurrency[0].remittances").value(2))
+                .andExpect(jsonPath("$.byCurrency[0].sent").value(137.00))
+                .andExpect(jsonPath("$.byCurrency[0].fees").value(20.00))
+                .andExpect(jsonPath("$.byCurrency[0].collected").value(157.00))
+                .andExpect(jsonPath("$.byCurrency[0].delivered").value(56150.00))
+                .andExpect(jsonPath("$.byCurrency[0].deliveredUsd").value(136.95))
                 .andExpect(jsonPath("$.byCurrency[1].currency").value("USD"))
                 .andExpect(jsonPath("$.byCurrency[1].deliveredUsd").value(100.00))
                 .andExpect(jsonPath("$.byType[0].type").value("DELIVERY"))
@@ -104,7 +108,7 @@ class MonthlyReportTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.byType[0].collected").value(267.00))
                 .andExpect(jsonPath("$.byType[0].fees").value(30.00))
                 .andExpect(jsonPath("$.byType[1].type").value("PICKUP"))
-                .andExpect(jsonPath("$.byType[1].collected").value(220.00))
+                .andExpect(jsonPath("$.byType[1].collected").value(200.00))
                 .andExpect(jsonPath("$.byType[1].fees").value(20.00));
     }
 

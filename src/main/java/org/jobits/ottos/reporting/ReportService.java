@@ -17,7 +17,8 @@ public interface ReportService {
     /** The agreed shape: everything in USD except delivered and byCurrency[].delivered. */
     record MonthlyReport(String month, LocalDate from, LocalDate to, Instant generatedAt,
                          SalesSummary.Counts remittances, BigDecimal collected, BigDecimal fees,
-                         BigDecimal deliveredUsd, BigDecimal difference, List<SalesSummary.CurrencyAmount> delivered,
+                         BigDecimal deliveredUsd, BigDecimal difference, BigDecimal roundingMargin,
+                         SalesSummary.Pickups pickups, List<SalesSummary.CurrencyAmount> delivered,
                          List<SalesSummary.ByCurrency> byCurrency, List<SalesSummary.ByType> byType) {
     }
 }

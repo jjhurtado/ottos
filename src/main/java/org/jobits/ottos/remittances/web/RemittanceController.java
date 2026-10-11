@@ -69,7 +69,7 @@ class RemittanceController {
         var viewer = Viewers.from(jwt);
         try {
             return remittances.register(new RemittanceService.NewRemittance(request.type(), request.customerId(),
-                    request.beneficiaryId(), request.amount(), request.targetCurrency(), request.rate(), request.notes(),
+                    request.beneficiaryId(), request.amount(), request.targetCurrency(), request.rate(), request.fee(), request.notes(),
                     idempotencyKey),
                     viewer);
         } catch (DataIntegrityViolationException e) {
@@ -214,6 +214,7 @@ class RemittanceController {
                                 @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal amount,
                                 @NotNull @Pattern(regexp = "[A-Z]{3}") String targetCurrency,
                                 @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate,
+                                @DecimalMin("0") @Digits(integer = 15, fraction = 2) BigDecimal fee,
                                 @Size(max = 1000) String notes) {
     }
 
