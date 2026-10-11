@@ -7,8 +7,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.jobits.ottos.ApiException;
-import org.jobits.ottos.remittances.application.SyncActionType;
 import org.jobits.ottos.remittances.application.Viewer;
+import org.jobits.ottos.sync.SyncActionKind;
 import org.jobits.ottos.sync.SyncService;
 import org.jobits.ottos.sync.SyncService.QueuedAction;
 import org.jobits.ottos.sync.SyncService.SyncResult;
@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -65,7 +66,8 @@ class SyncController {
                 .map(a -> {
                     Payload p = a.payload() == null ? Payload.EMPTY : a.payload();
                     return new QueuedAction(a.id(), a.type(), a.remittanceId(), a.occurredAt().toInstant(), p.note(),
-                            p.pin(), p.strictPin(), p.newDate(), p.reason());
+                            p.pin(), p.strictPin(), p.newDate(), p.reason(), p.fromCurrency(), p.fromAmount(),
+                            p.toCurrency(), p.rate());
                 })
                 .toList();
         return sync.apply(request.deviceId(), actions, viewer(jwt));
@@ -80,13 +82,15 @@ class SyncController {
                        @NotNull @Size(max = MAX_ACTIONS) List<@Valid @NotNull ActionRequest> actions) {
     }
 
-    record ActionRequest(@NotNull UUID id, @NotNull SyncActionType type, @NotNull UUID remittanceId,
+    /** remittanceId is null for CASH_EXCHANGE and required for the rest (checked per action). */
+    record ActionRequest(@NotNull UUID id, @NotNull SyncActionKind type, UUID remittanceId,
                          @NotNull OffsetDateTime occurredAt, Payload payload) {
     }
 
     /** The fields of every action type; each type uses its own (see docs/contracts/offline-sync.md). */
-    record Payload(String note, String pin, Boolean strictPin, LocalDate newDate, String reason) {
+    record Payload(String note, String pin, Boolean strictPin, LocalDate newDate, String reason, String fromCurrency,
+                   BigDecimal fromAmount, String toCurrency, BigDecimal rate) {
 
-        static final Payload EMPTY = new Payload(null, null, null, null, null);
+        static final Payload EMPTY = new Payload(null, null, null, null, null, null, null, null, null);
     }
 }

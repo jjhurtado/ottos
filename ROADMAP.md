@@ -167,6 +167,56 @@ adapta así:
 
 Contrato cerrado con el frontend e implementado en el backend: [docs/contracts/offline-sync.md](docs/contracts/offline-sync.md) (módulo `sync`).
 
+### Funcionalidades pedidas en diseño
+
+Pedidas por el negocio durante la beta; se cierran con el frontend en un contrato antes de implementarlas, como el
+modo offline.
+
+**Informe mensual de ventas** (el más importante para el negocio, exportable a PDF)
+
+- Por mes, en hora de Cuba: dinero cobrado, dinero entregado, diferencia, ganancias (comisiones) y número de remesas.
+- Decidido: todo cuenta por **fecha de registro**; las comisiones de las **recogidas también cuentan** como ganancia;
+  el negocio trabaja en **USD** (lo entregado en CUP se expresa en USD); la **diferencia** es lo cobrado menos lo
+  entregado convertido a USD con la tasa de cada remesa (comisiones más margen de redondeo). El PDF lo genera el
+  frontend a partir del JSON, para no cargar el servidor.
+- Endpoint propuesto: `GET /reports/monthly?month=AAAA-MM` con un permiso nuevo `reports:read` (ADMIN y SALES), en el
+  módulo `reporting`.
+- **Recogidas con tasa propia por remesa:** al registrar una recogida se indica el tipo de cambio de ese momento (1x1
+  u otro), en vez de usar siempre el configurado, y la caja se comporta según esa tasa. Las recogidas se hacen cuando
+  al negocio le interesa tener efectivo, normalmente 1x1 y para montos grandes: **no dejan ganancia**. Por eso la
+  comisión de recogida debe configurarse en 0 desde Configuración (es un dato, no va en una migración).
+
+**Cambio de moneda del repartidor**
+
+- El negocio entrega en USD; si hay que entregar en CUP, el repartidor cambia los USD durante el viaje a la tasa que
+  consigue, lo registra en la app y su caja se actualiza al momento.
+- En `payments`: un movimiento de cambio con dos patas en la caja del repartidor (sale USD, entra CUP) y la tasa
+  obtenida, sin tocar la caja del negocio. Online (`POST /cash/me/exchanges`) y offline (acción nueva en
+  `POST /sync/actions`), con permiso propio para el repartidor. El panel lo ve en el estado de caja del repartidor.
+- Decidido: un cambio con una tasa que se aleja más de un porcentaje (20 % por defecto, en Configuración) de la tasa
+  configurada se registra igual pero queda **marcado para revisión**, como las entregas sincronizadas.
+
+**Importar y exportar clientes con sus beneficiarios**
+
+- Exportar: todos los clientes con sus beneficiarios y vínculos, para respaldo o para llevarlos a otra herramienta.
+- Importar: cargar clientes y beneficiarios desde un archivo (por ejemplo, desde el sistema que el negocio usa hoy),
+  con vista previa antes de aplicar y un resultado por fila (creado, actualizado, omitido o con error y su código).
+- Lo que hace falta definir y construir:
+  - **Formato (decidido):** Excel o CSV, leído y generado en el frontend; el backend recibe y devuelve JSON, como con
+    el PDF, para no cargar el servidor con librerías de hojas de cálculo.
+  - **Columnas:** las del cliente (nombre, teléfono, correo, documento, dirección, notas) y las del beneficiario
+    (nombre, teléfonos, calle, número, entre calles, reparto, municipio por código o nombre, referencia, documento,
+    notas), y cómo se relaciona cada beneficiario con su cliente (una fila por vínculo).
+  - **Coincidencias (decidido):** un cliente ya existe si coinciden **nombre, teléfono y dirección**. El mismo nombre y
+    teléfono con otra dirección es otro cliente: queda duplicado a propósito, porque una persona puede tener dos
+    direcciones y no se implementará un modelo de varias direcciones. Hoy el teléfono del cliente es único
+    (`PHONE_ALREADY_REGISTERED`), así que importar exige cambiar esa regla.
+  - **Validación por fila** con los mismos códigos que la API (`INVALID_PHONE`, `UNKNOWN_MUNICIPALITY`…), sin que un
+    error bloquee las demás filas; límite de filas por envío.
+  - **Permisos:** exportar datos personales de todos los clientes es delicado; propuesta: permisos propios
+    (`customers:import`, `customers:export`) solo para ADMIN, y cada importación y exportación registrada en la
+    auditoría.
+
 ## Plantilla de fase
 
 Copia este bloque una vez por fase y rellénalo antes de empezarla; se cierra solo cuando se cumplen sus criterios de salida.

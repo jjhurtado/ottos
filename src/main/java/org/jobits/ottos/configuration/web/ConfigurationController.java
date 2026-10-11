@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
@@ -56,7 +57,7 @@ class ConfigurationController {
 
     @GetMapping("/settings")
     @PreAuthorize("hasAuthority('configuration:read')")
-    @Operation(summary = "Minimum amount per remittance (USD; 0 = no minimum) and default delivery days")
+    @Operation(summary = "Minimum amount per remittance (USD; 0 = no minimum), default delivery days and exchange-rate tolerance (%)")
     SettingsView settings() {
         return configuration.settings();
     }
@@ -66,7 +67,7 @@ class ConfigurationController {
     @Operation(summary = "Change the settings; fields left out keep their value")
     SettingsView updateSettings(@Valid @RequestBody SettingsRequest request, @AuthenticationPrincipal Jwt jwt) {
         return configuration.updateSettings(request.minimumAmount(), request.defaultDeliveryDays(),
-                UUID.fromString(jwt.getSubject()));
+                request.exchangeRateTolerancePercent(), UUID.fromString(jwt.getSubject()));
     }
 
     @GetMapping("/corridors")
@@ -116,7 +117,9 @@ class ConfigurationController {
     }
 
     record SettingsRequest(@DecimalMin("0") @Digits(integer = 15, fraction = 2) BigDecimal minimumAmount,
-                           @Min(1) @Max(60) Integer defaultDeliveryDays) {
+                           @Min(1) @Max(60) Integer defaultDeliveryDays,
+                           @DecimalMin(value = "0", inclusive = false) @DecimalMax("1000") @Digits(integer = 4, fraction = 2)
+                           BigDecimal exchangeRateTolerancePercent) {
     }
 
     record RateRequest(@NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate,

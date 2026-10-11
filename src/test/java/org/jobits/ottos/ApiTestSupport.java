@@ -42,6 +42,7 @@ public abstract class ApiTestSupport {
 
     private static final List<String> RESET = List.of(
             "DELETE FROM cash_movements",
+            "DELETE FROM cash_exchanges",
             "DELETE FROM cash_accounts WHERE account_key NOT IN ('BUSINESS:USD', 'BUSINESS:CUP', 'EXTERNAL:USD', 'EXTERNAL:CUP')",
             "DELETE FROM audit_log",
             "DELETE FROM synced_actions",
@@ -58,7 +59,8 @@ public abstract class ApiTestSupport {
             "DELETE FROM exchange_rates WHERE id NOT IN ('00000000-0000-0000-0001-000000000001', '00000000-0000-0000-0001-000000000002', '00000000-0000-0000-0001-000000000003')",
             "DELETE FROM fee_rules WHERE id NOT IN ('00000000-0000-0000-0002-000000000001', '00000000-0000-0000-0002-000000000002', '00000000-0000-0000-0002-000000000003', '00000000-0000-0000-0002-000000000004')",
             "UPDATE settings SET setting_value = '0', updated_at = NULL, updated_by = NULL WHERE setting_key = 'minimum_amount'",
-            "UPDATE settings SET setting_value = '2', updated_at = NULL, updated_by = NULL WHERE setting_key = 'default_delivery_days'");
+            "UPDATE settings SET setting_value = '2', updated_at = NULL, updated_by = NULL WHERE setting_key = 'default_delivery_days'",
+            "UPDATE settings SET setting_value = '20', updated_at = NULL, updated_by = NULL WHERE setting_key = 'exchange_rate_tolerance_percent'");
 
     @Autowired
     protected MockMvc mvc;

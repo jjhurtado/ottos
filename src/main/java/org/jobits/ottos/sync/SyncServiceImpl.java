@@ -2,6 +2,8 @@ package org.jobits.ottos.sync;
 
 import org.jobits.ottos.ApiException;
 import org.jobits.ottos.payments.application.CashLedgerService;
+import org.jobits.ottos.payments.application.CashLedgerService.NewExchange;
+import org.jobits.ottos.payments.application.CashLedgerService.SyncedExchange;
 import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.application.RemittanceService;
 import org.jobits.ottos.remittances.application.RemittanceService.AssignedChanges;
@@ -23,6 +25,7 @@ import java.util.List;
 class SyncServiceImpl implements SyncService {
 
     private static final String CASH_READ_OWN = "cash:read-own";
+    private static final String EXCHANGE_OWN = "cash:exchange-own";
     private static final int MAX_TEXT = 1000;
 
     private final RemittanceService remittances;
@@ -53,9 +56,12 @@ class SyncServiceImpl implements SyncService {
 
     private ActionResult applyOne(String deviceId, QueuedAction q, Viewer viewer) {
         try {
+            if (q.type() == SyncActionKind.CASH_EXCHANGE) {
+                return applyExchange(q, viewer);
+            }
             SyncOutcome outcome = remittances.applySynced(toSyncAction(deviceId, q), viewer);
             return new ActionResult(q.id(), outcome.status(), outcome.code(), outcome.message(), outcome.remittance(),
-                    outcome.flaggedForReview());
+                    null, outcome.flaggedForReview());
         } catch (ApiException e) {
             return rejected(q, e.getCode(), e.getReason());
         } catch (OptimisticLockingFailureException | DataIntegrityViolationException e) {
@@ -64,10 +70,31 @@ class SyncServiceImpl implements SyncService {
         }
     }
 
+    /** A currency exchange of the courier's own cash; idempotent by the action id, like remittance actions. */
+    private ActionResult applyExchange(QueuedAction q, Viewer viewer) {
+        if (!viewer.has(EXCHANGE_OWN)) {
+            throw ApiException.forbidden("FORBIDDEN", "Exchanging requires " + EXCHANGE_OWN);
+        }
+        if (q.fromCurrency() == null || q.toCurrency() == null || q.fromAmount() == null || q.rate() == null) {
+            throw invalid("fromCurrency, fromAmount, toCurrency and rate are required");
+        }
+        NewExchange exchange = new NewExchange(q.fromCurrency(), q.fromAmount(), q.toCurrency(), q.rate(),
+                optionalText(q.note(), "note"));
+        SyncedExchange synced = cash.applySyncedExchange(q.id(), viewer.userId(), exchange, q.occurredAt(),
+                viewer.userId());
+        SyncOutcome.Status status = synced.alreadyApplied() ? SyncOutcome.Status.ALREADY_APPLIED : SyncOutcome.Status.APPLIED;
+        return new ActionResult(q.id(), status, null, null, null, synced.exchange(),
+                synced.exchange().review() != null);
+    }
+
     /** Checks the payload of its type; a bad payload rejects only this action, as VALIDATION_FAILED. */
     private static SyncAction toSyncAction(String deviceId, QueuedAction q) {
+        if (q.remittanceId() == null) {
+            throw invalid("remittanceId is required for " + q.type());
+        }
         String note = optionalText(q.note(), "note");
-        return switch (q.type()) {
+        SyncActionType type = SyncActionType.valueOf(q.type().name());
+        return switch (type) {
             case DELIVER -> action(deviceId, q, note, null, false, null, null);
             case DELIVER_WITH_PIN -> {
                 if (q.pin() == null || !q.pin().matches("\\d{6}")) {
@@ -83,18 +110,18 @@ class SyncServiceImpl implements SyncService {
                 if (reason == null) {
                     throw invalid("reason is required");
                 }
-                yield new SyncAction(q.id(), q.type(), q.remittanceId(), q.occurredAt(), deviceId, null, null, false,
+                yield new SyncAction(q.id(), type, q.remittanceId(), q.occurredAt(), deviceId, null, null, false,
                         q.newDate(), reason, null);
             }
-            case REPORT_INCIDENT -> new SyncAction(q.id(), q.type(), q.remittanceId(), q.occurredAt(), deviceId, note,
+            case REPORT_INCIDENT -> new SyncAction(q.id(), type, q.remittanceId(), q.occurredAt(), deviceId, note,
                     null, false, null, null, incidentReason(q.reason()));
         };
     }
 
     private static SyncAction action(String deviceId, QueuedAction q, String note, String pin, boolean strictPin,
                                      LocalDate newDate, String reason) {
-        return new SyncAction(q.id(), q.type(), q.remittanceId(), q.occurredAt(), deviceId, note, pin, strictPin,
-                newDate, reason, null);
+        return new SyncAction(q.id(), SyncActionType.valueOf(q.type().name()), q.remittanceId(), q.occurredAt(),
+                deviceId, note, pin, strictPin, newDate, reason, null);
     }
 
     private static IncidentReason incidentReason(String value) {
@@ -120,6 +147,6 @@ class SyncServiceImpl implements SyncService {
     }
 
     private static ActionResult rejected(QueuedAction q, String code, String message) {
-        return new ActionResult(q.id(), SyncOutcome.Status.REJECTED, code, message, null, false);
+        return new ActionResult(q.id(), SyncOutcome.Status.REJECTED, code, message, null, null, false);
     }
 }

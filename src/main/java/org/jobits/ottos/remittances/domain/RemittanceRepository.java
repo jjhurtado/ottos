@@ -44,5 +44,8 @@ public interface RemittanceRepository extends JpaRepository<Remittance, UUID>, J
 
     List<Remittance> findByCustomerIdOrderByCreatedAtDesc(UUID customerId);
 
+    /** Remittances registered in [from, to). */
+    List<Remittance> findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(Instant from, Instant to);
+
     List<Remittance> findByBeneficiaryIdOrderByCreatedAtDesc(UUID beneficiaryId);
 }

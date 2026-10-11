@@ -4,11 +4,14 @@ Paquete `org.jobits.ottos.reporting`. Auditoría en Fase 1; KPIs y exportes en l
 
 ## Para qué sirve
 
-Hoy: el **registro de auditoría**, quién cambió qué y cuándo. Más adelante: indicadores, KPIs y exportes.
+Hoy: el **registro de auditoría** (quién cambió qué y cuándo) y el **informe mensual de ventas**. Más adelante:
+otros indicadores y exportes.
 
 ## API pública
 
 - `AuditLogService.search(filter, page, size)`.
+- `ReportService.monthly(month)`: el informe mensual. Las cifras las calcula `remittances` (`salesSummary`), que es
+  dueño de los datos; `reporting` usa su interfaz con nombre `application`.
 - Escucha `org.jobits.ottos.AuditEvent` (paquete raíz, compartido): cualquier módulo lo publica y este lo guarda.
 
 ## Endpoints
@@ -16,6 +19,7 @@ Hoy: el **registro de auditoría**, quién cambió qué y cuándo. Más adelante
 | Endpoint | Permiso |
 | --- | --- |
 | `GET /audit?targetType=&targetId=&actorId=&action=&from=&to=&page=&size=` (más reciente primero) | `audit:read` (solo ADMIN) |
+| `GET /reports/monthly?month=AAAA-MM` (contrato: `docs/contracts/monthly-report.md`) | `reports:read` (ADMIN y SALES) |
 
 ## Datos
 
@@ -49,11 +53,22 @@ Las remesas y la caja ya guardan su propio historial con autor (`remittance_even
 comisiones y ajustes guardan quién los cambió; si más adelante se quieren en este registro, basta con publicar un
 `AuditEvent` desde ese módulo.
 
+## Informe mensual de ventas
+
+- Entran las remesas **registradas** en el mes (hora de Cuba), sea cual sea su estado; todo en USD salvo lo entregado,
+  que va en su moneda y convertido a USD con la tasa de cada remesa.
+- `collected` = monto + comisión; `fees` = comisiones de entregas y recogidas; `difference` = cobrado − entregado en USD
+  (comisiones más margen de redondeo). `completed` = completadas antes de terminar el mes; `withIncident`, en el
+  momento de pedir el informe.
+- El PDF lo genera el panel.
+
 ## Dónde tocar
 
 - Auditar algo nuevo: publicar `AuditEvent` con el `ApplicationEventPublisher` dentro de la transacción del cambio,
   con una `action` estable (no se renombra: el frontend puede traducirla).
 
+- Reglas del informe mensual: `RemittanceServiceImpl.salesSummary`; forma de la respuesta: `ReportService`.
+
 ## Pendiente
 
-KPIs y exportes (Fase 4).
+Otros KPIs y exportes (Fase 4). Tasa propia por recogida (cambia cómo se calcula lo entregado de una recogida).

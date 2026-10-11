@@ -51,18 +51,24 @@ class ConfigurationServiceImpl implements ConfigurationService {
     @Override
     @Transactional(readOnly = true)
     public SettingsView settings() {
-        return new SettingsView(minimumAmount(), MINIMUM_AMOUNT_CURRENCY, defaultDeliveryDays());
+        return new SettingsView(minimumAmount(), MINIMUM_AMOUNT_CURRENCY, defaultDeliveryDays(),
+                exchangeRateTolerancePercent());
     }
 
     @Override
     @Transactional
-    public SettingsView updateSettings(BigDecimal minimumAmount, Integer defaultDeliveryDays, UUID actorId) {
+    public SettingsView updateSettings(BigDecimal minimumAmount, Integer defaultDeliveryDays,
+                                       BigDecimal exchangeRateTolerancePercent, UUID actorId) {
         Instant now = clock.instant();
         if (minimumAmount != null) {
             setting(Setting.MINIMUM_AMOUNT).change(minimumAmount.setScale(2).toPlainString(), now, actorId);
         }
         if (defaultDeliveryDays != null) {
             setting(Setting.DEFAULT_DELIVERY_DAYS).change(defaultDeliveryDays.toString(), now, actorId);
+        }
+        if (exchangeRateTolerancePercent != null) {
+            setting(Setting.EXCHANGE_RATE_TOLERANCE)
+                    .change(exchangeRateTolerancePercent.setScale(2).toPlainString(), now, actorId);
         }
         return settings();
     }
@@ -77,6 +83,21 @@ class ConfigurationServiceImpl implements ConfigurationService {
     @Transactional(readOnly = true)
     public int defaultDeliveryDays() {
         return Integer.parseInt(setting(Setting.DEFAULT_DELIVERY_DAYS).getValue().trim());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal exchangeRateTolerancePercent() {
+        return new BigDecimal(setting(Setting.EXCHANGE_RATE_TOLERANCE).getValue().trim()).setScale(2);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<BigDecimal> deliveryRateAt(String sourceCurrency, String targetCurrency, Instant at) {
+        return corridors.findBySourceCurrencyAndTargetCurrencyAndActiveTrue(sourceCurrency, targetCurrency)
+                .flatMap(c -> rates.findFirstByCorridorCodeAndRemittanceTypeAndValidFromLessThanEqualOrderByValidFromDesc(
+                        c.getCode(), ServiceType.DELIVERY, at))
+                .map(ExchangeRate::getRate);
     }
 
     // ---------------------------------------------------------------- corridors, rates and fee rules

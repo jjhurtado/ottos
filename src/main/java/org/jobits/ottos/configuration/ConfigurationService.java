@@ -23,13 +23,20 @@ public interface ConfigurationService {
     SettingsView settings();
 
     /** Changes the given settings; a null value is left as it is. */
-    SettingsView updateSettings(BigDecimal minimumAmount, Integer defaultDeliveryDays, UUID actorId);
+    SettingsView updateSettings(BigDecimal minimumAmount, Integer defaultDeliveryDays,
+                                BigDecimal exchangeRateTolerancePercent, UUID actorId);
 
     /** Smallest amount a remittance can send, in {@link #MINIMUM_AMOUNT_CURRENCY}; zero means no minimum. */
     BigDecimal minimumAmount();
 
     /** Days from registration to the expected delivery date of a remittance. */
     int defaultDeliveryDays();
+
+    /** How far, in percent, a courier's exchange rate may stray from the configured delivery rate before review. */
+    BigDecimal exchangeRateTolerancePercent();
+
+    /** The delivery rate of the active corridor between two currencies in force at a moment, if one was set. */
+    Optional<BigDecimal> deliveryRateAt(String sourceCurrency, String targetCurrency, Instant at);
 
     /** Corridors with the exchange rate and fee rule in force now. */
     List<CorridorView> corridors();
@@ -53,7 +60,8 @@ public interface ConfigurationService {
     record ConfigurationView(SettingsView settings, List<CorridorView> corridors) {
     }
 
-    record SettingsView(BigDecimal minimumAmount, String minimumAmountCurrency, int defaultDeliveryDays) {
+    record SettingsView(BigDecimal minimumAmount, String minimumAmountCurrency, int defaultDeliveryDays,
+                        BigDecimal exchangeRateTolerancePercent) {
     }
 
     /**

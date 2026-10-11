@@ -6,7 +6,8 @@ Paquete `org.jobits.ottos.configuration`. Fase 1.
 
 Todo valor que el negocio puede cambiar sin desplegar, gestionado desde un solo sitio (una pantalla del panel):
 
-- **Ajustes:** monto mínimo por remesa (USD; 0 = sin mínimo) y días de entrega por defecto.
+- **Ajustes:** monto mínimo por remesa (USD; 0 = sin mínimo), días de entrega por defecto y tolerancia de la tasa de
+  los cambios de moneda de los repartidores (`exchangeRateTolerancePercent`, 20 %).
 - **Corredores** (pares de monedas: USD-CUP, USD-USD) y, para cada uno, el historial de **tasas de cambio** y de
   **reglas de comisión**, por separado para entregas y para recogidas.
 
