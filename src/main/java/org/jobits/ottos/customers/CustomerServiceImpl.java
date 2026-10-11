@@ -11,9 +11,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Implementation of {@link CustomerService}. */
 @Service
@@ -27,6 +30,13 @@ class CustomerServiceImpl implements CustomerService {
     CustomerServiceImpl(CustomerRepository customers, Clock clock) {
         this.customers = customers;
         this.clock = clock;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, CustomerInfo> findAll(Collection<UUID> ids) {
+        return customers.findAllById(ids).stream()
+                .collect(Collectors.toMap(Customer::getId, CustomerInfo::of));
     }
 
     @Override

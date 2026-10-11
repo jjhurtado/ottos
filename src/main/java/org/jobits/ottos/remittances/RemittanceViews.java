@@ -11,10 +11,11 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -47,19 +48,20 @@ class RemittanceViews {
                 .collect(Collectors.toMap(RemittanceStatus::getCode, Function.identity()));
         Map<String, String> municipalityNames = zones.municipalities(null).stream()
                 .collect(Collectors.toMap(ZoneService.MunicipalityInfo::code, ZoneService.MunicipalityInfo::name));
-        Map<UUID, Optional<CustomerInfo>> customerById = new HashMap<>();
-        Map<UUID, Optional<String>> courierNames = new HashMap<>();
+        // One query each for every customer and courier in the list, not one per remittance
+        Map<UUID, CustomerInfo> customerById = viewer.has(Viewer.READ)
+                ? customers.findAll(remittances.stream().map(Remittance::getCustomerId).collect(Collectors.toSet()))
+                : Map.of();
+        Set<UUID> courierIds = remittances.stream().map(Remittance::getCourierId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> courierNames = courierIds.isEmpty() ? Map.of() : staff.names(courierIds);
         LocalDate today = LocalDate.now(clock);
 
         return remittances.stream().map(r -> {
             RemittanceStatus status = statusByCode.get(r.getStatus());
             boolean financials = viewer.seesFinancials(r);
-            Optional<CustomerInfo> customer = viewer.has(Viewer.READ)
-                    ? customerById.computeIfAbsent(r.getCustomerId(), customers::find)
-                    : Optional.empty();
-            String courierName = r.getCourierId() == null ? null
-                    : courierNames.computeIfAbsent(r.getCourierId(),
-                            id -> staff.find(id).map(StaffDirectoryService.StaffMember::name)).orElse(null);
+            Optional<CustomerInfo> customer = Optional.ofNullable(customerById.get(r.getCustomerId()));
+            String courierName = r.getCourierId() == null ? null : courierNames.get(r.getCourierId());
             return new RemittanceView(
                     r.getId(), r.getCode(), r.getType(), r.getStatus(), status.getName(),
                     r.getCustomerId(),

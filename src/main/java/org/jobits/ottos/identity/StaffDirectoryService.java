@@ -1,6 +1,8 @@
 package org.jobits.ottos.identity;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -9,6 +11,9 @@ import java.util.UUID;
 public interface StaffDirectoryService {
 
     Optional<StaffMember> find(UUID id);
+
+    /** The names of these staff members, by id, in one query (for lists); unknown ids are left out. */
+    Map<UUID, String> names(Collection<UUID> ids);
 
     /** The permission that makes a staff member a courier. */
     String COURIER_PERMISSION = "remittances:deliver";

@@ -6,10 +6,13 @@ import org.jobits.ottos.identity.domain.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Implementation of {@link StaffDirectoryService}. */
 @Service
@@ -27,6 +30,12 @@ class StaffDirectoryServiceImpl implements StaffDirectoryService {
         return users.findWithRolesById(id)
                 .map(u -> new StaffMember(u.getId(), u.getName(), u.getEmail(), u.isActive(), administrator(u),
                         u.permissionCodes()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, String> names(Collection<UUID> ids) {
+        return users.findAllById(ids).stream().collect(Collectors.toMap(User::getId, User::getName));
     }
 
     @Override
