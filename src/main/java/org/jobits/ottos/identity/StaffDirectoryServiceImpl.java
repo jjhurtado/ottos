@@ -1,5 +1,7 @@
 package org.jobits.ottos.identity;
 
+import org.jobits.ottos.identity.domain.Role;
+import org.jobits.ottos.identity.domain.User;
 import org.jobits.ottos.identity.domain.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,14 +25,20 @@ class StaffDirectoryServiceImpl implements StaffDirectoryService {
     @Transactional(readOnly = true)
     public Optional<StaffMember> find(UUID id) {
         return users.findWithRolesById(id)
-                .map(u -> new StaffMember(u.getId(), u.getName(), u.getEmail(), u.isActive(), u.permissionCodes()));
+                .map(u -> new StaffMember(u.getId(), u.getName(), u.getEmail(), u.isActive(), administrator(u),
+                        u.permissionCodes()));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<StaffMember> activeWith(String permission) {
+    public List<StaffMember> workersWith(String permission) {
         return users.findActiveWithPermission(permission).stream()
-                .map(u -> new StaffMember(u.getId(), u.getName(), u.getEmail(), u.isActive(), Set.of(permission)))
+                .filter(u -> !administrator(u))
+                .map(u -> new StaffMember(u.getId(), u.getName(), u.getEmail(), u.isActive(), false, Set.of(permission)))
                 .toList();
+    }
+
+    private static boolean administrator(User user) {
+        return user.getRoles().stream().anyMatch(Role::isBuiltIn);
     }
 }

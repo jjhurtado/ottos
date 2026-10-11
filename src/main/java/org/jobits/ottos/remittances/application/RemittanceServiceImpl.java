@@ -436,9 +436,9 @@ class RemittanceServiceImpl implements RemittanceService {
             if (courierId == null) {
                 throw badRequest("COURIER_REQUIRED", "Status " + target.getCode() + " requires a courier");
             }
-            boolean eligible = staff.find(courierId).map(m -> m.can(COURIER_PERMISSION)).orElse(false);
+            boolean eligible = staff.find(courierId).map(m -> m.worksWith(COURIER_PERMISSION)).orElse(false);
             if (!eligible) {
-                throw badRequest("INVALID_COURIER", "The courier must be an active user with permission " + COURIER_PERMISSION);
+                throw badRequest("INVALID_COURIER", "The courier must be an active user with permission " + COURIER_PERMISSION + ", not an administrator");
             }
             r.assignTo(courierId);
         }
@@ -525,7 +525,7 @@ class RemittanceServiceImpl implements RemittanceService {
     public List<CourierView> couriers() {
         Map<UUID, Long> open = new HashMap<>();
         remittances.countOpenByCourier(workflow.finalCodes()).forEach(row -> open.put((UUID) row[0], (Long) row[1]));
-        return staff.activeWith(COURIER_PERMISSION).stream()
+        return staff.workersWith(COURIER_PERMISSION).stream()
                 .map(m -> new CourierView(m.id(), m.name(), m.email(), open.getOrDefault(m.id(), 0L)))
                 .toList();
     }
