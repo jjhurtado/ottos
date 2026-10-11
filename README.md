@@ -138,6 +138,7 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Courier work | `GET /remittances/assigned`, `POST /remittances/{id}/deliver`, `/deliver-with-pin` | `remittances:read-assigned`, `remittances:deliver` |
 | Incidents | `POST /remittances/{id}/incidents` (`{reason, note}`) | `remittances:report-incident` |
 | Review | `GET /remittances?review=true`, `POST /remittances/{id}/review/resolve` | `remittances:read`, `remittances:review` |
+| Reports | `GET /reports/monthly?month=YYYY-MM` (monthly sales report; contract: `docs/contracts/monthly-report.md`) | `reports:read` (ADMIN, SALES) |
 | Audit | `GET /audit?targetType=&targetId=&actorId=&action=&from=&to=` (who changed users and roles, and when) | `audit:read` (ADMIN) |
 | Mobile sync | `GET /sync/state?since=`, `POST /sync/actions` (contract: `docs/contracts/offline-sync.md`) | authenticated; each action needs its endpoint's permission |
 | Workflow | `GET /couriers` (assignable staff and their open remittances), `POST /remittances/{id}/assign`, `/transitions`, `/postpone` | `remittances:assign`, the transition's permission, `remittances:postpone` |

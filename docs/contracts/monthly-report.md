@@ -1,6 +1,6 @@
 # Contrato: informe mensual de ventas
 
-Estado: **borrador para revisión del frontend**. No implementado. Decisiones del negocio en
+Estado: **cerrado con el frontend e implementado** (2026-10-11; módulo `reporting`, cifras de `remittances`). Decisiones del negocio en
 [ROADMAP.md › Funcionalidades pedidas en diseño](../../ROADMAP.md).
 
 El informe más importante para el negocio. El backend devuelve los números en JSON y el panel genera el PDF.
@@ -12,7 +12,7 @@ GET /api/v1/reports/monthly?month=2026-10        permiso reports:read (nuevo; AD
 ```
 
 - `month` obligatorio, `AAAA-MM`. Un mes futuro devuelve ceros.
-- Errores: `VALIDATION_FAILED` si falta o tiene otro formato.
+- Errores: `VALIDATION_FAILED` si falta o tiene otro formato (por ejemplo `2026-13`).
 
 ## Reglas
 
