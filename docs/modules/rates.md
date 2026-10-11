@@ -9,14 +9,15 @@ vienen de `configuration`.
 
 ## API pública
 
-- `QuoteService.quote(remittanceType, sourceCurrency, targetCurrency, amount)`. `remittances` lo usa al registrar cada
+- `QuoteService.quote(remittanceType, sourceCurrency, targetCurrency, amount, customRate)`. `customRate` es la tasa
+  indicada a mano para una recogida (`null` usa la configurada; en una entrega, `RATE_NOT_ALLOWED`). `remittances` lo usa al registrar cada
   remesa (con el tipo de la remesa).
 
 ## Endpoints
 
 | Endpoint | Permiso |
 | --- | --- |
-| `POST /quotes` (`remittanceType` opcional, `DELIVERY` por defecto) | `rates:read` |
+| `POST /quotes` (`remittanceType` opcional, `DELIVERY` por defecto; `rate` opcional solo en recogidas) | `rates:read` |
 
 ## Cálculo
 

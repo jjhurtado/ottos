@@ -13,7 +13,7 @@ y teléfono.
 
 - El teléfono y el documento del cliente **dejan de ser únicos**.
 - Solo se rechaza un cliente **idéntico** a otro: mismo nombre, mismo teléfono y misma dirección (sin distinguir
-  mayúsculas ni espacios de los extremos; el teléfono normalizado; sin dirección = sin dirección). Al crear o editar:
+  mayúsculas ni espacios repetidos o de los extremos; el teléfono normalizado; sin dirección = sin dirección). Al crear o editar:
   409 `CUSTOMER_ALREADY_REGISTERED`, con `customerId` del existente.
 - `PHONE_ALREADY_REGISTERED` ya no se devuelve.
 
