@@ -5,12 +5,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface CustomerRepository extends JpaRepository<Customer, UUID> {
 
-    Optional<Customer> findByPhone(String phone);
+    List<Customer> findByPhone(String phone);
+
+    List<Customer> findAllByOrderByFullNameAsc();
 
     @Query("select c from Customer c where lower(c.fullName) like lower(concat('%', :name, '%')) order by c.fullName")
     List<Customer> searchByName(String name, Pageable page);
