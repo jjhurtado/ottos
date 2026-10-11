@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -184,6 +185,57 @@ class AuthenticationTest extends ApiTestSupport {
         refresh(JsonPath.read(web, "$.refreshToken")).andExpect(jsonPath("$.expiresIn").value(300));
         mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(JsonPath.read(mobile, "$.accessToken"))))
                 .andExpect(jsonPath("$.client").value("MOBILE"));
+    }
+
+    @Test
+    void fiveWrongPasswordsLockTheAccountForAWhile() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            login("sales@ottos.test", "wrong-password").andExpect(status().isUnauthorized());
+        }
+
+        // Locked: even the right password is refused until the lock ends
+        login("sales@ottos.test", PASSWORD)
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("TOO_MANY_LOGIN_ATTEMPTS"))
+                .andExpect(jsonPath("$.retryAfterSeconds").value(900))
+                .andExpect(header().string("Retry-After", "900"));
+        login("admin@ottos.test", PASSWORD).andExpect(status().isOk());
+
+        clock.advance(Duration.ofMinutes(15));
+        login("sales@ottos.test", PASSWORD).andExpect(status().isOk());
+    }
+
+    @Test
+    void aSuccessfulLoginClearsTheFailures() throws Exception {
+        for (int i = 0; i < 4; i++) {
+            login("sales@ottos.test", "wrong-password");
+        }
+        login("sales@ottos.test", PASSWORD).andExpect(status().isOk());
+        for (int i = 0; i < 4; i++) {
+            login("sales@ottos.test", "wrong-password");
+        }
+
+        login("sales@ottos.test", PASSWORD).andExpect(status().isOk());
+    }
+
+    @Test
+    void anUnknownEmailIsLockedLikeAnyOtherSoItRevealsNothing() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            login("nobody@ottos.test", "whatever").andExpect(status().isUnauthorized());
+        }
+
+        login("nobody@ottos.test", "whatever")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("TOO_MANY_LOGIN_ATTEMPTS"));
+    }
+
+    @Test
+    void manyFailuresFromOneIpOnDifferentEmailsLockTheIp() throws Exception {
+        for (int i = 0; i < 50; i++) {
+            login("guess" + i + "@ottos.test", "whatever").andExpect(status().isUnauthorized());
+        }
+
+        login("sales@ottos.test", PASSWORD).andExpect(status().isTooManyRequests());
     }
 
     @Test

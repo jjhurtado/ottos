@@ -4,6 +4,9 @@
 
 server:
   shutdown: graceful
+  # Behind the hosting's proxy: take the client's IP from X-Forwarded-For, so the per-IP login limit counts each client
+  # and not the proxy. The header can be forged, which only dodges the per-IP limit; the per-account one still holds.
+  forward-headers-strategy: framework
   tomcat:
     threads:
       max: 20

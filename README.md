@@ -96,7 +96,11 @@ shutdown. JVM flags (heap, GC) are set by the infrastructure through `JAVA_TOOL_
 
 Token lifetimes: `ottos.security.access-token-ttl` (15m, web panel), `ottos.security.mobile-access-token-ttl` (14h, mobile
 app logging in with `"client": "MOBILE"`) and `ottos.security.refresh-token-ttl` (30d). Retrying a refresh within
-`ottos.security.refresh-reuse-grace` (60s) gets a new pair instead of signing out everywhere. Expired refresh
+`ottos.security.refresh-reuse-grace` (60s) gets a new pair instead of signing out everywhere.
+
+Failed logins are limited (`ottos.security.login.*`): 5 wrong passwords on an email within 15 minutes lock it for 15
+minutes, and 50 failures from one IP lock that IP; the answer is 429 `TOO_MANY_LOGIN_ATTEMPTS` with
+`retryAfterSeconds` and `Retry-After`. Expired refresh
 tokens are deleted daily at `ottos.security.refresh-token-cleanup-cron` (Spring cron, default `0 30 3 * * *`, in
 `ottos.timezone`); revoked ones are kept until they expire so reuse is still detected.
 
@@ -179,6 +183,7 @@ Throw `ApiException.badRequest("SOME_CODE", "English detail")` (or `conflict`, `
 | 403 | `FORBIDDEN` (missing permission), `PERMISSION_ESCALATION`, `TRANSITION_FORBIDDEN` |
 | 404 | `NOT_FOUND` (unknown route), `BENEFICIARY_NOT_FOUND`, `EXCHANGE_NOT_FOUND`, `CORRIDOR_NOT_FOUND`, `CUSTOMER_NOT_FOUND`, `REMITTANCE_NOT_FOUND`, `ROLE_NOT_FOUND`, `USER_NOT_FOUND` |
 | 409 | `CONCURRENT_UPDATE` (retry), `ACTION_ID_CONFLICT` (sync), `REVIEW_NOT_PENDING`, `BENEFICIARY_INACTIVE`, `BUILT_IN_ROLE`, `CANNOT_DEACTIVATE_SELF`, `COURIER_NOT_ASSIGNED`, `EMAIL_TAKEN`, `LAST_ADMIN`, `NO_EXCHANGE_RATE`, `NO_FEE_RULE`, `CUSTOMER_ALREADY_REGISTERED` (with `customerId`), `REMITTANCE_ALREADY_COMPLETED`, `REMITTANCE_NOT_ASSIGNABLE`, `REMITTANCE_NOT_COMPLETABLE`, `ROLE_CODE_TAKEN`, `ROLE_IN_USE`, `TRANSITION_NOT_ALLOWED` |
+| 429 | `TOO_MANY_LOGIN_ATTEMPTS` (with `retryAfterSeconds` and the `Retry-After` header) |
 
 Other framework errors get the status name as code (e.g. `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE`).
 

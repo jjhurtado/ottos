@@ -3,6 +3,7 @@ package org.jobits.ottos.identity.web;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -34,10 +35,10 @@ class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Log in with email and password and get an access token and a refresh token")
-    TokenResponse login(@Valid @RequestBody LoginRequest request) {
+    @Operation(summary = "Log in with email and password and get an access token and a refresh token; repeated failures lock the email or IP for a while (429)")
+    TokenResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
         ClientType client = request.client() == null ? ClientType.WEB : request.client();
-        return TokenResponse.of(authentication.login(request.email(), request.password(), client));
+        return TokenResponse.of(authentication.login(request.email(), request.password(), client, http.getRemoteAddr()));
     }
 
     @PostMapping("/refresh")

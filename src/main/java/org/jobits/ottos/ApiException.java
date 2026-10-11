@@ -1,5 +1,6 @@
 package org.jobits.ottos;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -13,6 +14,7 @@ public class ApiException extends ResponseStatusException {
     public static final String CODE = "code";
 
     private final String code;
+    private final HttpHeaders headers = new HttpHeaders();
 
     public ApiException(HttpStatus status, String code, String detail) {
         super(status, detail);
@@ -40,10 +42,25 @@ public class ApiException extends ResponseStatusException {
         return new ApiException(HttpStatus.CONFLICT, code, detail);
     }
 
+    public static ApiException tooManyRequests(String code, String detail) {
+        return new ApiException(HttpStatus.TOO_MANY_REQUESTS, code, detail);
+    }
+
     /** Adds a value the client can use to explain the error, e.g. {@code with("minimumAmount", 20)}. */
     public ApiException with(String property, Object value) {
         getBody().setProperty(property, value);
         return this;
+    }
+
+    /** Adds a response header, e.g. {@code withHeader("Retry-After", "900")}. */
+    public ApiException withHeader(String name, String value) {
+        headers.set(name, value);
+        return this;
+    }
+
+    @Override
+    public HttpHeaders getHeaders() {
+        return headers;
     }
 
     public String getCode() {

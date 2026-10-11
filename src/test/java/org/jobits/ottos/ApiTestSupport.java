@@ -7,6 +7,7 @@ import org.jobits.ottos.identity.domain.Role;
 import org.jobits.ottos.identity.domain.RoleRepository;
 import org.jobits.ottos.identity.domain.User;
 import org.jobits.ottos.identity.domain.UserRepository;
+import org.jobits.ottos.identity.security.LoginAttempts;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -86,10 +87,14 @@ public abstract class ApiTestSupport {
     @Autowired
     protected PasswordEncoder passwordEncoder;
 
+    @Autowired
+    protected LoginAttempts loginAttempts;
+
     @BeforeEach
     void resetDatabaseAndClock() {
         RESET.forEach(jdbc::update);
         clock.reset();
+        loginAttempts.clear();
     }
 
     protected User createUser(String email, String... roleCodes) {

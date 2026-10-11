@@ -39,6 +39,11 @@ sección *identity*; los permisos de cada módulo están en su sección y los pe
   Excepción: dentro de `ottos.security.refresh-reuse-grace` (60 s) desde su uso, se toma como reintento por mala red:
   se revoca el par que no llegó (`replaced_by`) y se emite uno nuevo. No aplica tras logout o cierre de todas las
   sesiones.
+- **Límite de inicios de sesión** (`LoginAttempts`, `ottos.security.login.*`): 5 contraseñas incorrectas en 15 minutos
+  sobre un email lo bloquean 15 minutos, y 50 fallos desde una IP (sobre cualquier email) bloquean esa IP. Responde 429
+  `TOO_MANY_LOGIN_ATTEMPTS` con `retryAfterSeconds` y la cabecera `Retry-After`. Un login correcto borra los fallos del
+  email. Un email inexistente se cuenta igual, así que el bloqueo no revela qué cuentas existen. Los contadores viven en
+  memoria (una sola instancia; reiniciar los olvida). En `prod` la IP sale de `X-Forwarded-For` (detrás del proxy).
 - **Limpieza:** `RefreshTokenCleanup` borra a diario los caducados (`ottos.security.refresh-token-cleanup-cron`); los
   revocados se conservan hasta que caducan para seguir detectando reutilización.
 - **RBAC:** los permisos son el catálogo que comprueba el código (`@PreAuthorize("hasAuthority('…')")`) y solo se crean
