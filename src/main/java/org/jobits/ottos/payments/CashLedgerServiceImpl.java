@@ -2,6 +2,7 @@ package org.jobits.ottos.payments;
 
 import jakarta.persistence.criteria.Predicate;
 import org.jobits.ottos.ApiException;
+import org.jobits.ottos.Texts;
 import org.jobits.ottos.configuration.ConfigurationService;
 import org.jobits.ottos.identity.StaffDirectoryService;
 import org.jobits.ottos.payments.domain.CashAccount;
@@ -232,7 +233,7 @@ class CashLedgerServiceImpl implements CashLedgerService {
         BigDecimal configured = configuration.deliveryRateAt(BUSINESS_CURRENCY, other, occurredAt).orElse(null);
         BigDecimal deviation = configured == null ? null
                 : e.rate().subtract(configured).abs().multiply(HUNDRED).divide(configured, 2, RoundingMode.HALF_UP);
-        String note = e.note() == null || e.note().isBlank() ? null : e.note().trim();
+        String note = Texts.blankToNull(e.note());
 
         CashExchange exchange = exchanges.save(new CashExchange(courierId, fromCurrency, fromAmount, toCurrency,
                 toAmount, e.rate(), configured, deviation, note, occurredAt, actorId, now, actionId));

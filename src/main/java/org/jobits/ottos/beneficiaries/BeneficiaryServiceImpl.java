@@ -24,6 +24,8 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.jobits.ottos.Texts.blankToNull;
+
 /** Implementation of {@link BeneficiaryService}. */
 @Service
 class BeneficiaryServiceImpl implements BeneficiaryService {
@@ -175,9 +177,6 @@ class BeneficiaryServiceImpl implements BeneficiaryService {
                 .toList();
     }
 
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
 
     private static ResponseStatusException notFound() {
         return ApiException.notFound("BENEFICIARY_NOT_FOUND", "Beneficiary not found");

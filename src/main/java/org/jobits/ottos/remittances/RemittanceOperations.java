@@ -17,6 +17,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import static org.jobits.ottos.Texts.blankToNull;
+
 /**
  * The changes to a remittance shared by the online endpoints ({@link RemittanceServiceImpl}) and the offline queue
  * ({@link RemittanceSyncServiceImpl}): moving it through a transition, postponing it and reporting an incident, each
@@ -127,7 +129,4 @@ class RemittanceOperations {
         return ApiException.notFound("REMITTANCE_NOT_FOUND", "Remittance not found");
     }
 
-    static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
 }

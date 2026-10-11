@@ -140,8 +140,9 @@ Un único despliegue Spring Boot dividido en módulos (Spring Modulith). Cada pa
 módulo: `identity`, `branches`, `customers`, `beneficiaries`, `configuration`, `rates`, `remittances`, `dispatch`, `payments`,
 `notifications`, `reporting`. `ModularityTest` falla si un módulo usa clases internas de otro.
 
-Lo compartido por todos vive en el paquete raíz `org.jobits.ottos` y se mantiene mínimo: `ApiException`, `ApiErrors`,
-`Phones`, `TimeConfig`.
+Lo compartido por todos vive en el paquete raíz `org.jobits.ottos` y se mantiene mínimo: `ApiException` y `ApiErrors`
+(errores), `AuditEvent` (auditoría), `Phones` y `Texts` (normalizar teléfonos y textos opcionales) y `TimeConfig`
+(reloj y zona horaria del negocio). Antes de copiar un helper en un segundo módulo, va aquí.
 
 ### Capas y paquetes dentro de un módulo
 
@@ -166,10 +167,24 @@ El flujo de una petición siempre es:
 Controller  →  Service (interfaz)  →  ServiceImpl  →  Repository  →  Base de datos
 ```
 
+### Clases grandes
+
+Un `Impl` hace una sola cosa. Si mezcla responsabilidades distintas (operaciones online, cola offline, cálculos de un
+informe, consultas con filtros), cada una va en su clase dentro del módulo, package-private, como en `remittances`:
+`RemittanceServiceImpl`, `RemittanceSyncServiceImpl`, `RemittanceOperations` (lo que comparten), `SalesSummaries`,
+`RemittanceSpecifications`. Como referencia, más de ~400 líneas es señal de que hay que partir.
+
+### Rendimiento
+
+- Al montar una lista de vistas, los datos de otros módulos (nombres de clientes, de repartidores…) se piden en lote,
+  una consulta por tipo (`CustomerService.findAll(ids)`, `StaffDirectoryService.names(ids)`), nunca uno por fila.
+- El pool de conexiones de producción es pequeño (5): una petición no debería hacer decenas de consultas.
+
 ### Controllers (`web/`)
 
 - Solo traducen HTTP: validan la entrada (`@Valid`, Bean Validation), comprueban el permiso (`@PreAuthorize`) y llaman a
-  un servicio. Sin lógica de negocio, sin repositorios, sin transacciones.
+  un servicio. Sin lógica de negocio, sin repositorios, sin transacciones, sin capturar excepciones de persistencia
+  (la carrera de dos peticiones con la misma clave de idempotencia la resuelve el servicio).
 - Dependen únicamente de **interfaces de servicio**, nunca de un `Impl`, un repositorio o un componente interno.
 - Los DTO de petición son `record` anidados en el controller (`LoginRequest`, `AssignRequest`…).
 - Permisos, nunca roles: `@PreAuthorize("hasAuthority('remittances:assign')")`.
@@ -216,6 +231,13 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 - Solo a través de la interfaz de servicio pública del otro módulo (paquete raíz del módulo) o de eventos de dominio
   (`RemittanceEvents`, escuchados con `@EventListener`).
 - Nunca se accede a repositorios, entidades o tablas de otro módulo.
+- **Los eventos son síncronos y dentro de la transacción** de quien los publica, a propósito: completar una remesa y
+  mover la caja del repartidor (`payments`), o cambiar un usuario y guardar su auditoría (`reporting`), tienen que
+  confirmarse o deshacerse juntos. Por eso se usa `@EventListener` y no `@ApplicationModuleListener` (asíncrono,
+  después del commit), que solo tendría sentido para efectos que pueden llegar tarde, como una notificación.
+- Una regla de negocio que usan varios módulos se define una sola vez en el módulo dueño y los demás la consultan: qué
+  es un repartidor (`StaffDirectoryService.couriers()` / `isCourier`), la moneda del negocio
+  (`ConfigurationService.BUSINESS_CURRENCY`).
 
 ### Dominio y persistencia (`domain/`)
 
@@ -274,4 +296,6 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 
 ### Revisión
 
-Esta arquitectura se revisa de nuevo al llegar a la primera RC (`1.0.0-rc.1`), antes de seguir refactorizando.
+Esta arquitectura se revisó en la primera RC (`1.0.0-rc.1`, 2026-10-11): API de los módulos en su paquete raíz, sin
+entidades en los contratos, una responsabilidad por clase, reglas compartidas definidas una vez y listas sin consultas
+N+1. Se vuelve a revisar antes de cada versión menor.
