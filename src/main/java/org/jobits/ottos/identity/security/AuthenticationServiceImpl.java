@@ -1,7 +1,7 @@
 package org.jobits.ottos.identity.security;
 
 import org.jobits.ottos.ApiException;
-import org.jobits.ottos.identity.domain.ClientType;
+import org.jobits.ottos.identity.ClientType;
 import org.jobits.ottos.identity.domain.RefreshToken;
 import org.jobits.ottos.identity.domain.User;
 import org.jobits.ottos.identity.domain.UserRepository;

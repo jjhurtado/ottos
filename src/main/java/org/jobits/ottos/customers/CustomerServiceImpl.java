@@ -59,8 +59,8 @@ class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
-    public CustomerInfo register(Customer.Details details, UUID actorId) {
-        Customer.Details normalized = normalize(details);
+    public CustomerInfo register(CustomerData data, UUID actorId) {
+        Customer.Details normalized = normalize(data.toDetails());
         requireNotIdentical(normalized, null);
         Instant now = clock.instant();
         return CustomerInfo.of(customers.save(new Customer(normalized, now, actorId)));
@@ -68,9 +68,9 @@ class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
-    public CustomerInfo update(UUID id, Customer.Details details) {
+    public CustomerInfo update(UUID id, CustomerData data) {
         Customer customer = customers.findById(id).orElseThrow(CustomerServiceImpl::notFound);
-        Customer.Details normalized = normalize(details);
+        Customer.Details normalized = normalize(data.toDetails());
         requireNotIdentical(normalized, id);
         customer.update(normalized);
         return CustomerInfo.of(customer);
@@ -80,12 +80,6 @@ class CustomerServiceImpl implements CustomerService {
     @Transactional(readOnly = true)
     public Optional<CustomerInfo> findIdentical(CustomerData data) {
         return identical(normalize(data.toDetails()), null).map(CustomerInfo::of);
-    }
-
-    @Override
-    @Transactional
-    public CustomerInfo register(CustomerData data, UUID actorId) {
-        return register(data.toDetails(), actorId);
     }
 
     @Override

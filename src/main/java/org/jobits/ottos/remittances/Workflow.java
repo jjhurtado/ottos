@@ -1,4 +1,4 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
 import org.jobits.ottos.remittances.domain.RemittanceStatus;
 import org.jobits.ottos.remittances.domain.RemittanceStatusRepository;
@@ -14,7 +14,7 @@ import java.util.function.Predicate;
 
 /** Reads the statuses and transitions configured in the database. */
 @Component
-public class Workflow {
+class Workflow {
 
     private final RemittanceStatusRepository statuses;
     private final RemittanceTransitionRepository transitions;
@@ -63,24 +63,15 @@ public class Workflow {
     public WorkflowView describe() {
         return new WorkflowView(
                 statuses.findAllByOrderByPosition().stream()
-                        .map(s -> new StatusView(s.getCode(), s.getName(), s.getPosition(), s.isInitial(),
+                        .map(s -> new WorkflowView.StatusView(s.getCode(), s.getName(), s.getPosition(), s.isInitial(),
                                 s.isRequiresCourier(), s.isFinalStatus()))
                         .toList(),
                 transitions.findAll().stream()
-                        .map(t -> new TransitionView(t.getFromStatus(), t.getToStatus(), t.getPermissionCode()))
+                        .map(t -> new WorkflowView.TransitionView(t.getFromStatus(), t.getToStatus(), t.getPermissionCode()))
                         .toList());
     }
 
     private record Candidate(RemittanceTransition transition, RemittanceStatus target) {
     }
 
-    public record WorkflowView(List<StatusView> statuses, List<TransitionView> transitions) {
-    }
-
-    public record StatusView(String code, String name, int position, boolean initial, boolean requiresCourier,
-                             boolean isFinal) {
-    }
-
-    public record TransitionView(String from, String to, String permission) {
-    }
 }

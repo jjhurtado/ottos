@@ -14,8 +14,8 @@ historial y estadísticas.
 
 - `RemittanceType`, `IncidentReason`, `ReviewReason` y los eventos de `RemittanceEvents` (`RemittanceRegistered`,
   `RemittanceCompleted`), que escucha `payments` para mover la caja en la misma transacción.
-- Interfaz con nombre `application` (`RemittanceService`, `RemittanceView`, `Viewer`, tipos de sincronización), usada
-  solo por el módulo `sync`.
+- `RemittanceService` con `RemittanceView`, `Viewer`, `WorkflowView` y los tipos de sincronización (los usa `sync`), y
+  `salesSummary` (lo usa `reporting`).
 
 ## Endpoints
 

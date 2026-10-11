@@ -1,6 +1,6 @@
 package org.jobits.ottos.identity.security;
 
-import org.jobits.ottos.identity.domain.ClientType;
+import org.jobits.ottos.identity.ClientType;
 import org.jobits.ottos.identity.domain.User;
 
 /**

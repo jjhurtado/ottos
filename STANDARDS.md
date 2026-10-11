@@ -147,13 +147,18 @@ Lo compartido por todos vive en el paquete raíz `org.jobits.ottos` y se mantien
 
 ```
 org.jobits.ottos.<modulo>
-├── <Algo>Service.java          interfaz pública del módulo (lo único que otros módulos pueden usar)
+├── <Algo>Service.java          interfaz pública del módulo, con sus vistas y comandos (lo único que otros módulos usan)
 ├── <Algo>ServiceImpl.java      su implementación (package-private)
+├── <Valor>.java                enums y records de valor del contrato (RemittanceType, ClientType, MovementType…)
 ├── domain/                     entidades JPA y repositorios Spring Data
-├── application/ | management/ | security/
-│                               servicios internos del módulo: interfaz + Impl
+├── management/ | security/     servicios solo internos del módulo (interfaz + Impl), si hacen falta
 └── web/                        controllers REST y sus DTO de petición
 ```
+
+La API pública de un módulo es su paquete raíz: Spring Modulith solo deja usar desde fuera lo que está ahí. Por eso
+la interfaz de servicio que usan otros módulos, sus tipos de contrato y los enums que aparecen en ellos van en la raíz,
+y las piezas internas en la raíz son package-private (`Workflow`, `RemittanceViews`). No se usan interfaces con nombre
+(`@NamedInterface`) para abrir subpaquetes.
 
 El flujo de una petición siempre es:
 
@@ -185,8 +190,9 @@ Reglas:
 - Quien usa un servicio inyecta la interfaz (inyección por constructor, campos `final`).
 - `@Transactional` va en los métodos del `Impl`, no en la interfaz.
 - El javadoc del contrato va en la interfaz; el `Impl` solo documenta detalles de implementación.
-- Los métodos de la interfaz no exponen entidades JPA salvo que sea inevitable dentro del propio módulo; hacia fuera se
-  devuelven `record` de vista.
+- Los métodos de la interfaz no reciben ni devuelven entidades JPA ni sus tipos anidados: reciben records de comando
+  (`CustomerData`, `BeneficiaryData`, `NewRemittance`) y devuelven records de vista. Los controllers tampoco importan
+  nada de `domain/`.
 - Las piezas auxiliares que no son servicios (`@Component` como `Workflow`, `RemittanceViews`, handlers de seguridad,
   bootstrap) no llevan interfaz y no se usan desde controllers.
 

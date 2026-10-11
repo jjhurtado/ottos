@@ -1,6 +1,5 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
-import org.jobits.ottos.remittances.IncidentReason;
 
 import java.time.Instant;
 import java.time.LocalDate;

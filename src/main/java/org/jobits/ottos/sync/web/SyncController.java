@@ -7,7 +7,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.jobits.ottos.ApiException;
-import org.jobits.ottos.remittances.application.Viewer;
+import org.jobits.ottos.remittances.Viewer;
 import org.jobits.ottos.sync.SyncActionKind;
 import org.jobits.ottos.sync.SyncService;
 import org.jobits.ottos.sync.SyncService.QueuedAction;

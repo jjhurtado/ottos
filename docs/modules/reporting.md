@@ -11,7 +11,7 @@ otros indicadores y exportes.
 
 - `AuditLogService.search(filter, page, size)`.
 - `ReportService.monthly(month)`: el informe mensual. Las cifras las calcula `remittances` (`salesSummary`), que es
-  dueño de los datos; `reporting` usa su interfaz con nombre `application`.
+  dueño de los datos.
 - Escucha `org.jobits.ottos.AuditEvent` (paquete raíz, compartido): cualquier módulo lo publica y este lo guarda.
 
 ## Endpoints

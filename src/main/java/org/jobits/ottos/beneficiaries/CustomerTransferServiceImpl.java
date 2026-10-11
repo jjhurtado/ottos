@@ -3,6 +3,7 @@ package org.jobits.ottos.beneficiaries;
 import org.jobits.ottos.ApiException;
 import org.jobits.ottos.AuditEvent;
 import org.jobits.ottos.Phones;
+import org.jobits.ottos.beneficiaries.BeneficiaryService.BeneficiaryData;
 import org.jobits.ottos.beneficiaries.domain.Beneficiary;
 import org.jobits.ottos.beneficiaries.domain.BeneficiaryRepository;
 import org.jobits.ottos.beneficiaries.domain.CustomerBeneficiary;
@@ -188,7 +189,7 @@ class CustomerTransferServiceImpl implements CustomerTransferService {
                                                 Municipalities municipalities, boolean dryRun) {
         try {
             optional(item.ref(), "ref", 100);
-            Beneficiary.Details details = new Beneficiary.Details(
+            BeneficiaryData details = new BeneficiaryData(
                     required(item.fullName(), "fullName", 150), required(item.phone(), "phone", 30),
                     optional(item.alternatePhone(), "alternatePhone", 30), required(item.street(), "street", 150),
                     optional(item.houseNumber(), "houseNumber", 30), optional(item.betweenStreets(), "betweenStreets", 150),
@@ -196,7 +197,7 @@ class CustomerTransferServiceImpl implements CustomerTransferService {
                     municipalities.code(required(item.municipality(), "municipality", 100)),
                     optional(item.reference(), "reference", 255), optional(item.documentNumber(), "documentNumber", 50),
                     optional(item.notes(), "notes", 1000));
-            Optional<Beneficiary> existing = identical(details);
+            Optional<Beneficiary> existing = identical(details.toDetails());
             if (existing.isPresent()) {
                 if (!existing.get().isActive()) {
                     throw ApiException.conflict("BENEFICIARY_INACTIVE", "The beneficiary was deleted");

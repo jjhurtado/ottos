@@ -1,10 +1,9 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
 import org.jobits.ottos.ApiException;
 import org.jobits.ottos.beneficiaries.BeneficiaryService;
 import org.jobits.ottos.branches.ZoneService;
 import org.jobits.ottos.customers.CustomerService;
-import org.jobits.ottos.remittances.RemittanceType;
 import org.jobits.ottos.remittances.domain.Remittance;
 import org.jobits.ottos.remittances.domain.RemittanceRepository;
 import org.springframework.stereotype.Service;

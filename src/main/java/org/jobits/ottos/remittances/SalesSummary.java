@@ -1,6 +1,5 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
-import org.jobits.ottos.remittances.RemittanceType;
 
 import java.math.BigDecimal;
 import java.util.List;

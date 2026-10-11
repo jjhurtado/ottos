@@ -15,13 +15,13 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.jobits.ottos.remittances.IncidentReason;
 import org.jobits.ottos.remittances.RemittanceType;
-import org.jobits.ottos.remittances.application.RemittanceFilter;
-import org.jobits.ottos.remittances.application.RemittanceService;
-import org.jobits.ottos.remittances.application.RemittanceService.CompletedFeed;
-import org.jobits.ottos.remittances.application.RemittanceService.EventView;
-import org.jobits.ottos.remittances.application.RemittanceService.PageView;
-import org.jobits.ottos.remittances.application.RemittanceView;
-import org.jobits.ottos.remittances.application.Workflow;
+import org.jobits.ottos.remittances.RemittanceFilter;
+import org.jobits.ottos.remittances.RemittanceService;
+import org.jobits.ottos.remittances.RemittanceService.CompletedFeed;
+import org.jobits.ottos.remittances.RemittanceService.EventView;
+import org.jobits.ottos.remittances.RemittanceService.PageView;
+import org.jobits.ottos.remittances.RemittanceView;
+import org.jobits.ottos.remittances.WorkflowView;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -204,7 +204,7 @@ class RemittanceController {
     @GetMapping("/remittance-workflow")
     @PreAuthorize("hasAnyAuthority('remittances:read', 'remittances:read-assigned')")
     @Operation(summary = "Statuses and allowed transitions, as configured in the database")
-    Workflow.WorkflowView workflow() {
+    WorkflowView workflow() {
         return remittances.workflow();
     }
 

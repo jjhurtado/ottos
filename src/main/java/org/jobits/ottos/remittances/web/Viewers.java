@@ -1,6 +1,6 @@
 package org.jobits.ottos.remittances.web;
 
-import org.jobits.ottos.remittances.application.Viewer;
+import org.jobits.ottos.remittances.Viewer;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.List;

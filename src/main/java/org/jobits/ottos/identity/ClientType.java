@@ -1,4 +1,4 @@
-package org.jobits.ottos.identity.domain;
+package org.jobits.ottos.identity;
 
 /** Where a session was opened; it decides how long its access tokens last. */
 public enum ClientType {

@@ -1,17 +1,15 @@
-package org.jobits.ottos.payments.application;
+package org.jobits.ottos.payments;
 
 import jakarta.persistence.criteria.Predicate;
 import org.jobits.ottos.ApiException;
 import org.jobits.ottos.configuration.ConfigurationService;
 import org.jobits.ottos.identity.StaffDirectoryService;
-import org.jobits.ottos.payments.domain.AccountType;
 import org.jobits.ottos.payments.domain.CashAccount;
 import org.jobits.ottos.payments.domain.CashAccountRepository;
 import org.jobits.ottos.payments.domain.CashExchange;
 import org.jobits.ottos.payments.domain.CashExchangeRepository;
 import org.jobits.ottos.payments.domain.CashMovement;
 import org.jobits.ottos.payments.domain.CashMovementRepository;
-import org.jobits.ottos.payments.domain.MovementType;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceCompleted;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceRegistered;
 import org.jobits.ottos.remittances.RemittanceType;

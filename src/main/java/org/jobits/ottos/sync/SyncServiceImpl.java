@@ -1,16 +1,16 @@
 package org.jobits.ottos.sync;
 
 import org.jobits.ottos.ApiException;
-import org.jobits.ottos.payments.application.CashLedgerService;
-import org.jobits.ottos.payments.application.CashLedgerService.NewExchange;
-import org.jobits.ottos.payments.application.CashLedgerService.SyncedExchange;
+import org.jobits.ottos.payments.CashLedgerService;
+import org.jobits.ottos.payments.CashLedgerService.NewExchange;
+import org.jobits.ottos.payments.CashLedgerService.SyncedExchange;
 import org.jobits.ottos.remittances.IncidentReason;
-import org.jobits.ottos.remittances.application.RemittanceService;
-import org.jobits.ottos.remittances.application.RemittanceService.AssignedChanges;
-import org.jobits.ottos.remittances.application.SyncAction;
-import org.jobits.ottos.remittances.application.SyncActionType;
-import org.jobits.ottos.remittances.application.SyncOutcome;
-import org.jobits.ottos.remittances.application.Viewer;
+import org.jobits.ottos.remittances.RemittanceService;
+import org.jobits.ottos.remittances.RemittanceService.AssignedChanges;
+import org.jobits.ottos.remittances.SyncAction;
+import org.jobits.ottos.remittances.SyncActionType;
+import org.jobits.ottos.remittances.SyncOutcome;
+import org.jobits.ottos.remittances.Viewer;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;

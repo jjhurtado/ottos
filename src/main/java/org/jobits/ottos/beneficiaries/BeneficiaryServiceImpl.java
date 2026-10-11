@@ -93,25 +93,25 @@ class BeneficiaryServiceImpl implements BeneficiaryService {
 
     @Override
     @Transactional
-    public BeneficiaryInfo create(UUID customerId, Beneficiary.Details details, UUID actorId) {
+    public BeneficiaryInfo create(UUID customerId, BeneficiaryData data, UUID actorId) {
         customers.get(customerId);
         Instant now = clock.instant();
-        Beneficiary beneficiary = beneficiaries.save(new Beneficiary(validate(details), now, actorId));
+        Beneficiary beneficiary = beneficiaries.save(new Beneficiary(validate(data.toDetails()), now, actorId));
         links.save(new CustomerBeneficiary(customerId, beneficiary.getId(), now));
         return info(beneficiary);
     }
 
     @Override
     @Transactional
-    public BeneficiaryInfo create(Beneficiary.Details details, UUID actorId) {
-        return info(beneficiaries.save(new Beneficiary(validate(details), clock.instant(), actorId)));
+    public BeneficiaryInfo create(BeneficiaryData data, UUID actorId) {
+        return info(beneficiaries.save(new Beneficiary(validate(data.toDetails()), clock.instant(), actorId)));
     }
 
     @Override
     @Transactional
-    public BeneficiaryInfo update(UUID id, Beneficiary.Details details) {
+    public BeneficiaryInfo update(UUID id, BeneficiaryData data) {
         Beneficiary beneficiary = beneficiaries.findById(id).orElseThrow(BeneficiaryServiceImpl::notFound);
-        beneficiary.update(validate(details));
+        beneficiary.update(validate(data.toDetails()));
         return info(beneficiary);
     }
 

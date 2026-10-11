@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
 import org.jobits.ottos.beneficiaries.BeneficiaryService;
 import org.jobits.ottos.beneficiaries.BeneficiaryService.BeneficiaryDetail;
 import org.jobits.ottos.beneficiaries.BeneficiaryService.BeneficiaryInfo;
-import org.jobits.ottos.beneficiaries.domain.Beneficiary;
+import org.jobits.ottos.beneficiaries.BeneficiaryService.BeneficiaryData;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -52,7 +52,7 @@ class BeneficiaryController {
     @PreAuthorize("hasAuthority('customers:write')")
     @Operation(summary = "Create a beneficiary without a customer; it is linked to one later (or when a remittance is sent to them)")
     BeneficiaryInfo createStandalone(@Valid @RequestBody BeneficiaryRequest request, @AuthenticationPrincipal Jwt jwt) {
-        return beneficiaries.create(request.toDetails(), UUID.fromString(jwt.getSubject()));
+        return beneficiaries.create(request.toData(), UUID.fromString(jwt.getSubject()));
     }
 
     @GetMapping("/beneficiaries/{id}")
@@ -66,7 +66,7 @@ class BeneficiaryController {
     @PreAuthorize("hasAuthority('customers:write')")
     @Operation(summary = "Update a beneficiary")
     BeneficiaryInfo update(@PathVariable UUID id, @Valid @RequestBody BeneficiaryRequest request) {
-        return beneficiaries.update(id, request.toDetails());
+        return beneficiaries.update(id, request.toData());
     }
 
     @DeleteMapping("/beneficiaries/{id}")
@@ -97,7 +97,7 @@ class BeneficiaryController {
     @Operation(summary = "Create a beneficiary for a customer")
     BeneficiaryInfo create(@PathVariable UUID customerId, @Valid @RequestBody BeneficiaryRequest request,
                            @AuthenticationPrincipal Jwt jwt) {
-        return beneficiaries.create(customerId, request.toDetails(), UUID.fromString(jwt.getSubject()));
+        return beneficiaries.create(customerId, request.toData(), UUID.fromString(jwt.getSubject()));
     }
 
     @PutMapping("/customers/{customerId}/beneficiaries/{beneficiaryId}")
@@ -128,8 +128,8 @@ class BeneficiaryController {
                               @Size(max = 50) String documentNumber,
                               @Size(max = 1000) String notes) {
 
-        Beneficiary.Details toDetails() {
-            return new Beneficiary.Details(fullName, phone, alternatePhone, street, houseNumber, betweenStreets,
+        BeneficiaryData toData() {
+            return new BeneficiaryData(fullName, phone, alternatePhone, street, houseNumber, betweenStreets,
                     neighborhood, municipalityCode, reference, documentNumber, notes);
         }
     }

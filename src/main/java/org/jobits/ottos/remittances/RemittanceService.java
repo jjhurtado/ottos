@@ -1,8 +1,5 @@
-package org.jobits.ottos.remittances.application;
+package org.jobits.ottos.remittances;
 
-import org.jobits.ottos.remittances.IncidentReason;
-import org.jobits.ottos.remittances.RemittanceType;
-import org.jobits.ottos.remittances.ReviewReason;
 import org.jobits.ottos.remittances.domain.RemittanceEvent;
 
 import java.math.BigDecimal;
@@ -66,7 +63,7 @@ public interface RemittanceService {
     RemittanceView get(UUID id, Viewer viewer);
 
     /** The statuses and transitions configured in the database. */
-    Workflow.WorkflowView workflow();
+    WorkflowView workflow();
 
     Optional<RemittanceView> findByIdempotencyKey(String idempotencyKey, Viewer viewer);
 

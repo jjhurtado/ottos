@@ -26,15 +26,15 @@ public interface BeneficiaryService {
     List<BeneficiaryInfo> ofCustomer(UUID customerId);
 
     /** Creates a beneficiary and links it to the customer who sends to them. */
-    BeneficiaryInfo create(UUID customerId, Beneficiary.Details details, UUID actorId);
+    BeneficiaryInfo create(UUID customerId, BeneficiaryData data, UUID actorId);
 
     /**
      * Creates a beneficiary no customer is linked to yet. It is found by the global search and linked to a customer
      * later, at the latest when that customer sends them a remittance.
      */
-    BeneficiaryInfo create(Beneficiary.Details details, UUID actorId);
+    BeneficiaryInfo create(BeneficiaryData data, UUID actorId);
 
-    BeneficiaryInfo update(UUID id, Beneficiary.Details details);
+    BeneficiaryInfo update(UUID id, BeneficiaryData data);
 
     /** Links an existing beneficiary to another customer. Linking twice is harmless. */
     void link(UUID customerId, UUID beneficiaryId);
@@ -50,6 +50,17 @@ public interface BeneficiaryService {
 
     /** Undoes {@link #delete}: the beneficiary is active again, with the links to customers it had. */
     BeneficiaryInfo restore(UUID id);
+
+    /** A beneficiary's data, to create or update one. municipalityCode: a known municipality (UNKNOWN_MUNICIPALITY). */
+    record BeneficiaryData(String fullName, String phone, String alternatePhone, String street, String houseNumber,
+                           String betweenStreets, String neighborhood, String municipalityCode, String reference,
+                           String documentNumber, String notes) {
+
+        Beneficiary.Details toDetails() {
+            return new Beneficiary.Details(fullName, phone, alternatePhone, street, houseNumber, betweenStreets,
+                    neighborhood, municipalityCode, reference, documentNumber, notes);
+        }
+    }
 
     record BeneficiaryInfo(UUID id, String fullName, String phone, String alternatePhone, String street,
                     String houseNumber, String betweenStreets, String neighborhood,

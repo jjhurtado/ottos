@@ -1,5 +1,7 @@
 package org.jobits.ottos.identity.domain;
 
+import org.jobits.ottos.identity.ClientType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

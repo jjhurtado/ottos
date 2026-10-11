@@ -1,7 +1,7 @@
 package org.jobits.ottos.reporting;
 
-import org.jobits.ottos.remittances.application.RemittanceService;
-import org.jobits.ottos.remittances.application.SalesSummary;
+import org.jobits.ottos.remittances.RemittanceService;
+import org.jobits.ottos.remittances.SalesSummary;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
