@@ -98,7 +98,7 @@ class RemittancesTest extends ApiTestSupport {
     }
 
     @Test
-    void theBeneficiaryMustBeLinkedToTheCustomer() throws Exception {
+    void sendingToABeneficiaryLinksThemToTheCustomer() throws Exception {
         String other = id(mvc.perform(post("/api/v1/customers")
                 .header("Authorization", bearer(salesToken))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -111,7 +111,10 @@ class RemittancesTest extends ApiTestSupport {
                                 {"type": "DELIVERY", "customerId": "%s", "beneficiaryId": "%s", "amount": 50,
                                  "targetCurrency": "CUP"}
                                 """.formatted(other, beneficiaryId)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isCreated());
+
+        mvc.perform(get("/api/v1/customers/{c}/beneficiaries", other).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$[0].id").value(beneficiaryId));
     }
 
     @Test

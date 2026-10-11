@@ -17,11 +17,11 @@ los clientes que les envían. Un beneficiario puede estar vinculado a varios cli
 | Endpoint | Permiso |
 | --- | --- |
 | `GET /beneficiaries?q=`, `GET /beneficiaries/{id}`, `GET /customers/{id}/beneficiaries` | `customers:read` |
-| `POST /customers/{id}/beneficiaries` (crear y vincular), `PUT /beneficiaries/{id}` | `customers:write` |
+| `POST /customers/{id}/beneficiaries` (crear y vincular), `POST /beneficiaries` (crear sin cliente), `PUT /beneficiaries/{id}` | `customers:write` |
 | `PUT` / `DELETE /customers/{id}/beneficiaries/{beneficiaryId}` (vincular / desvincular de ese cliente) | `customers:write` |
 | `DELETE /beneficiaries/{id}` (borrar para todos), `POST /beneficiaries/{id}/restore` | `customers:write` |
 | `GET /customers/export` (todos los clientes con sus beneficiarios, JSON) | `customers:export` (ADMIN) |
-| `POST /customers/import` (`dryRun` para la vista previa) | `customers:import` (ADMIN) |
+| `POST /customers/import`, `POST /beneficiaries/import` (sin cliente) (`dryRun` para la vista previa) | `customers:import` (ADMIN) |
 
 ## Datos
 
@@ -33,6 +33,9 @@ los clientes que les envían. Un beneficiario puede estar vinculado a varios cli
 - **Borrar es lógico:** el beneficiario queda inactivo para todos los clientes; desaparece de búsquedas y listas, no
   puede recibir remesas (`BENEFICIARY_UNAVAILABLE` en `remittances`) ni vincularse (`BENEFICIARY_INACTIVE`). No se
   borra la fila porque las remesas apuntan a él. Restaurar lo reactiva con los vínculos que tenía.
+- **Beneficiarios sin cliente:** se pueden crear o importar sin ningún cliente (el negocio tiene la lista de
+  beneficiarios, pero no sus remitentes). La búsqueda global (`GET /beneficiaries?q=`) los encuentra, y se vinculan
+  a un cliente a mano o, como muy tarde, al registrarle una remesa: `remittances` llama a `link` al registrar.
 - Desvincular de un cliente no afecta a los demás ni a las remesas pasadas.
 - Las remesas guardan una copia de los datos del beneficiario: editarlo no cambia las remesas ya registradas.
 - **Importar y exportar** (`CustomerTransferService`, contrato `docs/contracts/customer-transfer.md`): vive aquí porque

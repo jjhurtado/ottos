@@ -47,6 +47,14 @@ class BeneficiaryController {
         return beneficiaries.search(q);
     }
 
+    @PostMapping("/beneficiaries")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('customers:write')")
+    @Operation(summary = "Create a beneficiary without a customer; it is linked to one later (or when a remittance is sent to them)")
+    BeneficiaryInfo createStandalone(@Valid @RequestBody BeneficiaryRequest request, @AuthenticationPrincipal Jwt jwt) {
+        return beneficiaries.create(request.toDetails(), UUID.fromString(jwt.getSubject()));
+    }
+
     @GetMapping("/beneficiaries/{id}")
     @PreAuthorize("hasAuthority('customers:read')")
     @Operation(summary = "Get a beneficiary and the customers that send to them")
