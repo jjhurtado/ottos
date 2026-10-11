@@ -7,7 +7,8 @@ Base package: `org.jobits.ottos`.
 
 - JDK 21
 - No Gradle install needed: use the included wrapper (`./gradlew`, or `gradlew.bat` on Windows)
-- Docker (for local PostgreSQL)
+- Docker, for the local PostgreSQL and for the tests; your user must be able to use it without `sudo`
+  (`sudo usermod -aG docker $USER`, then log in again)
 
 ## Run locally
 
@@ -48,8 +49,10 @@ curl -s -X POST http://localhost:8080/api/v1/auth/login \
 ./gradlew build
 ```
 
-Tests use H2 in PostgreSQL mode with the same Flyway migrations, so they don't need Docker.
-`ModularityTest` fails if a module uses another module's internal classes.
+Tests run against a real PostgreSQL 16 (the same as docker-compose) that Testcontainers starts in Docker and removes
+afterwards, with the same Flyway migrations, so they need Docker running. `ConcurrencyTest` fires requests at the same
+time to check idempotency, locking and cash under races. `ModularityTest` fails if a module uses another module's
+internal classes.
 
 ## Structure
 
