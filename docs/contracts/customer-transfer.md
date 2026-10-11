@@ -1,7 +1,7 @@
 # Contrato: importar y exportar clientes con sus beneficiarios
 
 Estado: **implementado; pendiente de revisión del frontend** (2026-10-11). Decisiones del negocio en
-[ROADMAP.md › Funcionalidades pedidas en diseño](../../ROADMAP.md).
+[ROADMAP.md › Reglas del negocio decididas en 1.0](../../ROADMAP.md).
 
 El archivo (Excel o CSV) lo lee y lo genera el frontend; el backend recibe y devuelve JSON. Todas las rutas empiezan
 por `/api/v1`. Errores: ProblemDetail con `code`.
