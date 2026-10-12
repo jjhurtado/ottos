@@ -7,16 +7,16 @@
 ## 1. Dónde estamos
 
 **Versión actual: `1.0.0-rc.1`.** La Fase 1 (MVP de remesas) está completa en el backend y se revisa la arquitectura
-antes de dar la versión por estable. En una RC solo entran arreglos y el refactor que salga de esa revisión. Como aún
-no hay producción, la rc.1 queda abierta: todo entra en ella sin subir a `rc.2`, y el tag se crea al cerrarla.
+antes de dar la versión por estable. La rc.1 se cerró el 2026-10-11 tras la revisión de arquitectura y la prueba
+general del frontend; lo que salga en staging va en una `rc.2`.
 
 Lo que falta para `1.0.0`:
 
 | # | Paso | Quién |
 | --- | --- | --- |
-| 1 | Revisión de arquitectura y refactor sobre la RC | Usuario y backend |
-| 2 | Prueba general del frontend, con las pantallas de importar/exportar y de auditoría (entran en 1.0) | Frontend |
-| 3 | Cerrar la rc.1: fusionar las migraciones posteriores en `V1__baseline.sql`, subir el tag `1.0.0-rc.1` y probar en staging | Backend, infraestructura |
+| 1 | ~~Revisión de arquitectura y refactor sobre la RC~~ (hecha, 2026-10-11) | Usuario y backend |
+| 2 | ~~Prueba general del frontend, con las pantallas de importar/exportar y de auditoría~~ (hecha, 2026-10-11) | Frontend |
+| 3 | ~~Cerrar la rc.1~~ (2026-10-11: migraciones en `V1__baseline.sql`, tag `1.0.0-rc.1`); probar en staging | Infraestructura y frontend |
 | 4 | Entorno de producción: base de datos con copias de seguridad, dominio, CORS, secretos | Infraestructura |
 | 5 | Datos de cada entorno: tasa USD-CUP de entrega, monto mínimo, comisión de recogida por defecto, importar los beneficiarios | Admin del negocio |
 | 6 | Revisión legal (licencias, conocer al cliente, antilavado) antes de mover dinero real | Negocio |
