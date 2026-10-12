@@ -342,6 +342,8 @@ CREATE TABLE remittances (
     target_currency               VARCHAR(3)               NOT NULL,
     amount                        NUMERIC(19, 2)           NOT NULL,
     fee                           NUMERIC(19, 2)           NOT NULL,
+    -- the fee was entered by hand when registering (pickups only) instead of the configured rule
+    fee_overridden                BOOLEAN                  NOT NULL DEFAULT FALSE,
     total                         NUMERIC(19, 2)           NOT NULL,
     rate                          NUMERIC(19, 6)           NOT NULL,
     -- the rate was entered by hand when registering (pickups only) instead of the configured one
