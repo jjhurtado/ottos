@@ -17,7 +17,7 @@ Lo que falta para `1.0.0`:
 | 1 | ~~Revisión de arquitectura y refactor sobre la RC~~ (hecha, 2026-10-11) | Usuario y backend |
 | 2 | ~~Prueba general del frontend, con las pantallas de importar/exportar y de auditoría~~ (hecha, 2026-10-11) | Frontend |
 | 3 | ~~Cerrar la rc.1 y probarla en staging~~ (2026-10-11: tag `1.0.0-rc.1`; prueba general por API en `api-staging.remesadeotto.com` sin fallos del backend). Falta la revisión visual del usuario | Usuario |
-| 4 | Entorno de producción: backend listo en `api.remesadeotto.com` (2026-10-11: rc.1 desde `main`, PostgreSQL 16 propio, secretos propios, CORS solo del panel). Faltan el panel de producción y las copias de seguridad (pg_dump diario fuera de Railway o plan Pro: decide el usuario) | Infraestructura, usuario |
+| 4 | Entorno de producción: backend listo en `api.remesadeotto.com` (2026-10-11: rc.1 desde `main`, PostgreSQL 16 propio, secretos propios, CORS solo del panel). Copias de seguridad decididas: `pg_dump` diario cifrado con age (clave privada en manos del usuario, fuera de línea) en Backblaze B2, con retención de 14 diarias, 8 semanales y 12 mensuales; falta conectar el bucket y probar la restauración en staging antes de la primera remesa real. Falta también el panel de producción | Infraestructura, usuario |
 | 5 | Datos de cada entorno: tasa USD-CUP de entrega, monto mínimo, comisión de recogida por defecto, importar los beneficiarios | Admin del negocio |
 | 6 | Revisión legal (licencias, conocer al cliente, antilavado) antes de mover dinero real | Negocio |
 | 7 | Primera remesa real en producción: hito de la Fase 1 y versión `1.0.0` | Todos |
