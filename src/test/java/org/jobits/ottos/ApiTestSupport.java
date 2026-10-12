@@ -7,6 +7,7 @@ import org.jobits.ottos.identity.domain.Role;
 import org.jobits.ottos.identity.domain.RoleRepository;
 import org.jobits.ottos.identity.domain.User;
 import org.jobits.ottos.identity.domain.UserRepository;
+import org.jobits.ottos.apps.AppVersionServiceImpl;
 import org.jobits.ottos.identity.security.LoginAttempts;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,7 @@ public abstract class ApiTestSupport {
     protected static final String PASSWORD = "test-password-123";
 
     private static final List<String> RESET = List.of(
+            "DELETE FROM app_releases",
             "DELETE FROM cash_movements",
             "DELETE FROM cash_exchanges",
             "DELETE FROM cash_accounts WHERE account_key NOT IN ('BUSINESS:USD', 'BUSINESS:CUP', 'EXTERNAL:USD', 'EXTERNAL:CUP')",
@@ -90,11 +92,15 @@ public abstract class ApiTestSupport {
     @Autowired
     protected LoginAttempts loginAttempts;
 
+    @Autowired
+    protected AppVersionServiceImpl appVersions;
+
     @BeforeEach
     void resetDatabaseAndClock() {
         RESET.forEach(jdbc::update);
         clock.reset();
         loginAttempts.clear();
+        appVersions.reload();
     }
 
     protected User createUser(String email, String... roleCodes) {

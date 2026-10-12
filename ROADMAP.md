@@ -81,6 +81,7 @@ Cada módulo tiene su documento en [docs/modules](docs/modules/README.md); lo ac
 | Caja | Libro de doble entrada: caja del negocio y de cada repartidor, fondeo y devoluciones, cambio de moneda del repartidor ([contrato](docs/contracts/courier-exchange.md)) | `payments` |
 | Sin conexión | Descarga incremental y cola de acciones sincronizada en lote, idempotente ([contrato](docs/contracts/offline-sync.md)) | `sync` |
 | Avisos | Feed de remesas completadas para las notificaciones locales de Ventas ([contrato](docs/contracts/completed-feed.md)) | `remittances` |
+| Versiones de la app | Aviso de versión nueva y bloqueo (426) de builds por debajo del mínimo; las versiones se publican por migración ([contrato](docs/contracts/app-version.md)) | `apps` |
 | Informes y auditoría | Informe mensual de ventas ([contrato](docs/contracts/monthly-report.md)); registro de quién hizo qué | `reporting` |
 
 ### Qué queda fuera, y por qué

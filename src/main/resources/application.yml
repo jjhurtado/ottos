@@ -33,6 +33,11 @@ management:
         enabled: true
 
 ottos:
+  # Where the latest mobile build is downloaded (docs/contracts/app-version.md). {version} is replaced by its version
+  # name. Empty: the version endpoint answers downloadUrl null.
+  apps:
+    android-download-url: ${OTTOS_ANDROID_DOWNLOAD_URL:}
+    ios-download-url: ${OTTOS_IOS_DOWNLOAD_URL:}
   security:
     jwt-secret: ${OTTOS_JWT_SECRET:}
     access-token-ttl: 15m
