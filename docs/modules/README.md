@@ -13,6 +13,7 @@ cambiar algo. Se actualiza en la misma rama que cambia el módulo (ver `STANDARD
 | [rates](rates.md) | Cotizador | Implementado |
 | [remittances](remittances.md) | Remesas: registro, workflow, asignación, incidencias, entrega, estadísticas | Implementado |
 | [sync](sync.md) | Descarga y cola de acciones de la app móvil offline-first | Implementado |
+| [apps](apps.md) | Versiones de la app móvil: aviso de actualización y bloqueo de builds viejos | Implementado |
 | [payments](payments.md) | Caja del negocio y de cada repartidor (doble entrada) | Libro implementado; cierre en Fase 3 |
 | [dispatch](dispatch.md) | Asignación por zona, prueba de entrega | Vacío (después de 1.0) |
 | [notifications](notifications.md) | Push, correo, SMS | Vacío (Fase 2) |
