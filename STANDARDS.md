@@ -136,8 +136,8 @@ la sección queda también allí.
 
 Nunca se editan las secciones de versiones ya publicadas.
 
-Mientras no exista la versión `1.0.0`, `CHANGELOG.md` se mantiene vacío (solo `## [Unreleased]`); las reglas de arriba
-empiezan a aplicarse con el trabajo que vaya a `1.0.0`.
+El changelog se escribe desde la primera versión en producción (`1.0.0-rc.1`, 2026-10-11), cuya sección resume todo lo
+que contenía. Antes, durante las betas, se mantenía vacío.
 
 ## 2. Arquitectura del backend
 

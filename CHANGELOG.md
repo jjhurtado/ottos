@@ -4,3 +4,52 @@ Cambios notables de Ottos por versión. Formato basado en [Keep a Changelog](htt
 versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y cuándo se escribe: [STANDARDS.md](STANDARDS.md#changelog).
 
 ## [Unreleased]
+
+### Añadido
+- `GET /api/v1/app/version?platform=ANDROID|IOS` (público): último build, build mínimo y enlace de descarga de la app
+  móvil, para avisar de que hay versión nueva u obligar a actualizar. Las versiones se publican solo por migración
+  (tabla `app_releases`); el enlace sale de `OTTOS_ANDROID_DOWNLOAD_URL` y `OTTOS_IOS_DOWNLOAD_URL`
+  ([contrato](docs/contracts/app-version.md)).
+- Cabeceras `X-App-Platform` y `X-App-Build` en las peticiones de la app móvil: un build por debajo del mínimo recibe
+  426 `APP_UPDATE_REQUIRED` (con `minimumBuild`, `latestBuild`, `latestVersion`, `downloadUrl`). Login, refresh,
+  logout y `POST /sync/actions` siguen permitidos para vaciar la cola offline. Sin las cabeceras no se comprueba nada.
+- `POST /api/v1/remittances/import` (permiso `customers:import`, ADMIN): importa remesas antiguas como entregadas en su
+  fecha real, en USD, sin repartidor y con un cliente comodín; registra el cobro en la caja del negocio en esa fecha,
+  no mueve ninguna caja de mensajero y cada lote queda en la auditoría (`HISTORICAL_REMITTANCES_IMPORTED`). Códigos
+  nuevos: `BENEFICIARY_NOT_FOUND`, `AMBIGUOUS_BENEFICIARY` ([contrato](docs/contracts/historical-import.md)).
+
+### Cambiado
+- Base de datos: `V1__baseline.sql` queda congelada desde que hay producción. Los cambios de esquema llegan en
+  migraciones nuevas (`V2__app_releases.sql`), que staging y producción aplican solos al desplegar, sin recrear la base.
+- Git Flow: `main` (producción) solo recibe ramas `release/` y `hotfix/` con su tag; las features van a `develop`
+  (staging).
+
+## [1.0.0-rc.1] - 2026-10-11
+
+Primera versión candidata: la Fase 1 completa (MVP de remesas). En producción desde el 2026-10-11 en
+`api.remesadeotto.com`. Resume lo que contiene la versión; el detalle de cada parte está en los contratos de
+`docs/contracts` y en los documentos de `docs/modules`.
+
+### Añadido
+- Acceso: login con JWT y refresh token de un solo uso con detección de reutilización; sesión de jornada completa en el
+  móvil (`client: MOBILE`); usuarios del personal, roles y permisos editables por el admin.
+- Configuración: monto mínimo, días de entrega y tolerancia de tasa; por corredor (USD-CUP, USD-USD), tasas y
+  comisiones de entrega y de recogida con historial; cotizador (`POST /quotes`).
+- Clientes y beneficiarios: alta, búsqueda, vínculos N:M, borrado lógico y restauración de beneficiarios,
+  beneficiarios sin cliente que se vinculan al registrarles una remesa, importar y exportar en JSON.
+- Remesas: entregas y recogidas con estados y transiciones configurables, PIN, asignación, atrasos con motivo,
+  incidencias y revisiones; tasa y comisión propias en cada recogida; feed de remesas completadas para Ventas
+  (`GET /remittances/completed`).
+- Caja: contabilidad de doble entrada de la caja del negocio y de cada repartidor, fondeos, devoluciones, depósitos y
+  retiradas, y cambio de moneda del repartidor marcado para revisión si la tasa se aleja de la configurada.
+- App del repartidor sin conexión: descarga incremental (`GET /sync/state`) y cola de acciones idempotente
+  (`POST /sync/actions`) con reglas de conflicto y revisión.
+- Informes y auditoría: informe mensual de ventas (`GET /reports/monthly`) y registro de quién cambió qué
+  (`GET /audit`).
+- Errores como ProblemDetail con un `code` estable que el frontend traduce.
+
+### Seguridad
+- Límite de inicios de sesión fallidos por cuenta y por IP (429 `TOO_MANY_LOGIN_ATTEMPTS`); en producción la IP sale
+  de la cabecera del proxy (`X-Real-Ip`), nunca de `X-Forwarded-For`.
+- El token de un usuario desactivado o borrado deja de valer en la siguiente petición.
+- Los administradores no cuentan como repartidores: no se les asignan remesas ni tienen caja de repartidor.
