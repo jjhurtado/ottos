@@ -36,6 +36,14 @@ Reglas:
 - Una rama, un propósito. Si aparece otro tema, va en otra rama.
 - Antes de fusionar: build y tests en verde (`./gradlew build`) y la rama actualizada con su rama base.
 - Al cerrar una release o un hotfix se crea el tag de la versión en `main` (GitKraken lo hace al terminar el flujo).
+- **Cerrar una `release/` o un `hotfix/`** (como GitKraken, igual que el frontend; regla desde el 2026-10-13):
+  1. `git checkout main && git merge --no-ff release/<versión>` y `git tag -a <versión>`;
+  2. `git checkout develop && git merge --no-ff release/<versión>`: a `develop` vuelve **la rama de la release**,
+     nunca `main` ni su tag;
+  3. borrar la rama y subir `main`, `develop` y el tag.
+
+  Así el historial de `develop` no recibe merges desde `main`. Las releases hasta la `1.0.0-rc.3` se cerraron
+  fusionando el tag en `develop` ("Merge tag … into develop"); el contenido es el mismo y no se reescribe.
 - Las ramas terminadas se borran.
 
 ### Nombres de rama
@@ -128,7 +136,7 @@ interna, refactor sin efecto), no añade entrada. Quien revisa el merge comprueb
    ordenan las entradas acumuladas.
 2. Se añade encima un `## [Unreleased]` nuevo y vacío.
 3. Se sube la versión en `build.gradle` a la misma `<versión>`.
-4. Al terminar la release, `main` recibe el tag `<versión>` y `develop` recibe el merge de vuelta.
+4. Al terminar la release, `main` recibe el tag `<versión>` y `develop` recibe el merge de la rama `release/`.
 
 **Al fusionar un `hotfix/` en `main`:** el hotfix añade directamente su sección `## [<versión de parche>] - <fecha>`
 (por ejemplo `1.0.1`) con sus entradas en `Corregido` o `Seguridad`, debajo de `[Unreleased]`; al volver a `develop`
