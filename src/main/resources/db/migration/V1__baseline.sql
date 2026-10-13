@@ -95,51 +95,32 @@ INSERT INTO identity.permissions (code, module, description) VALUES
     ('roles:read',  'identity', 'View roles and the permission catalog'),
     ('roles:write', 'identity', 'Create, update and delete roles and their permissions');
 
--- Initial roles. ADMIN is built in: it cannot be edited or deleted and holds every permission (granted at the end of
--- this file). SALES and DELIVERY can be edited through the API. Names are in English: the frontend translates by code.
+-- ADMIN is built in: it cannot be edited or deleted and holds every permission (granted at the end of this file). The
+-- other roles (e.g. SALES, DELIVERY) belong to each installation and come with its setup script (scripts/data/seed).
 INSERT INTO identity.roles (id, code, name, description, built_in, created_at) VALUES
-    ('00000000-0000-0000-0000-000000000001', 'ADMIN',    'Administrator', 'Full access to the system', TRUE,  CURRENT_TIMESTAMP),
-    ('00000000-0000-0000-0000-000000000002', 'SALES',    'Sales',         'Registers and charges remittances', FALSE, CURRENT_TIMESTAMP),
-    ('00000000-0000-0000-0000-000000000003', 'DELIVERY', 'Delivery',      'Delivers remittances to beneficiaries', FALSE, CURRENT_TIMESTAMP);
+    ('00000000-0000-0000-0000-000000000001', 'ADMIN', 'Administrator', 'Full access to the system', TRUE, CURRENT_TIMESTAMP);
 
 -- =====================================================================================================================
--- branches · zones: official provinces and municipalities of Cuba (codes from the political-administrative division)
+-- branches · zones: provinces and municipalities where the business delivers, with their official codes
 --
--- Only La Habana for now; other provinces arrive with new migrations. A single branch in 1.0, so no branch tables yet.
+-- The zones are data of each installation (scripts/data/seed), not of the schema. A single branch in 1.0, so no
+-- branch tables yet.
 -- =====================================================================================================================
 
 CREATE TABLE branches.provinces (
-    code   VARCHAR(2)   PRIMARY KEY,
+    code   VARCHAR(20)  PRIMARY KEY,
     name   VARCHAR(100) NOT NULL,
     active BOOLEAN      NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE branches.municipalities (
-    code          VARCHAR(4)   PRIMARY KEY,
-    province_code VARCHAR(2)   NOT NULL,
+    code          VARCHAR(20)  PRIMARY KEY,
+    province_code VARCHAR(20)  NOT NULL,
     name          VARCHAR(100) NOT NULL,
     active        BOOLEAN      NOT NULL DEFAULT TRUE,
     CONSTRAINT fk_municipalities_province FOREIGN KEY (province_code) REFERENCES branches.provinces (code)
 );
 
-INSERT INTO branches.provinces (code, name) VALUES ('23', 'La Habana');
-
-INSERT INTO branches.municipalities (code, province_code, name) VALUES
-    ('2301', '23', 'Playa'),
-    ('2302', '23', 'Plaza de la Revolución'),
-    ('2303', '23', 'Centro Habana'),
-    ('2304', '23', 'La Habana Vieja'),
-    ('2305', '23', 'Regla'),
-    ('2306', '23', 'La Habana del Este'),
-    ('2307', '23', 'Guanabacoa'),
-    ('2308', '23', 'San Miguel del Padrón'),
-    ('2309', '23', 'Diez de Octubre'),
-    ('2310', '23', 'Cerro'),
-    ('2311', '23', 'Marianao'),
-    ('2312', '23', 'La Lisa'),
-    ('2313', '23', 'Boyeros'),
-    ('2314', '23', 'Arroyo Naranjo'),
-    ('2315', '23', 'Cotorro');
 
 -- =====================================================================================================================
 -- customers · remittance senders, kept apart from staff users
@@ -189,7 +170,7 @@ CREATE TABLE beneficiaries.beneficiaries (
     house_number      VARCHAR(30),
     between_streets   VARCHAR(150),
     neighborhood      VARCHAR(100),
-    municipality_code VARCHAR(4)               NOT NULL,
+    municipality_code VARCHAR(20)              NOT NULL,
     reference         VARCHAR(255),
     document_number   VARCHAR(50),
     notes             VARCHAR(1000),
@@ -222,7 +203,11 @@ CREATE INDEX ix_customer_beneficiaries_beneficiary ON beneficiaries.customer_ben
 -- set through the API, never in migrations.
 -- =====================================================================================================================
 
--- minimum_amount: smallest amount a remittance can send, in USD (0 = no minimum)
+-- business_currency: the currency the business charges in and keeps its accounts in (e.g. USD); set by the
+--   installation's setup script and never changed afterwards
+-- phone_match_digits: trailing digits that identify a phone when matching old records (8 in Cuba); set by the setup
+--   script
+-- minimum_amount: smallest amount a remittance can send, in the business currency (0 = no minimum)
 -- default_delivery_days: days from registration to the expected delivery date
 -- exchange_rate_tolerance_percent: a courier exchange whose rate strays more than this from the configured delivery
 --   rate is recorded but flagged for review
@@ -282,23 +267,6 @@ INSERT INTO configuration.settings (setting_key, setting_value) VALUES
     ('default_delivery_days', '2'),
     ('exchange_rate_tolerance_percent', '20');
 
-INSERT INTO configuration.corridors (code, source_currency, target_currency, delivery_rounding) VALUES
-    ('USD-CUP', 'USD', 'CUP', 50),
-    ('USD-USD', 'USD', 'USD', 0.01);
-
--- Same currency: the rate is always 1. Pickups start at 1 (1x1). The USD-CUP delivery rate has no value until an
--- administrator sets one.
-INSERT INTO configuration.exchange_rates (id, corridor_code, remittance_type, rate, valid_from) VALUES
-    ('00000000-0000-0000-0001-000000000001', 'USD-USD', 'DELIVERY', 1, CURRENT_TIMESTAMP),
-    ('00000000-0000-0000-0001-000000000002', 'USD-CUP', 'PICKUP',   1, CURRENT_TIMESTAMP),
-    ('00000000-0000-0000-0001-000000000003', 'USD-USD', 'PICKUP',   1, CURRENT_TIMESTAMP);
-
--- 10 % of the amount, at least 10 USD, for deliveries and pickups alike until an administrator changes them.
-INSERT INTO configuration.fee_rules (id, corridor_code, remittance_type, type, fee_value, min_fee, valid_from) VALUES
-    ('00000000-0000-0000-0002-000000000001', 'USD-CUP', 'DELIVERY', 'PERCENTAGE', 10, 10, CURRENT_TIMESTAMP),
-    ('00000000-0000-0000-0002-000000000002', 'USD-USD', 'DELIVERY', 'PERCENTAGE', 10, 10, CURRENT_TIMESTAMP),
-    ('00000000-0000-0000-0002-000000000003', 'USD-CUP', 'PICKUP',   'PERCENTAGE', 10, 10, CURRENT_TIMESTAMP),
-    ('00000000-0000-0000-0002-000000000004', 'USD-USD', 'PICKUP',   'PERCENTAGE', 10, 10, CURRENT_TIMESTAMP);
 
 INSERT INTO identity.permissions (code, module, description) VALUES
     ('configuration:read',  'configuration', 'View the configuration: minimum amount, delivery days, corridors, exchange rates and fee rules'),
@@ -347,7 +315,7 @@ CREATE TABLE remittances.remittances (
     beneficiary_phone             VARCHAR(30)              NOT NULL,
     beneficiary_alternate_phone   VARCHAR(30),
     beneficiary_address           VARCHAR(500)             NOT NULL,
-    beneficiary_municipality_code VARCHAR(4)               NOT NULL,
+    beneficiary_municipality_code VARCHAR(20)              NOT NULL,
     beneficiary_reference         VARCHAR(255),
     -- copy of the quote at creation
     corridor_code                 VARCHAR(7)               NOT NULL,
@@ -483,7 +451,7 @@ INSERT INTO remittances.remittance_transitions (from_status, to_status, permissi
 --
 -- Double-entry ledger: every movement takes money out of one account and puts it into another, so balances (the sum
 -- of movements) always reconcile. Balances are never stored.
---   BUSINESS  the business cash box, one per currency (a single branch in 1.0)
+--   BUSINESS  the business cash box, one per currency it handles (a single branch in 1.0); created when first used
 --   COURIER   the cash a courier carries, one per courier and currency; may go negative
 --   EXTERNAL  the outside world (senders, beneficiaries), one per currency
 --
@@ -563,11 +531,6 @@ CREATE INDEX ix_cash_movements_to ON payments.cash_movements (to_account_id, occ
 CREATE INDEX ix_cash_movements_remittance ON payments.cash_movements (remittance_id);
 CREATE INDEX ix_cash_movements_exchange ON payments.cash_movements (exchange_id);
 
-INSERT INTO payments.cash_accounts (id, account_key, type, currency, created_at) VALUES
-    ('00000000-0000-0000-0003-000000000001', 'BUSINESS:USD', 'BUSINESS', 'USD', CURRENT_TIMESTAMP),
-    ('00000000-0000-0000-0003-000000000002', 'BUSINESS:CUP', 'BUSINESS', 'CUP', CURRENT_TIMESTAMP),
-    ('00000000-0000-0000-0003-000000000003', 'EXTERNAL:USD', 'EXTERNAL', 'USD', CURRENT_TIMESTAMP),
-    ('00000000-0000-0000-0003-000000000004', 'EXTERNAL:CUP', 'EXTERNAL', 'CUP', CURRENT_TIMESTAMP);
 
 INSERT INTO identity.permissions (code, module, description) VALUES
     ('cash:read',     'payments', 'View the business cash, every courier''s cash and all movements'),
@@ -629,24 +592,8 @@ CREATE TABLE apps.app_releases (
 );
 
 -- =====================================================================================================================
--- Initial grants. ADMIN holds every permission; SALES and DELIVERY start with these and can be changed through the API.
+-- Initial grants. ADMIN holds every permission. The roles of each installation get theirs from its setup script.
 -- =====================================================================================================================
 
 INSERT INTO identity.role_permissions (role_id, permission_code)
 SELECT r.id, p.code FROM identity.roles r CROSS JOIN identity.permissions p WHERE r.code = 'ADMIN';
-
-INSERT INTO identity.role_permissions (role_id, permission_code)
-SELECT r.id, p.code FROM identity.roles r CROSS JOIN identity.permissions p
-WHERE r.code = 'SALES' AND p.code IN (
-    'customers:read', 'customers:write',
-    'configuration:read', 'rates:read',
-    'remittances:read', 'remittances:create', 'remittances:assign', 'remittances:postpone',
-    'remittances:report-incident', 'remittances:review',
-    'cash:read', 'cash:write', 'cash:review',
-    'reports:read');
-
-INSERT INTO identity.role_permissions (role_id, permission_code)
-SELECT r.id, p.code FROM identity.roles r CROSS JOIN identity.permissions p
-WHERE r.code = 'DELIVERY' AND p.code IN (
-    'remittances:read-assigned', 'remittances:deliver', 'remittances:postpone', 'remittances:report-incident',
-    'cash:read-own', 'cash:exchange-own');

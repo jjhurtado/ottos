@@ -90,6 +90,7 @@ services: [STANDARDS.md](STANDARDS.md). What each module does: [docs/modules](do
 | `PORT` | HTTP port | `8080` |
 | `OTTOS_ANDROID_DOWNLOAD_URL` | Where the latest Android APK is downloaded; `{version}` is replaced by its version name | empty: `downloadUrl` null |
 | `OTTOS_IOS_DOWNLOAD_URL` | The iOS app's TestFlight link | empty: `downloadUrl` null |
+| `OTTOS_TIMEZONE` | The installation's time zone (e.g. `America/Havana`): due dates, late remittances and monthly reports go by its days | Required |
 | `OTTOS_CLIENT_IP_HEADER` | `prod` only: header the hosting's proxy sets with the client's real IP, used by the per-IP login limit | `X-Real-Ip` |
 | `OTTOS_CORS_ALLOWED_ORIGINS` | Browser origins allowed to call the API, comma-separated (the web panel's domain) | empty: no CORS |
 | `SPRING_PROFILES_ACTIVE` | `dev` locally; `prod` in staging and production | — |

@@ -14,10 +14,14 @@ public interface ReportService {
     /** Remittances registered in that month (business timezone), whatever their status. */
     MonthlyReport monthly(YearMonth month);
 
-    /** The agreed shape: everything in USD except delivered and byCurrency[].delivered. */
-    record MonthlyReport(String month, LocalDate from, LocalDate to, Instant generatedAt,
+    /**
+     * The agreed shape: amounts in businessCurrency (the installation's, USD in Cuba) except delivered and
+     * byCurrency[].delivered, in their own currency. deliveredCurrency: what was delivered, converted to the business
+     * currency with each remittance's own rate.
+     */
+    record MonthlyReport(String month, LocalDate from, LocalDate to, Instant generatedAt, String businessCurrency,
                          SalesSummary.Counts remittances, BigDecimal collected, BigDecimal fees,
-                         BigDecimal deliveredUsd, BigDecimal difference, BigDecimal roundingMargin,
+                         BigDecimal deliveredCurrency, BigDecimal difference, BigDecimal roundingMargin,
                          SalesSummary.Pickups pickups, List<SalesSummary.CurrencyAmount> delivered,
                          List<SalesSummary.ByCurrency> byCurrency, List<SalesSummary.ByType> byType) {
     }

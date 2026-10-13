@@ -12,6 +12,7 @@ spring:
       enabled: true
 
 ottos:
+  timezone: America/Havana
   security:
     jwt-secret: VXdmYgMmpB8/jZUl3nX0+UvdDGl2+uNu/r62VT8xSHQ=
     access-token-ttl: 5m

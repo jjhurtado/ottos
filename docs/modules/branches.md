@@ -19,7 +19,7 @@ Catálogo de zonas de entrega: provincias y municipios oficiales de Cuba. Hoy so
 
 ## Datos
 
-`provinces`, `municipalities` (esquema `branches`, `V1__baseline.sql`, sección *branches*; códigos de la división político-administrativa).
+`provinces`, `municipalities` (esquema `branches`, `V1__baseline.sql`, sección *branches*). Las zonas son datos de la instalación: las de La Habana vienen de `scripts/data/seed/cuba-la-habana.sql`, con los códigos de la división político-administrativa (hasta 20 caracteres, para cualquier país).
 
 ## Reglas
 

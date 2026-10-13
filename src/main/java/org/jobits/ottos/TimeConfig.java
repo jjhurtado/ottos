@@ -8,14 +8,19 @@ import java.time.Clock;
 import java.time.ZoneId;
 
 /**
- * Business time. "Today" (for due dates and late remittances) is the date in ottos.timezone, Cuba by default.
+ * Business time. "Today" (for due dates, late remittances and monthly reports) is the date in ottos.timezone, the
+ * installation's time zone (OTTOS_TIMEZONE, e.g. America/Havana). Required: there is no default, so an installation
+ * cannot silently run on the wrong day.
  * Inject the {@link Clock} instead of calling now() so tests can control time.
  */
 @Configuration
 public class TimeConfig {
 
     @Bean
-    Clock clock(@Value("${ottos.timezone:America/Havana}") String timezone) {
-        return Clock.system(ZoneId.of(timezone));
+    Clock clock(@Value("${ottos.timezone:}") String timezone) {
+        if (timezone == null || timezone.isBlank()) {
+            throw new IllegalStateException("Missing ottos.timezone (env OTTOS_TIMEZONE), e.g. America/Havana");
+        }
+        return Clock.system(ZoneId.of(timezone.trim()));
     }
 }

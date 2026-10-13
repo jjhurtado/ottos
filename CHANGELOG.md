@@ -6,6 +6,14 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 ## [Unreleased]
 
 ### Cambiado
+- **Incompatible:** `GET /api/v1/reports/monthly`: `deliveredUsd` se llama `deliveredCurrency` (también en
+  `byCurrency[]`) y la respuesta lleva `businessCurrency`. El frontend tiene que leer el campo nuevo.
+- **Incompatible (operación):** la V1 ya no trae datos de ningún lugar. Moneda del negocio, regla de teléfonos, zonas
+  de La Habana, corredores USD-CUP y USD-USD con sus tasas y comisiones iniciales, y roles Ventas y Repartidor vienen
+  del script de alta `scripts/data/seed/cuba-la-habana.sql`, que se ejecuta una vez al crear cada entorno. Nueva
+  variable obligatoria `OTTOS_TIMEZONE` (antes Cuba por defecto). La caja del negocio crea su cuenta de cada moneda al
+  usarla. Las remesas antiguas a mano admiten cualquier moneda con corredor activo. Los códigos de provincia y
+  municipio admiten hasta 20 caracteres.
 - **Incompatible (operación):** la base de datos está dividida en un esquema por módulo (`identity`, `branches`,
   `customers`, `beneficiaries`, `configuration`, `remittances`, `payments`, `reporting`, `apps`); `public` solo guarda
   el historial de Flyway. Todas las migraciones se reunieron en una `V1__baseline.sql` única y solo estructural, y

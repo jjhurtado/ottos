@@ -32,8 +32,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.jobits.ottos.configuration.ConfigurationService.BUSINESS_CURRENCY;
-
 /** Implementation of {@link HistoricalImportService}. */
 @Service
 class HistoricalImportServiceImpl implements HistoricalImportService {
@@ -136,8 +134,9 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
             throw invalid("fee must not be more than amountDelivered");
         }
         BeneficiaryInfo beneficiary = beneficiary(row.beneficiaryPhone(), row.beneficiaryName());
-        CorridorView corridor = configuration.activeCorridor(BUSINESS_CURRENCY, BUSINESS_CURRENCY)
-                .orElseThrow(() -> ApiException.conflict("NO_ACTIVE_CORRIDOR", "No active corridor USD-USD"));
+        String business = configuration.businessCurrency();
+        CorridorView corridor = configuration.activeCorridor(business, business)
+                .orElseThrow(() -> ApiException.conflict("NO_ACTIVE_CORRIDOR", "No active corridor " + business + "-" + business));
         RateView rate = corridor.rate(ServiceType.DELIVERY);
         FeeRuleView feeRule = corridor.feeRule(ServiceType.DELIVERY);
         if (rate == null || feeRule == null) {
@@ -150,7 +149,7 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
                 new Remittance.BeneficiarySnapshot(beneficiary.id(), beneficiary.fullName(), beneficiary.phone(),
                         beneficiary.alternatePhone(), beneficiary.addressLine(), beneficiary.municipalityCode(),
                         beneficiary.reference()),
-                new Remittance.QuoteSnapshot(corridor.code(), BUSINESS_CURRENCY, BUSINESS_CURRENCY, amount, fee, true,
+                new Remittance.QuoteSnapshot(corridor.code(), business, business, amount, fee, true,
                         total, rate.rate(), false, amount, rate.id(), feeRule.id()),
                 codes.newPin(), "Imported from the old records (" + ref + ")", KEY_PREFIX + ref, occurredAt,
                 row.occurredAt().toLocalDate(), actorId);
@@ -175,13 +174,14 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
         if (h.type() == null || h.occurredAt() == null || h.customerId() == null || h.beneficiaryId() == null) {
             throw invalid("type, customerId, beneficiaryId and occurredAt are required");
         }
-        String currency = h.targetCurrency() == null ? BUSINESS_CURRENCY : h.targetCurrency().trim().toUpperCase();
-        boolean usd = BUSINESS_CURRENCY.equals(currency);
-        if (!usd && !"CUP".equals(currency)) {
-            throw ApiException.badRequest("INVALID_CURRENCY", "targetCurrency must be USD or CUP");
+        String business = configuration.businessCurrency();
+        String currency = h.targetCurrency() == null ? business : h.targetCurrency().trim().toUpperCase();
+        boolean sameCurrency = business.equals(currency);
+        if (!configuration.currencies().contains(currency)) {
+            throw ApiException.badRequest("INVALID_CURRENCY", "targetCurrency must be one of " + configuration.currencies());
         }
-        if (h.type() == RemittanceType.PICKUP && !usd) {
-            throw invalid("a pickup is collected in USD");
+        if (h.type() == RemittanceType.PICKUP && !sameCurrency) {
+            throw invalid("a pickup is collected in " + business);
         }
         Instant occurredAt = h.occurredAt().atZone(clock.getZone()).toInstant();
         if (occurredAt.isAfter(clock.instant())) {
@@ -191,9 +191,9 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
         BigDecimal fee = money(h.fee(), "fee", true);
         BigDecimal rate = BigDecimal.ONE;
         BigDecimal toDeliver = amount;
-        if (!usd) {
+        if (!sameCurrency) {
             if (h.rate() == null || h.rate().signum() <= 0 || h.rate().stripTrailingZeros().scale() > 6) {
-                throw invalid("rate is required for CUP: positive, at most 6 decimals");
+                throw invalid("rate is required for " + currency + ": positive, at most 6 decimals");
             }
             rate = h.rate();
             toDeliver = money(h.amountToDeliver(), "amountToDeliver", false);
@@ -204,8 +204,8 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
         BeneficiaryInfo beneficiary = beneficiaries.find(h.beneficiaryId())
                 .orElseThrow(() -> ApiException.badRequest("BENEFICIARY_UNAVAILABLE", "Unknown beneficiary"));
         ServiceType kind = ServiceType.valueOf(h.type().name());
-        CorridorView corridor = configuration.activeCorridor(BUSINESS_CURRENCY, currency)
-                .orElseThrow(() -> ApiException.badRequest("NO_ACTIVE_CORRIDOR", "No active corridor USD-" + currency));
+        CorridorView corridor = configuration.activeCorridor(business, currency)
+                .orElseThrow(() -> ApiException.badRequest("NO_ACTIVE_CORRIDOR", "No active corridor " + business + "-" + currency));
         RateView rateRef = corridor.rate(kind);
         FeeRuleView feeRule = corridor.feeRule(kind);
         if (rateRef == null || feeRule == null) {
@@ -218,8 +218,8 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
                         beneficiary.alternatePhone(), beneficiary.addressLine(), beneficiary.municipalityCode(),
                         beneficiary.reference()),
                 // The configured rate and fee rule only as references; the figures are the ticket's
-                new Remittance.QuoteSnapshot(corridor.code(), BUSINESS_CURRENCY, currency, amount, fee, true,
-                        amount.add(fee), rate, !usd, toDeliver, rateRef.id(), feeRule.id()),
+                new Remittance.QuoteSnapshot(corridor.code(), business, currency, amount, fee, true,
+                        amount.add(fee), rate, !sameCurrency, toDeliver, rateRef.id(), feeRule.id()),
                 codes.newPin(), note == null ? "Registered by hand as an old remittance" : note,
                 ref == null ? null : KEY_PREFIX + ref, occurredAt,
                 h.occurredAt().toLocalDate(), viewer.userId());

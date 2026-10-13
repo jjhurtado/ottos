@@ -19,7 +19,7 @@ final class SalesSummaries {
     static SalesSummary of(List<Remittance> registered, Instant to) {
         BigDecimal collected = BigDecimal.ZERO;
         BigDecimal deliveryFees = BigDecimal.ZERO;
-        BigDecimal deliveredUsd = BigDecimal.ZERO;
+        BigDecimal deliveredCurrency = BigDecimal.ZERO;
         BigDecimal pickupCollected = BigDecimal.ZERO;
         BigDecimal pickupFees = BigDecimal.ZERO;
         long delivery = 0;
@@ -37,18 +37,18 @@ final class SalesSummaries {
                 pickupFees = pickupFees.add(r.getFee());
                 continue;
             }
-            BigDecimal usd = r.getAmountToDeliver().divide(r.getRate(), 2, RoundingMode.HALF_UP);
+            BigDecimal inBusiness = r.getAmountToDeliver().divide(r.getRate(), 2, RoundingMode.HALF_UP);
             collected = collected.add(r.getTotal());
             deliveryFees = deliveryFees.add(r.getFee());
-            deliveredUsd = deliveredUsd.add(usd);
+            deliveredCurrency = deliveredCurrency.add(inBusiness);
             delivery++;
-            byCurrency.computeIfAbsent(r.getTargetCurrency(), c -> new CurrencyTotals()).add(r, usd);
+            byCurrency.computeIfAbsent(r.getTargetCurrency(), c -> new CurrencyTotals()).add(r, inBusiness);
         }
         long total = registered.size();
-        BigDecimal difference = collected.subtract(deliveredUsd);
+        BigDecimal difference = collected.subtract(deliveredCurrency);
         return new SalesSummary(
                 new SalesSummary.Counts(total, delivery, total - delivery, completed, total - completed, withIncident),
-                collected, deliveryFees.add(pickupFees), deliveredUsd, difference, difference.subtract(deliveryFees),
+                collected, deliveryFees.add(pickupFees), deliveredCurrency, difference, difference.subtract(deliveryFees),
                 new SalesSummary.Pickups(total - delivery, pickupCollected, pickupFees),
                 byCurrency.entrySet().stream()
                         .map(e -> new SalesSummary.CurrencyAmount(e.getKey(), e.getValue().delivered)).toList(),
@@ -63,19 +63,19 @@ final class SalesSummaries {
         private BigDecimal fees = BigDecimal.ZERO;
         private BigDecimal collected = BigDecimal.ZERO;
         private BigDecimal delivered = BigDecimal.ZERO;
-        private BigDecimal deliveredUsd = BigDecimal.ZERO;
+        private BigDecimal deliveredCurrency = BigDecimal.ZERO;
 
-        void add(Remittance r, BigDecimal usd) {
+        void add(Remittance r, BigDecimal inBusiness) {
             remittances++;
             sent = sent.add(r.getAmount());
             fees = fees.add(r.getFee());
             collected = collected.add(r.getTotal());
             delivered = delivered.add(r.getAmountToDeliver());
-            deliveredUsd = deliveredUsd.add(usd);
+            deliveredCurrency = deliveredCurrency.add(inBusiness);
         }
 
         SalesSummary.ByCurrency view(String currency) {
-            return new SalesSummary.ByCurrency(currency, remittances, sent, fees, collected, delivered, deliveredUsd);
+            return new SalesSummary.ByCurrency(currency, remittances, sent, fees, collected, delivered, deliveredCurrency);
         }
     }
 

@@ -25,6 +25,9 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -46,7 +49,7 @@ public abstract class ApiTestSupport {
             "DELETE FROM apps.app_releases",
             "DELETE FROM payments.cash_movements",
             "DELETE FROM payments.cash_exchanges",
-            "DELETE FROM payments.cash_accounts WHERE account_key NOT IN ('BUSINESS:USD', 'BUSINESS:CUP', 'EXTERNAL:USD', 'EXTERNAL:CUP')",
+            "DELETE FROM payments.cash_accounts",
             "DELETE FROM reporting.audit_log",
             "DELETE FROM remittances.synced_actions",
             "DELETE FROM remittances.remittance_events",
@@ -95,8 +98,13 @@ public abstract class ApiTestSupport {
     @Autowired
     protected AppVersionServiceImpl appVersions;
 
+    /** The installation the tests run as: the current business's setup script (Cuba, La Habana, USD). */
+    private static final Path SETUP_SCRIPT = Path.of("scripts/data/seed/cuba-la-habana.sql");
+
     @BeforeEach
-    void resetDatabaseAndClock() {
+    void resetDatabaseAndClock() throws IOException {
+        // Idempotent: the first test sets the installation up, the rest find it done
+        jdbc.execute(Files.readString(SETUP_SCRIPT));
         RESET.forEach(jdbc::update);
         clock.reset();
         loginAttempts.clear();

@@ -60,7 +60,7 @@ public class Remittance {
     @Column(name = "beneficiary_address", nullable = false, length = 500)
     private String beneficiaryAddress;
 
-    @Column(name = "beneficiary_municipality_code", nullable = false, length = 4)
+    @Column(name = "beneficiary_municipality_code", nullable = false, length = 20)
     private String beneficiaryMunicipalityCode;
 
     @Column(name = "beneficiary_reference")

@@ -7,6 +7,7 @@ import org.jobits.ottos.beneficiaries.domain.BeneficiaryRepository;
 import org.jobits.ottos.beneficiaries.domain.CustomerBeneficiary;
 import org.jobits.ottos.beneficiaries.domain.CustomerBeneficiaryRepository;
 import org.jobits.ottos.branches.ZoneService;
+import org.jobits.ottos.configuration.ConfigurationService;
 import org.jobits.ottos.branches.ZoneService.MunicipalityInfo;
 import org.jobits.ottos.customers.CustomerService;
 import org.jobits.ottos.customers.CustomerService.CustomerInfo;
@@ -33,21 +34,21 @@ import static org.jobits.ottos.Texts.blankToNull;
 class BeneficiaryServiceImpl implements BeneficiaryService {
 
     private static final int SEARCH_LIMIT = 50;
-    /** Cuban phone numbers: 8 digits after the country code. */
-    private static final int PHONE_MATCH_DIGITS = 8;
 
     private final BeneficiaryRepository beneficiaries;
     private final CustomerBeneficiaryRepository links;
     private final CustomerService customers;
     private final ZoneService zones;
+    private final ConfigurationService configuration;
     private final Clock clock;
 
     BeneficiaryServiceImpl(BeneficiaryRepository beneficiaries, CustomerBeneficiaryRepository links, CustomerService customers,
-                  ZoneService zones, Clock clock) {
+                  ZoneService zones, ConfigurationService configuration, Clock clock) {
         this.beneficiaries = beneficiaries;
         this.links = links;
         this.customers = customers;
         this.zones = zones;
+        this.configuration = configuration;
         this.clock = clock;
     }
 
@@ -111,10 +112,11 @@ class BeneficiaryServiceImpl implements BeneficiaryService {
     @Transactional(readOnly = true)
     public List<BeneficiaryInfo> findByPhone(String phone) {
         String digits = phone == null ? "" : phone.replaceAll("\\D", "");
-        if (digits.length() < PHONE_MATCH_DIGITS) {
+        int matchDigits = configuration.phoneMatchDigits();
+        if (digits.length() < matchDigits) {
             return List.of();
         }
-        return infos(beneficiaries.findByPhoneEndingWith(digits.substring(digits.length() - PHONE_MATCH_DIGITS)));
+        return infos(beneficiaries.findByPhoneEndingWith(digits.substring(digits.length() - matchDigits)));
     }
 
     @Override

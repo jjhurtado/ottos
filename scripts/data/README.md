@@ -4,6 +4,13 @@ Operaciones sobre los **datos** que no cambian la estructura de la base: registr
 filas después de una importación, etc. No son migraciones de Flyway (regla de `STANDARDS.md`): las migraciones son
 solo para cambios estructurales.
 
+## Orden al crear un entorno
+
+1. Base vacía → arrancar el backend: Flyway crea los esquemas con la `V1` y se crea el admin (`OTTOS_ADMIN_*`).
+2. `seed/cuba-la-habana.sql` (el alta de la instalación).
+3. En staging, los datos de prueba (`seed_staging.py` de infraestructura); en producción, la carga real.
+4. `app-releases/…` de las versiones publicadas.
+
 ## Reglas
 
 - **Idempotente:** ejecutarlo dos veces no cambia nada la segunda vez (`WHERE NOT EXISTS`, `ON CONFLICT DO NOTHING`).
@@ -26,6 +33,7 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/data/app-releases/20261013-an
 
 | Carpeta | Para qué |
 | --- | --- |
+| `seed/` | **Alta de una instalación**, una vez tras crear el entorno y su primer arranque: moneda del negocio, regla de teléfonos, zonas, corredores, tasas y comisiones iniciales, roles (`cuba-la-habana.sql`) |
 | `app-releases/` | Registrar una versión publicada de la app móvil (`app_releases`; contrato `docs/contracts/app-version.md`) |
 | `fixes/` | Correcciones puntuales de datos |
 

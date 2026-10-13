@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Imports the business's old records (WhatsApp tickets) as remittances already delivered on their real date, in USD
- * and without a courier (contract: docs/contracts/historical-import.md). Each one records its payment in the
+ * Imports the business's old records (WhatsApp tickets) as remittances already delivered on their real date, in the
+ * business currency and without a courier (contract: docs/contracts/historical-import.md). Each one records its payment in the
  * business cash on that date, like any registration, and no courier's cash moves. Every batch is audited, so using it
  * again later leaves a trail and shows in the cash.
  */
@@ -33,11 +33,12 @@ public interface HistoricalImportService {
     }
 
     /**
-     * @param targetCurrency  USD or CUP; a pickup only in USD
-     * @param amount          USD sent (delivery) or collected (pickup)
-     * @param fee             USD, ≥ 0
-     * @param rate            CUP per USD; required for CUP, ignored for USD (1)
-     * @param amountToDeliver CUP handed over, as on the ticket; required for CUP, ignored for USD (= amount)
+     * @param targetCurrency  a currency of an active corridor (default: the business currency); a pickup only in the
+     *                        business currency
+     * @param amount          sent (delivery) or collected (pickup), in the business currency
+     * @param fee             in the business currency, ≥ 0
+     * @param rate            target units per unit of the business currency; required for another currency
+     * @param amountToDeliver handed over in the target currency, as on the ticket; required for another currency
      * @param ref             optional id of the ticket in the old records; registering the same ref again is harmless
      */
     record NewHistorical(String ref, RemittanceType type, UUID customerId, UUID beneficiaryId, LocalDateTime occurredAt,
@@ -50,8 +51,8 @@ public interface HistoricalImportService {
      * @param occurredAt       when it was delivered, Cuba time without zone
      * @param beneficiaryPhone as written in the ticket; matched by its last 8 digits
      * @param beneficiaryName  tells apart beneficiaries sharing a phone
-     * @param amountDelivered  USD handed to the beneficiary
-     * @param fee              USD charged on top; not more than the amount
+     * @param amountDelivered  handed to the beneficiary, in the business currency
+     * @param fee              charged on top, in the business currency; not more than the amount
      */
     record HistoricalRow(String ref, LocalDateTime occurredAt, String beneficiaryPhone, String beneficiaryName,
                          BigDecimal amountDelivered, BigDecimal fee) {

@@ -33,6 +33,8 @@ management:
         enabled: true
 
 ottos:
+  # The installation's time zone: due dates, late remittances and monthly reports go by its days. Required.
+  timezone: ${OTTOS_TIMEZONE:}
   # Where the latest mobile build is downloaded (docs/contracts/app-version.md). {version} is replaced by its version
   # name. Empty: the version endpoint answers downloadUrl null.
   apps:
