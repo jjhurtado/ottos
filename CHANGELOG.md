@@ -5,6 +5,10 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+### Añadido
+- Versión de la app móvil iOS 1.0.0-rc.5 (build 7), no obligatoria:
+  `scripts/data/app-releases/20261013-ios-1.0.0-rc.5.sql`.
+
 ## [1.0.0-rc.4] - 2026-10-13
 
 ### Cambiado
