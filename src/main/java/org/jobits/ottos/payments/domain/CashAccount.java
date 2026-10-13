@@ -15,7 +15,7 @@ import java.util.UUID;
 
 /** One currency of the business box, of a courier, or of the outside world. */
 @Entity
-@Table(name = "cash_accounts")
+@Table(name = "cash_accounts", schema = "payments")
 public class CashAccount {
 
     @Id

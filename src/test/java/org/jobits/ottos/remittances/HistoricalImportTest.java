@@ -44,8 +44,8 @@ class HistoricalImportTest extends ApiTestSupport {
     void anOldTicketBecomesADeliveredRemittanceOnItsDateWithoutTouchingAnyCash() throws Exception {
         importRows(true, TICKET).andExpect(jsonPath("$.results[0].status").value("CREATED"))
                 .andExpect(jsonPath("$.results[0].remittanceId").doesNotExist());
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM remittances", Integer.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM remittances.remittances", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM payments.cash_movements", Integer.class)).isZero();
 
         String body = importRows(false, TICKET,
                 """
@@ -70,12 +70,12 @@ class HistoricalImportTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.createdAt").value("2024-06-03T19:30:47Z"))
                 .andExpect(jsonPath("$.completedAt").value("2024-06-03T19:30:47Z"));
         // Paid abroad and delivered long ago: no cash box moves
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM payments.cash_movements", Integer.class)).isZero();
         // It shows in its old month and never in Sales' completed feed
         mvc.perform(get("/api/v1/reports/monthly").param("month", "2024-06").header("Authorization", bearer(adminToken)))
                 .andExpect(jsonPath("$.remittances.total").value(1))
                 .andExpect(jsonPath("$.collected").value(220.00));
-        assertThat(jdbc.queryForObject("SELECT completion_recorded_at FROM remittances", Instant.class)).isNull();
+        assertThat(jdbc.queryForObject("SELECT completion_recorded_at FROM remittances.remittances", Instant.class)).isNull();
         mvc.perform(get("/api/v1/audit").param("action", "HISTORICAL_REMITTANCES_IMPORTED")
                         .header("Authorization", bearer(adminToken)))
                 .andExpect(jsonPath("$.totalItems").value(1))
@@ -83,7 +83,7 @@ class HistoricalImportTest extends ApiTestSupport {
 
         // Importing the same ticket again changes nothing
         importRows(false, TICKET).andExpect(jsonPath("$.results[0].status").value("EXISTING"));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM remittances", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM remittances.remittances", Integer.class)).isEqualTo(1);
     }
 
     @Test
@@ -146,7 +146,7 @@ class HistoricalImportTest extends ApiTestSupport {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM payments.cash_movements", Integer.class)).isZero();
         mvc.perform(get("/api/v1/audit").param("action", "HISTORICAL_REMITTANCE_CREATED")
                         .header("Authorization", bearer(adminToken)))
                 .andExpect(jsonPath("$.totalItems").value(2));
@@ -160,29 +160,23 @@ class HistoricalImportTest extends ApiTestSupport {
     }
 
     @Test
-    void theDataFixVoidsTheImportedPickupsAndRegistersThemAgainAsPickups() throws Exception {
-        importRows(false, TICKET.replace("chat-20240603-153047", "chat-20261006-210318")
-                .replace("2024-06-03T15:30:47", "2026-10-06T21:03:18").replace("\"amountDelivered\": 200", "\"amountDelivered\": 2500")
-                .replace("\"fee\": 20", "\"fee\": 250"));
+    void aPickupWithItsTicketRefIsRegisteredOnlyOnce() throws Exception {
+        String body = """
+                {"ref": "chat-20261006-210318:pickup", "type": "PICKUP", "customerId": "%s", "beneficiaryId": "%s",
+                 "occurredAt": "2026-10-06T21:03:18", "amount": 2500, "fee": 0}""".formatted(placeholderId, rosaId);
 
-        String fix = new String(getClass().getResourceAsStream("/db/migration/V5__fix_imported_pickups.sql").readAllBytes());
-        jdbc.execute(fix);
-        jdbc.execute(fix);   // running it again changes nothing
+        String first = mvc.perform(post("/api/v1/remittances/historical").header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        mvc.perform(post("/api/v1/remittances/historical").header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value((String) JsonPath.read(first, "$.id")));
 
-        assertThat(jdbc.queryForObject(
-                "SELECT void_reason IS NOT NULL FROM remittances WHERE idempotency_key = 'historical:chat-20261006-210318'",
-                Boolean.class)).isTrue();
-        assertThat(jdbc.queryForList(
-                "SELECT type, fee, amount, created_at FROM remittances WHERE idempotency_key = 'historical:chat-20261006-210318:pickup'"))
-                .singleElement()
-                .satisfies(row -> {
-                    assertThat(row.get("type")).isEqualTo("PICKUP");
-                    assertThat(row.get("fee").toString()).isEqualTo("0.00");
-                    assertThat(row.get("amount").toString()).isEqualTo("2500.00");
-                });
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT idempotency_key FROM remittances.remittances", String.class))
+                .isEqualTo("historical:chat-20261006-210318:pickup");
         mvc.perform(get("/api/v1/reports/monthly").param("month", "2026-10").header("Authorization", bearer(adminToken)))
-                .andExpect(jsonPath("$.remittances.delivery").value(0))
                 .andExpect(jsonPath("$.pickups.collected").value(2500.00))
                 .andExpect(jsonPath("$.pickups.fees").value(0));
     }

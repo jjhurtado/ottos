@@ -10,7 +10,7 @@ import java.util.UUID;
 
 /** One configurable value of the business, stored as text and read through a typed accessor. */
 @Entity
-@Table(name = "settings")
+@Table(name = "settings", schema = "configuration")
 public class Setting {
 
     /** Smallest amount a remittance can send, in USD. 0 means no minimum. */

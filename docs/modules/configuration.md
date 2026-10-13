@@ -31,7 +31,7 @@ Regla del proyecto (`STANDARDS.md` › Configuración): los demás módulos leen
 
 ## Datos
 
-`settings`, `corridors`, `exchange_rates`, `fee_rules` (`V1__baseline.sql`, sección *configuration*).
+`settings`, `corridors`, `exchange_rates`, `fee_rules` (esquema `configuration`, `V1__baseline.sql`, sección *configuration*).
 
 ## Reglas
 

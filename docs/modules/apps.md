@@ -24,7 +24,7 @@ por debajo del mínimo, salvo login, refresh, logout, `POST /sync/actions` y la 
 
 ## Datos
 
-`app_releases` (`V2__app_releases.sql`): una fila por build publicado; nunca se edita ni se borra.
+`apps.app_releases` (`V1__baseline.sql`, sección *apps*): una fila por build publicado; nunca se edita ni se borra.
 
 ## Reglas
 

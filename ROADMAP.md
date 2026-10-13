@@ -51,7 +51,9 @@ la rama `release/` o `hotfix/` de Git Flow y cada versión publicada lleva su ta
 | Mayor | `X.0.0` | Cambio incompatible del contrato de la API (rutas, campos, códigos de error) | Solo con migración planificada para las apps |
 
 Historial: `1.0.0-beta.1` (Fase 1 en construcción) → `1.0.0-rc.1` (Fase 1 completa, migraciones fusionadas en
-`V1__baseline.sql`).
+`V1__baseline.sql`) → `1.0.0-rc.2` (versiones de la app, importación histórica, caja sin cobros) → `1.0.0-rc.3`
+(anular remesas, remesas antiguas a mano, páginas) → `1.0.0-rc.4` (base recreada con una `V1` única y un esquema por
+módulo).
 
 ## 4. Fases
 

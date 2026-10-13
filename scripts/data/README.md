@@ -19,7 +19,7 @@ solo para cambios estructurales.
 Ejecución:
 
 ```
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/data/app-releases/20261014-ios-1.0.0-rc.3.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/data/app-releases/20261013-android-1.0.0-rc.3.sql
 ```
 
 ## Carpetas
@@ -31,5 +31,9 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/data/app-releases/20261014-io
 
 ## Historial
 
-Antes de esta regla (2026-10-13), dos operaciones de datos se hicieron como migración: `V3__app_release_android_1_0_0_rc_3.sql`
-y `V5__fix_imported_pickups.sql`. Se quedan como migraciones porque ya están aplicadas en staging y producción.
+Antes de esta regla, dos operaciones de datos se hicieron como migración (`V3`: versión Android 1.0.0-rc.3; `V5`:
+corregir tres recogidas importadas como remesas). El 2026-10-13 las bases se recrearon con una `V1` única, solo
+estructural: la versión Android quedó en `app-releases/20261013-android-1.0.0-rc.3.sql` y la corrección dejó de hacer
+falta, porque las recogidas se volvieron a cargar como recogidas.
+
+Todo el SQL lleva el esquema del módulo delante (`apps.app_releases`, `remittances.remittances`).

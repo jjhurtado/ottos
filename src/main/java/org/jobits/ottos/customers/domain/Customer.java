@@ -12,7 +12,7 @@ import java.util.UUID;
 
 /** A remittance sender. The phone (normalized) identifies them. */
 @Entity
-@Table(name = "customers")
+@Table(name = "customers", schema = "customers")
 public class Customer {
 
     @Id

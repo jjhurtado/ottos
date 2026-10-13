@@ -27,7 +27,7 @@ permisos (RBAC dinámico). Los clientes (remitentes) no tienen cuenta todavía.
 
 ## Datos
 
-`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `refresh_tokens` (`V1__baseline.sql`,
+`users`, `roles`, `user_roles`, `permissions`, `role_permissions`, `refresh_tokens` (esquema `identity`, `V1__baseline.sql`,
 sección *identity*; los permisos de cada módulo están en su sección y los permisos nuevos llegan con migraciones nuevas).
 
 ## Reglas

@@ -26,7 +26,7 @@ para incluir la caja del repartidor en la descarga de la app móvil.
 
 ## Datos
 
-`cash_accounts`, `cash_movements` y `cash_exchanges` (`V1__baseline.sql`, sección *payments*).
+`cash_accounts`, `cash_movements` y `cash_exchanges` (esquema `payments`, `V1__baseline.sql`, sección *payments*).
 
 ## Reglas
 

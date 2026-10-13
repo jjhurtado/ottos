@@ -251,10 +251,15 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 - Entidades JPA con constructor protegido para JPA, sin setters públicos: el estado cambia con métodos con nombre
   (`assignTo`, `complete`, `postpone`).
 - El esquema solo cambia con migraciones Flyway (`V<n>__<descripcion>.sql`); `ddl-auto: validate`.
-- `V1__baseline.sql` es el esquema de la versión 1.0: las migraciones de las betas y de la rc.1 se fusionaron en ella
-  porque ningún entorno tenía datos reales. **Desde el 2026-10-12, con producción en marcha, `V1` está congelada:**
-  una migración aplicada no se edita nunca y cada cambio de esquema va en una migración nueva (`V2__app_releases.sql`,
-  `V3__…`), que staging y producción aplican solos al desplegar, sin recrear la base.
+- **Un esquema por módulo**, con el nombre del módulo (`identity`, `branches`, `customers`, `beneficiaries`,
+  `configuration`, `remittances`, `payments`, `reporting`, `apps`); `public` solo guarda el historial de Flyway
+  (`SchemaLayoutTest`). Cada entidad declara su esquema (`@Table(name = …, schema = "<módulo>")`) y todo SQL escrito a
+  mano (consultas nativas, migraciones, scripts de datos, tests) pone el esquema delante: `payments.cash_movements`.
+  Las claves foráneas entre esquemas se mantienen: son las dependencias entre módulos.
+- `V1__baseline.sql` es toda la estructura de la base. Se rehízo el 2026-10-13, ya con los esquemas por módulo, a
+  partir de todas las migraciones estructurales hasta la 1.0.0-rc.3, y staging y producción se recrearon desde cero
+  (aún sin clientes reales). **Desde entonces `V1` está congelada para siempre:** una migración aplicada no se edita
+  nunca y cada cambio estructural va en una migración nueva (`V2__…`), que staging y producción aplican solos.
 - **Las migraciones son solo para cambios estructurales** (tablas, columnas, restricciones, índices y los permisos que
   el código necesita). Las operaciones sobre datos (registrar una versión de la app, corregir filas) van en un script
   de `scripts/data/`, idempotente, que infraestructura ejecuta en cada entorno con una copia antes (regla del usuario,

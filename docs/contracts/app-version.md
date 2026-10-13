@@ -1,6 +1,6 @@
 # Contrato: aviso y bloqueo de versiones de la app móvil
 
-Estado: **en producción desde 1.0.0-rc.2** (tabla en `V2__app_releases.sql`, módulo `apps`). Decisiones del
+Estado: **en producción desde 1.0.0-rc.2** (tabla `apps.app_releases` en `V1__baseline.sql`, módulo `apps`). Decisiones del
 usuario: Android se distribuye por Play Store (antes APK directo) e iOS por TestFlight; las versiones viejas se
 bloquean también en el servidor; las versiones las registra el backend con un script de datos que ejecuta
 infraestructura, nunca un usuario o un script con credenciales de la API.
@@ -72,16 +72,16 @@ Lo hace el backend, no la app, con un **script de datos** (`scripts/data/app-rel
 que inserta su fila:
 
 ```sql
-INSERT INTO app_releases (id, platform, build, version_name, mandatory, notes, released_at)
+INSERT INTO apps.app_releases (id, platform, build, version_name, mandatory, notes, released_at)
 SELECT gen_random_uuid(), 'IOS', 5, '1.0.0-rc.3', FALSE, 'Notas…', CURRENT_TIMESTAMP
-WHERE NOT EXISTS (SELECT 1 FROM app_releases WHERE platform = 'IOS' AND build = 5);
+WHERE NOT EXISTS (SELECT 1 FROM apps.app_releases WHERE platform = 'IOS' AND build = 5);
 ```
 
 El frontend avisa al backend con plataforma, build, nombre de versión, si es obligatoria y las notas; el script entra
 por una rama a `develop` y lo ejecuta infraestructura en staging y en producción (con la orden del usuario). El
 backend lo recoge en como mucho un minuto, sin reiniciar. No hay endpoint ni credencial para publicar versiones.
 Una versión es obligatoria cuando las anteriores ya no funcionan bien con el backend (por ejemplo, un cambio del
-contrato). La primera versión (Android 1.0.0-rc.3) se registró con la migración `V3`, antes de esta regla.
+contrato). La primera versión (Android 1.0.0-rc.3) está en `scripts/data/app-releases/20261013-android-1.0.0-rc.3.sql`.
 
 ## Códigos nuevos
 

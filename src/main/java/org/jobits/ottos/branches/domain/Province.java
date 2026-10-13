@@ -8,7 +8,7 @@ import org.hibernate.annotations.Immutable;
 
 @Entity
 @Immutable
-@Table(name = "provinces")
+@Table(name = "provinces", schema = "branches")
 public class Province {
 
     @Id

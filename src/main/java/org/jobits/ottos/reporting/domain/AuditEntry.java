@@ -12,7 +12,7 @@ import java.util.UUID;
 
 /** One entry of the audit log. Never edited nor deleted. */
 @Entity
-@Table(name = "audit_log")
+@Table(name = "audit_log", schema = "reporting")
 public class AuditEntry {
 
     @Id

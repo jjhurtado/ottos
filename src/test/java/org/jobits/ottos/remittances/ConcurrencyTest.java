@@ -68,7 +68,7 @@ class ConcurrencyTest extends ApiTestSupport {
 
         assertThat(responses).allSatisfy(r -> assertThat(r.getStatus()).isEqualTo(201));
         assertThat(responses.stream().map(ConcurrencyTest::id).distinct()).hasSize(1);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM remittances WHERE idempotency_key = 'same-key'",
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM remittances.remittances WHERE idempotency_key = 'same-key'",
                 Integer.class)).isEqualTo(1);
     }
 
@@ -118,7 +118,7 @@ class ConcurrencyTest extends ApiTestSupport {
         });
 
         assertThat(responses).allSatisfy(r -> assertThat(r.getStatus()).isEqualTo(200));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_accounts WHERE owner_id = ?", Integer.class,
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM payments.cash_accounts WHERE owner_id = ?", Integer.class,
                 newCourier.getId())).isEqualTo(1);
         String cash = content(mvc.perform(get("/api/v1/cash/me").header("Authorization", bearer(token)))
                 .andReturn().getResponse());
@@ -178,7 +178,7 @@ class ConcurrencyTest extends ApiTestSupport {
     }
 
     private int payouts(String remittanceId) {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements WHERE remittance_id = ? AND type = 'DELIVERY_PAYOUT'",
+        return jdbc.queryForObject("SELECT COUNT(*) FROM payments.cash_movements WHERE remittance_id = ? AND type = 'DELIVERY_PAYOUT'",
                 Integer.class, UUID.fromString(remittanceId));
     }
 

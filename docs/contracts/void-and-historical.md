@@ -1,7 +1,6 @@
 # Contrato: anular remesas y registrar remesas antiguas a mano
 
-Estado: **implementado en develop** (2026-10-13; migraciones `V4__void_remittances.sql` y
-`V5__fix_imported_pickups.sql`). Decisiones del usuario: se puede anular cualquier remesa en cualquier estado; la caja
+Estado: **en producción desde 1.0.0-rc.3** (2026-10-13; columnas `voided_*` en `remittances.remittances`). Decisiones del usuario: se puede anular cualquier remesa en cualquier estado; la caja
 se corrige sola; las remesas antiguas se registran a mano en USD o CUP (recogidas solo en USD); ambas funciones son
 solo del ADMIN.
 
@@ -50,18 +49,19 @@ POST /api/v1/remittances/historical      permiso remittances:historical (ADMIN)
 | `fee` | USD, ≥ 0 (en recogidas, normalmente 0) |
 | `rate`, `amountToDeliver` | Obligatorios en CUP (la tasa y los CUP entregados, como en el ticket); en USD se ignoran (1 y = `amount`) |
 | `notes` | Opcional, ≤ 1000 |
+| `ref` | Opcional, ≤ 100: el ticket de los registros antiguos. Registrar la misma `ref` otra vez devuelve 200 con la remesa ya creada (201 al crearla) |
 
 - Responde 201 con el `RemittanceView`: completada en esa fecha, sin repartidor, **sin mover ninguna caja**.
 - Usa como referencia la tasa y la regla de comisión configuradas del corredor (para CUP, debe haber tasa USD-CUP
   configurada; si no, 409 `NO_EXCHANGE_RATE`); las cifras guardadas son las del ticket.
-- Auditoría: `HISTORICAL_REMITTANCE_CREATED`, con `{code, type, amount, fee, currency, occurredAt}`.
+- Auditoría: `HISTORICAL_REMITTANCE_CREATED`, con `{code, ref, type, amount, fee, currency, occurredAt}`.
 
-## 3. Corrección de datos (`V5__fix_imported_pickups.sql`)
+## 3. Recogidas importadas como remesas
 
-Tres tickets importados eran recogidas: `chat-20261006-210318` (2.500 USD), `chat-20260609-132726` (5.000 USD) y
-`chat-20260731-111256` (1.000 USD). La migración anula cada uno (motivo "Era una recogida importada como remesa por
-error…") y lo registra de nuevo como recogida en la misma fecha, comisión 0, con clave `historical:<ref>:pickup`. Deja
-las mismas entradas de auditoría que la API. Solo actúa donde esos tickets existen y no están anulados.
+Tres tickets de los registros antiguos eran recogidas (`chat-20261006-210318`, 2.500 USD; `chat-20260609-132726`,
+5.000 USD; `chat-20260731-111256`, 1.000 USD). En la rc.3 se anularon y se registraron de nuevo como recogidas. Al
+recrear las bases el 2026-10-13 se cargaron directamente como recogidas, con `POST /remittances/historical`,
+`ref: "<ticket>:pickup"` y comisión 0.
 
 ## Códigos nuevos
 

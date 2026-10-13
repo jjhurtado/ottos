@@ -23,7 +23,7 @@ otros indicadores y exportes.
 
 ## Datos
 
-`audit_log` (`V1__baseline.sql`, sección *reporting*): hora, actor (null = el sistema), acción, tipo, id y nombre legible del objetivo, y
+`audit_log` (esquema `reporting`, `V1__baseline.sql`, sección *reporting*): hora, actor (null = el sistema), acción, tipo, id y nombre legible del objetivo, y
 `details` (JSON con lo que cambió).
 
 ## Reglas

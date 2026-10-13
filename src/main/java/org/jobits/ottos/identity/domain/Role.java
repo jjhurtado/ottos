@@ -22,7 +22,7 @@ import java.util.UUID;
  * migrations and cannot be edited or deleted through the API.
  */
 @Entity
-@Table(name = "roles")
+@Table(name = "roles", schema = "identity")
 public class Role {
 
     public static final String ADMIN = "ADMIN";
@@ -47,7 +47,7 @@ public class Role {
     private Instant createdAt;
 
     @ManyToMany
-    @JoinTable(name = "role_permissions",
+    @JoinTable(name = "role_permissions", schema = "identity",
             joinColumns = @JoinColumn(name = "role_id"),
             inverseJoinColumns = @JoinColumn(name = "permission_code"))
     private Set<Permission> permissions = new HashSet<>();
