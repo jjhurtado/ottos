@@ -12,6 +12,7 @@ import org.jobits.ottos.payments.domain.CashExchangeRepository;
 import org.jobits.ottos.payments.domain.CashMovement;
 import org.jobits.ottos.payments.domain.CashMovementRepository;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceCompleted;
+import org.jobits.ottos.remittances.RemittanceEvents.RemittanceVoided;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
@@ -74,6 +75,24 @@ class CashLedgerServiceImpl implements CashLedgerService {
     }
 
     // ---------------------------------------------------------------- from remittances
+
+    /**
+     * The remittance was voided: each movement it caused is undone by its mirror (same amount, accounts swapped), so
+     * every cash box is as if it never happened. Voiding twice is not possible, but a second event would add nothing.
+     */
+    @EventListener
+    void on(RemittanceVoided event) {
+        List<CashMovement> caused = movements.findByRemittanceIdOrderByOccurredAtAsc(event.remittanceId());
+        if (caused.stream().anyMatch(m -> m.getType() == MovementType.REMITTANCE_VOID_REVERSAL)) {
+            return;
+        }
+        for (CashMovement m : caused) {
+            CashAccount from = accounts.findById(m.getToAccountId()).orElseThrow();
+            CashAccount to = accounts.findById(m.getFromAccountId()).orElseThrow();
+            record(MovementType.REMITTANCE_VOID_REVERSAL, from, to, m.getAmount(), event.remittanceId(),
+                    "Anulación de " + event.code(), event.actorId(), event.occurredAt());
+        }
+    }
 
     /** The courier handed the cash over (delivery) or collected it (pickup). */
     @EventListener

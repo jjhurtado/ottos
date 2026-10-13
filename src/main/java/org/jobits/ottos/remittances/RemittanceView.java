@@ -51,7 +51,12 @@ public record RemittanceView(
         String notes,
         Instant createdAt,
         UUID createdBy,
-        Instant completedAt) {
+        Instant completedAt,
+        Voided voided) {
+
+    /** Voided: it no longer counts anywhere and the cash it moved was reversed. null when it is in force. */
+    public record Voided(Instant at, UUID by, String byName, String reason) {
+    }
 
     /** A delivery attempt that failed and nobody has acted on yet. */
     public record OpenIncident(IncidentReason reason, String note, Instant reportedAt, UUID reportedBy) {

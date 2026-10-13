@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.time.YearMonth;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -112,6 +115,61 @@ class CashFlowTest extends ApiTestSupport {
     }
 
     /** Registers a remittance, assigns it to the courier and completes it; returns its id. */
+    @Test
+    void voidingADeliveredRemittanceReversesItsCashAndItStopsCounting() throws Exception {
+        String delivery = completed("DELIVERY", "100");   // hands over 41 000 CUP
+        String month = YearMonth.now(clock).toString();
+
+        voidIt(delivery, salesToken, "Sales cannot").andExpect(status().isForbidden());
+        voidIt(delivery, adminToken, "Era una entrega de efectivo")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.voided.reason").value("Era una entrega de efectivo"))
+                .andExpect(jsonPath("$.voided.byName").value("User admin@ottos.test"));
+
+        mvc.perform(get("/api/v1/cash/couriers/{id}", courier.getId()).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.cash.balances[?(@.currency == 'CUP')].amount").value(0.00));
+        mvc.perform(get("/api/v1/cash/remittances/{id}/movements", delivery).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[1].type").value("REMITTANCE_VOID_REVERSAL"));
+        mvc.perform(get("/api/v1/reports/monthly").param("month", month).header("Authorization", bearer(adminToken)))
+                .andExpect(jsonPath("$.remittances.total").value(0));
+        mvc.perform(get("/api/v1/remittances").param("voided", "true").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.totalItems").value(1));
+        mvc.perform(get("/api/v1/audit").param("action", "REMITTANCE_VOIDED").header("Authorization", bearer(adminToken)))
+                .andExpect(jsonPath("$.totalItems").value(1));
+
+        voidIt(delivery, adminToken, "otra vez")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REMITTANCE_ALREADY_VOIDED"));
+    }
+
+    @Test
+    void aVoidedOpenRemittanceLeavesTheCourierAndCannotBeDelivered() throws Exception {
+        String id = id(mvc.perform(post("/api/v1/remittances").header("Authorization", bearer(salesToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"type": "DELIVERY", "customerId": "%s", "beneficiaryId": "%s", "amount": 100, "targetCurrency": "CUP"}
+                        """.formatted(customerId, beneficiaryId))));
+        mvc.perform(post("/api/v1/remittances/{id}/assign", id).header("Authorization", bearer(salesToken))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"courierId\": \"" + courier.getId() + "\"}"));
+
+        voidIt(id, adminToken, "Duplicada").andExpect(status().isOk());
+
+        mvc.perform(get("/api/v1/remittances/assigned").header("Authorization", bearer(courierToken)))
+                .andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(post("/api/v1/remittances/{id}/deliver", id).header("Authorization", bearer(adminToken)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REMITTANCE_VOIDED"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements WHERE remittance_id = ?::uuid",
+                Integer.class, id)).isZero();
+    }
+
+    private ResultActions voidIt(String id, String token, String reason)
+            throws Exception {
+        return mvc.perform(post("/api/v1/remittances/{id}/void", id).header("Authorization", bearer(token))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\": \"" + reason + "\"}"));
+    }
+
     private String completed(String type, String amount) throws Exception {
         String id = id(mvc.perform(post("/api/v1/remittances")
                 .header("Authorization", bearer(salesToken))

@@ -23,6 +23,24 @@ public interface HistoricalImportService {
     ImportResult importHistorical(boolean dryRun, UUID customerId, List<HistoricalRow> rows, UUID actorId);
 
     /**
+     * Registers one old remittance or pickup by hand, completed on its date, with no courier and moving no cash.
+     * Audited (HISTORICAL_REMITTANCE_CREATED).
+     */
+    RemittanceView create(NewHistorical remittance, Viewer viewer);
+
+    /**
+     * @param targetCurrency  USD or CUP; a pickup only in USD
+     * @param amount          USD sent (delivery) or collected (pickup)
+     * @param fee             USD, ≥ 0
+     * @param rate            CUP per USD; required for CUP, ignored for USD (1)
+     * @param amountToDeliver CUP handed over, as on the ticket; required for CUP, ignored for USD (= amount)
+     */
+    record NewHistorical(RemittanceType type, UUID customerId, UUID beneficiaryId, LocalDateTime occurredAt,
+                         String targetCurrency, BigDecimal amount, BigDecimal fee, BigDecimal rate,
+                         BigDecimal amountToDeliver, String notes) {
+    }
+
+    /**
      * @param ref              stable id of the ticket in the old records, e.g. chat-20240603-153047
      * @param occurredAt       when it was delivered, Cuba time without zone
      * @param beneficiaryPhone as written in the ticket; matched by its last 8 digits

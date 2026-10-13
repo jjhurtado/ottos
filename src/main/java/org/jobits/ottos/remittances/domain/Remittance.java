@@ -167,6 +167,16 @@ public class Remittance {
     @Column(name = "completion_recorded_at")
     private Instant completionRecordedAt;
 
+    /** Set when the remittance is voided: it stops counting anywhere, and its cash is reversed. */
+    @Column(name = "voided_at")
+    private Instant voidedAt;
+
+    @Column(name = "voided_by")
+    private UUID voidedBy;
+
+    @Column(name = "void_reason", length = 1000)
+    private String voidReason;
+
     @Version
     private long version;
 
@@ -256,14 +266,39 @@ public class Remittance {
      * A remittance from the business's old records, already delivered on that date: no courier, so no courier's cash
      * moves, and no completion recorded for the completed feed (contract: docs/contracts/historical-import.md).
      */
-    public static Remittance imported(String code, String finalStatus, UUID customerId, BeneficiarySnapshot beneficiary,
-                                      QuoteSnapshot quote, String pin, String notes, String idempotencyKey,
-                                      Instant occurredAt, LocalDate day, UUID importedBy) {
-        Remittance r = new Remittance(code, RemittanceType.DELIVERY, finalStatus, customerId, beneficiary, quote, pin,
+    public static Remittance imported(String code, RemittanceType type, String finalStatus, UUID customerId,
+                                      BeneficiarySnapshot beneficiary, QuoteSnapshot quote, String pin, String notes,
+                                      String idempotencyKey, Instant occurredAt, LocalDate day, UUID importedBy) {
+        Remittance r = new Remittance(code, type, finalStatus, customerId, beneficiary, quote, pin,
                 day, notes, idempotencyKey, occurredAt, importedBy);
         r.completedAt = occurredAt;
         r.completedBy = importedBy;
         return r;
+    }
+
+    /** Voids it: it stays for the record, with nothing pending (no open incident nor review). */
+    public void voidIt(Instant at, UUID by, String reason) {
+        this.voidedAt = at;
+        this.voidedBy = by;
+        this.voidReason = reason;
+        closeIncident();
+        resolveReview();
+    }
+
+    public boolean isVoided() {
+        return voidedAt != null;
+    }
+
+    public Instant getVoidedAt() {
+        return voidedAt;
+    }
+
+    public UUID getVoidedBy() {
+        return voidedBy;
+    }
+
+    public String getVoidReason() {
+        return voidReason;
     }
 
     @PrePersist

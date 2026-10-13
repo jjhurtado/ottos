@@ -55,7 +55,8 @@ class RemittanceStatsServiceImpl implements RemittanceStatsService {
         if (customers.find(customerId).isEmpty()) {
             throw ApiException.notFound("CUSTOMER_NOT_FOUND", "Customer not found");
         }
-        List<Remittance> all = remittances.findByCustomerIdOrderByCreatedAtDesc(customerId);
+        List<Remittance> all = remittances.findByCustomerIdOrderByCreatedAtDesc(customerId).stream()
+                .filter(r -> !r.isVoided()).toList();
         List<Remittance> deliveries = ofType(all, RemittanceType.DELIVERY);
         List<Remittance> pickups = ofType(all, RemittanceType.PICKUP);
         Map<String, String> municipalityNames = zones.municipalities(null).stream()
@@ -78,7 +79,8 @@ class RemittanceStatsServiceImpl implements RemittanceStatsService {
         if (beneficiaries.find(beneficiaryId).isEmpty()) {
             throw ApiException.notFound("BENEFICIARY_NOT_FOUND", "Beneficiary not found");
         }
-        List<Remittance> all = remittances.findByBeneficiaryIdOrderByCreatedAtDesc(beneficiaryId);
+        List<Remittance> all = remittances.findByBeneficiaryIdOrderByCreatedAtDesc(beneficiaryId).stream()
+                .filter(r -> !r.isVoided()).toList();
         Set<String> finals = Set.copyOf(workflow.finalCodes());
         List<Remittance> delivered = ofType(all, RemittanceType.DELIVERY).stream()
                 .filter(r -> finals.contains(r.getStatus()))

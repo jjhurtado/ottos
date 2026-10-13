@@ -2,6 +2,7 @@ package org.jobits.ottos.remittances;
 
 import org.jobits.ottos.ApiException;
 import org.jobits.ottos.AuditEvent;
+import org.jobits.ottos.Texts;
 import org.jobits.ottos.beneficiaries.BeneficiaryService;
 import org.jobits.ottos.beneficiaries.BeneficiaryService.BeneficiaryInfo;
 import org.jobits.ottos.configuration.ConfigurationService;
@@ -17,6 +18,7 @@ import org.jobits.ottos.remittances.domain.RemittanceRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
@@ -46,6 +48,7 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
     private final ConfigurationService configuration;
     private final Workflow workflow;
     private final RemittanceCodes codes;
+    private final RemittanceViews views;
     private final ApplicationEventPublisher publisher;
     private final TransactionTemplate transactions;
     private final Clock clock;
@@ -53,6 +56,7 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
     HistoricalImportServiceImpl(RemittanceRepository remittances, RemittanceEventRepository events,
                                 CustomerService customers, BeneficiaryService beneficiaries,
                                 ConfigurationService configuration, Workflow workflow, RemittanceCodes codes,
+                                RemittanceViews views,
                                 ApplicationEventPublisher publisher, PlatformTransactionManager transactionManager,
                                 Clock clock) {
         this.remittances = remittances;
@@ -62,6 +66,7 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
         this.configuration = configuration;
         this.workflow = workflow;
         this.codes = codes;
+        this.views = views;
         this.publisher = publisher;
         this.transactions = new TransactionTemplate(transactionManager);
         this.clock = clock;
@@ -141,7 +146,7 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
 
         BigDecimal total = amount.add(fee);
         // The rate and fee rule in force now, only as references (the columns are required); the fee is the ticket's
-        Remittance r = Remittance.imported(codes.newCode(), finalStatus(), customerId,
+        Remittance r = Remittance.imported(codes.newCode(), RemittanceType.DELIVERY, finalStatus(), customerId,
                 new Remittance.BeneficiarySnapshot(beneficiary.id(), beneficiary.fullName(), beneficiary.phone(),
                         beneficiary.alternatePhone(), beneficiary.addressLine(), beneficiary.municipalityCode(),
                         beneficiary.reference()),
@@ -152,6 +157,73 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
         remittances.saveAndFlush(r);
         events.save(RemittanceEvent.created(r, actorId, occurredAt));
         return new RowResult(index, ref, RowStatus.CREATED, dryRun ? null : r.getId(), null, null);
+    }
+
+    @Override
+    @Transactional
+    public RemittanceView create(NewHistorical h, Viewer viewer) {
+        if (h.type() == null || h.occurredAt() == null || h.customerId() == null || h.beneficiaryId() == null) {
+            throw invalid("type, customerId, beneficiaryId and occurredAt are required");
+        }
+        String currency = h.targetCurrency() == null ? BUSINESS_CURRENCY : h.targetCurrency().trim().toUpperCase();
+        boolean usd = BUSINESS_CURRENCY.equals(currency);
+        if (!usd && !"CUP".equals(currency)) {
+            throw ApiException.badRequest("INVALID_CURRENCY", "targetCurrency must be USD or CUP");
+        }
+        if (h.type() == RemittanceType.PICKUP && !usd) {
+            throw invalid("a pickup is collected in USD");
+        }
+        Instant occurredAt = h.occurredAt().atZone(clock.getZone()).toInstant();
+        if (occurredAt.isAfter(clock.instant())) {
+            throw ApiException.badRequest("INVALID_OCCURRED_AT", "occurredAt must not be in the future");
+        }
+        BigDecimal amount = money(h.amount(), "amount", false);
+        BigDecimal fee = money(h.fee(), "fee", true);
+        BigDecimal rate = BigDecimal.ONE;
+        BigDecimal toDeliver = amount;
+        if (!usd) {
+            if (h.rate() == null || h.rate().signum() <= 0 || h.rate().stripTrailingZeros().scale() > 6) {
+                throw invalid("rate is required for CUP: positive, at most 6 decimals");
+            }
+            rate = h.rate();
+            toDeliver = money(h.amountToDeliver(), "amountToDeliver", false);
+        }
+        if (customers.find(h.customerId()).isEmpty()) {
+            throw ApiException.badRequest("CUSTOMER_UNAVAILABLE", "Unknown customer " + h.customerId());
+        }
+        BeneficiaryInfo beneficiary = beneficiaries.find(h.beneficiaryId())
+                .orElseThrow(() -> ApiException.badRequest("BENEFICIARY_UNAVAILABLE", "Unknown beneficiary"));
+        ServiceType kind = ServiceType.valueOf(h.type().name());
+        CorridorView corridor = configuration.activeCorridor(BUSINESS_CURRENCY, currency)
+                .orElseThrow(() -> ApiException.badRequest("NO_ACTIVE_CORRIDOR", "No active corridor USD-" + currency));
+        RateView rateRef = corridor.rate(kind);
+        FeeRuleView feeRule = corridor.feeRule(kind);
+        if (rateRef == null || feeRule == null) {
+            throw ApiException.conflict("NO_EXCHANGE_RATE", "No " + kind + " rate or fee rule set for " + corridor.code());
+        }
+
+        String note = Texts.blankToNull(h.notes());
+        Remittance r = Remittance.imported(codes.newCode(), h.type(), finalStatus(), h.customerId(),
+                new Remittance.BeneficiarySnapshot(beneficiary.id(), beneficiary.fullName(), beneficiary.phone(),
+                        beneficiary.alternatePhone(), beneficiary.addressLine(), beneficiary.municipalityCode(),
+                        beneficiary.reference()),
+                // The configured rate and fee rule only as references; the figures are the ticket's
+                new Remittance.QuoteSnapshot(corridor.code(), BUSINESS_CURRENCY, currency, amount, fee, true,
+                        amount.add(fee), rate, !usd, toDeliver, rateRef.id(), feeRule.id()),
+                codes.newPin(), note == null ? "Registered by hand as an old remittance" : note, null, occurredAt,
+                h.occurredAt().toLocalDate(), viewer.userId());
+        remittances.saveAndFlush(r);
+        events.save(RemittanceEvent.created(r, viewer.userId(), occurredAt));
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("code", r.getCode());
+        details.put("type", r.getType().name());
+        details.put("amount", amount);
+        details.put("fee", fee);
+        details.put("currency", currency);
+        details.put("occurredAt", occurredAt.toString());
+        publisher.publishEvent(new AuditEvent("HISTORICAL_REMITTANCE_CREATED", "REMITTANCE", r.getId().toString(),
+                r.getCode(), viewer.userId(), clock.instant(), details));
+        return views.of(r, viewer);
     }
 
     /**

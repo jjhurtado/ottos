@@ -64,6 +64,7 @@ class RemittanceSyncServiceImpl implements RemittanceSyncService {
             return SyncOutcome.alreadyApplied(views.of(remittances.findById(a.remittanceId()).orElseThrow(), viewer));
         }
         Remittance r = remittances.findById(a.remittanceId()).orElseThrow(RemittanceOperations::notFound);
+        operations.requireNotVoided(r);
         Instant now = clock.instant();
         Instant at = a.occurredAt();
         if (at.isAfter(now.plus(CLOCK_SKEW)) || at.isBefore(r.getCreatedAt())) {
@@ -172,10 +173,10 @@ class RemittanceSyncServiceImpl implements RemittanceSyncService {
         List<String> finals = workflow.finalCodes();
         if (since == null || since.isBefore(clock.instant().minus(LATE_SYNC))) {
             return new AssignedChanges(true, views.of(
-                    remittances.findByCourierIdAndStatusNotInOrderByExpectedDateAsc(viewer.userId(), finals), viewer),
+                    remittances.findByCourierIdAndVoidedAtIsNullAndStatusNotInOrderByExpectedDateAsc(viewer.userId(), finals), viewer),
                     List.of());
         }
-        List<Remittance> changed = remittances.findByCourierIdAndStatusNotInAndUpdatedAtAfterOrderByExpectedDateAsc(
+        List<Remittance> changed = remittances.findByCourierIdAndVoidedAtIsNullAndStatusNotInAndUpdatedAtAfterOrderByExpectedDateAsc(
                 viewer.userId(), finals, since);
         List<UUID> removed = remittances.findNoLongerAssignedSince(viewer.userId(), finals, since);
         return new AssignedChanges(false, views.of(changed, viewer), removed);
