@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /** Long-lived token used to obtain new access tokens. Only its SHA-256 hash is stored. */
 @Entity
-@Table(name = "refresh_tokens")
+@Table(name = "refresh_tokens", schema = "identity")
 public class RefreshToken {
 
     @Id

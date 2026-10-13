@@ -11,7 +11,7 @@ import org.hibernate.annotations.Immutable;
 
 @Entity
 @Immutable
-@Table(name = "municipalities")
+@Table(name = "municipalities", schema = "branches")
 public class Municipality {
 
     @Id

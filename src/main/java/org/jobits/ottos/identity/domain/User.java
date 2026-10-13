@@ -22,7 +22,7 @@ import java.util.UUID;
 
 /** A staff account (admin, sales, delivery…). Customers live in their own module. */
 @Entity
-@Table(name = "users")
+@Table(name = "users", schema = "identity")
 public class User {
 
     @Id
@@ -45,7 +45,7 @@ public class User {
     private Instant createdAt;
 
     @ManyToMany
-    @JoinTable(name = "user_roles",
+    @JoinTable(name = "user_roles", schema = "identity",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();

@@ -161,7 +161,17 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
 
     @Override
     @Transactional
-    public RemittanceView create(NewHistorical h, Viewer viewer) {
+    public Created create(NewHistorical h, Viewer viewer) {
+        String ref = Texts.blankToNull(h.ref());
+        if (ref != null && ref.length() > MAX_REF) {
+            throw invalid("ref must have at most " + MAX_REF + " characters");
+        }
+        if (ref != null) {
+            Optional<Remittance> existing = remittances.findByIdempotencyKey(KEY_PREFIX + ref);
+            if (existing.isPresent()) {
+                return new Created(views.of(existing.get(), viewer), false);
+            }
+        }
         if (h.type() == null || h.occurredAt() == null || h.customerId() == null || h.beneficiaryId() == null) {
             throw invalid("type, customerId, beneficiaryId and occurredAt are required");
         }
@@ -210,12 +220,14 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
                 // The configured rate and fee rule only as references; the figures are the ticket's
                 new Remittance.QuoteSnapshot(corridor.code(), BUSINESS_CURRENCY, currency, amount, fee, true,
                         amount.add(fee), rate, !usd, toDeliver, rateRef.id(), feeRule.id()),
-                codes.newPin(), note == null ? "Registered by hand as an old remittance" : note, null, occurredAt,
+                codes.newPin(), note == null ? "Registered by hand as an old remittance" : note,
+                ref == null ? null : KEY_PREFIX + ref, occurredAt,
                 h.occurredAt().toLocalDate(), viewer.userId());
         remittances.saveAndFlush(r);
         events.save(RemittanceEvent.created(r, viewer.userId(), occurredAt));
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("code", r.getCode());
+        details.put("ref", ref);
         details.put("type", r.getType().name());
         details.put("amount", amount);
         details.put("fee", fee);
@@ -223,7 +235,7 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
         details.put("occurredAt", occurredAt.toString());
         publisher.publishEvent(new AuditEvent("HISTORICAL_REMITTANCE_CREATED", "REMITTANCE", r.getId().toString(),
                 r.getCode(), viewer.userId(), clock.instant(), details));
-        return views.of(r, viewer);
+        return new Created(views.of(r, viewer), true);
     }
 
     /**

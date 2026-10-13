@@ -12,7 +12,7 @@ import java.util.UUID;
 
 /** A customer sends to this beneficiary. */
 @Entity
-@Table(name = "customer_beneficiaries")
+@Table(name = "customer_beneficiaries", schema = "beneficiaries")
 public class CustomerBeneficiary {
 
     @EmbeddedId

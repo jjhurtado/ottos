@@ -6,6 +6,14 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 ## [Unreleased]
 
 ### Cambiado
+- **Incompatible (operación):** la base de datos está dividida en un esquema por módulo (`identity`, `branches`,
+  `customers`, `beneficiaries`, `configuration`, `remittances`, `payments`, `reporting`, `apps`); `public` solo guarda
+  el historial de Flyway. Todas las migraciones se reunieron en una `V1__baseline.sql` única y solo estructural, y
+  staging y producción se recrearon desde cero el 2026-10-13. Las consultas SQL directas deben llevar el esquema
+  delante. La API no cambia.
+- `POST /api/v1/remittances/historical` acepta `ref` (opcional): repetir la misma `ref` devuelve 200 con la remesa ya
+  creada en vez de duplicarla.
+- La versión Android 1.0.0-rc.3 se registra con `scripts/data/app-releases/20261013-android-1.0.0-rc.3.sql`.
 - Versiones de la app: se publican con un script de datos (`scripts/data/app-releases/`) en vez de una migración, y
   `GET /app/version` las recoge en como mucho un minuto sin reiniciar. Las correcciones de datos también van en
   scripts; las migraciones quedan solo para cambios estructurales.

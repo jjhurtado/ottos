@@ -15,13 +15,13 @@ import org.jobits.ottos.remittances.HistoricalImportService.ImportResult;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.jobits.ottos.remittances.RemittanceView;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
@@ -52,16 +52,18 @@ class HistoricalImportController {
     }
 
     @PostMapping("/historical")
-    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('remittances:historical')")
     @Operation(summary = "Register one old remittance or pickup by hand, completed on its date, with no courier and moving no cash")
-    RemittanceView create(@Valid @RequestBody HistoricalRequest request, @AuthenticationPrincipal Jwt jwt) {
-        return imports.create(new HistoricalImportService.NewHistorical(request.type(), request.customerId(),
+    ResponseEntity<RemittanceView> create(@Valid @RequestBody HistoricalRequest request, @AuthenticationPrincipal Jwt jwt) {
+        HistoricalImportService.Created result = imports.create(new HistoricalImportService.NewHistorical(
+                request.ref(), request.type(), request.customerId(),
                 request.beneficiaryId(), request.occurredAt(), request.targetCurrency(), request.amount(), request.fee(),
                 request.rate(), request.amountToDeliver(), request.notes()), Viewers.from(jwt));
+        // 201 when it creates it; 200 with the existing one when the ref was already registered
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK).body(result.remittance());
     }
 
-    record HistoricalRequest(@NotNull RemittanceType type, @NotNull UUID customerId, @NotNull UUID beneficiaryId,
+    record HistoricalRequest(@Size(max = 100) String ref, @NotNull RemittanceType type, @NotNull UUID customerId, @NotNull UUID beneficiaryId,
                              @NotNull LocalDateTime occurredAt, @Pattern(regexp = "USD|CUP") String targetCurrency,
                              @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal amount,
                              @NotNull @DecimalMin("0") @Digits(integer = 15, fraction = 2) BigDecimal fee,

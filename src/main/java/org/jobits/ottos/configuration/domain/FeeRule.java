@@ -20,7 +20,7 @@ import java.util.UUID;
  * inserts a new rule.
  */
 @Entity
-@Table(name = "fee_rules")
+@Table(name = "fee_rules", schema = "configuration")
 public class FeeRule {
 
     @Id

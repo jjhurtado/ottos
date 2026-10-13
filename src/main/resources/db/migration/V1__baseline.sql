@@ -1,9 +1,22 @@
 -- Ottos · Baseline schema for version 1.0.
 --
--- Built from every migration of the betas, merged before the first release because no environment had real data
--- yet. From now on the schema only changes with new migrations (V2, V3…), never by editing this one.
--- Sections follow the modules: identity, branches, customers, beneficiaries, configuration, remittances, payments,
--- reporting.
+-- Built from every structural migration up to 1.0.0-rc.3, merged on 2026-10-13 while no environment had real
+-- customers (staging and production were recreated from scratch). From now on this file is never edited: structural
+-- changes go in new migrations (V2, V3…) and data operations in scripts/data, never in Flyway.
+--
+-- One schema per module, named like the module's package; each module only reads its own schema from code. Foreign
+-- keys between schemas are kept on purpose: they protect integrity and match the dependencies between modules. The
+-- public schema only holds Flyway's history.
+
+CREATE SCHEMA identity;
+CREATE SCHEMA branches;
+CREATE SCHEMA customers;
+CREATE SCHEMA beneficiaries;
+CREATE SCHEMA configuration;
+CREATE SCHEMA remittances;
+CREATE SCHEMA payments;
+CREATE SCHEMA reporting;
+CREATE SCHEMA apps;
 
 -- =====================================================================================================================
 -- identity · staff users, dynamic roles and permissions (RBAC), refresh tokens
@@ -13,7 +26,7 @@
 -- permissions are data: administrators manage them through the API.
 -- =====================================================================================================================
 
-CREATE TABLE users (
+CREATE TABLE identity.users (
     id            UUID PRIMARY KEY,
     email         VARCHAR(255)             NOT NULL,
     password_hash VARCHAR(100)             NOT NULL,
@@ -23,13 +36,13 @@ CREATE TABLE users (
     CONSTRAINT uk_users_email UNIQUE (email)
 );
 
-CREATE TABLE permissions (
+CREATE TABLE identity.permissions (
     code        VARCHAR(100) PRIMARY KEY,
     module      VARCHAR(50)  NOT NULL,
     description VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE roles (
+CREATE TABLE identity.roles (
     id          UUID PRIMARY KEY,
     code        VARCHAR(50)              NOT NULL,
     name        VARCHAR(100)             NOT NULL,
@@ -39,28 +52,28 @@ CREATE TABLE roles (
     CONSTRAINT uk_roles_code UNIQUE (code)
 );
 
-CREATE TABLE role_permissions (
+CREATE TABLE identity.role_permissions (
     role_id         UUID         NOT NULL,
     permission_code VARCHAR(100) NOT NULL,
     CONSTRAINT pk_role_permissions PRIMARY KEY (role_id, permission_code),
-    CONSTRAINT fk_role_permissions_role FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE,
-    CONSTRAINT fk_role_permissions_permission FOREIGN KEY (permission_code) REFERENCES permissions (code)
+    CONSTRAINT fk_role_permissions_role FOREIGN KEY (role_id) REFERENCES identity.roles (id) ON DELETE CASCADE,
+    CONSTRAINT fk_role_permissions_permission FOREIGN KEY (permission_code) REFERENCES identity.permissions (code)
 );
 
-CREATE TABLE user_roles (
+CREATE TABLE identity.user_roles (
     user_id UUID NOT NULL,
     role_id UUID NOT NULL,
     CONSTRAINT pk_user_roles PRIMARY KEY (user_id, role_id),
-    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles (id)
+    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES identity.users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES identity.roles (id)
 );
 
-CREATE INDEX ix_user_roles_role ON user_roles (role_id);
+CREATE INDEX ix_user_roles_role ON identity.user_roles (role_id);
 
 -- Opaque single-use refresh tokens, stored only as a SHA-256 hash. client: where the session was opened (WEB, or
 -- MOBILE for the offline-first app, whose access tokens last a working day). replaced_by: the token issued when this
 -- one was used, to tell a retry within ottos.security.refresh-reuse-grace from a stolen token.
-CREATE TABLE refresh_tokens (
+CREATE TABLE identity.refresh_tokens (
     id          UUID PRIMARY KEY,
     user_id     UUID                     NOT NULL,
     token_hash  VARCHAR(64)              NOT NULL,
@@ -71,12 +84,12 @@ CREATE TABLE refresh_tokens (
     replaced_by UUID,
     CONSTRAINT uk_refresh_tokens_hash UNIQUE (token_hash),
     CONSTRAINT ck_refresh_tokens_client CHECK (client IN ('WEB', 'MOBILE')),
-    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES identity.users (id) ON DELETE CASCADE
 );
 
-CREATE INDEX ix_refresh_tokens_user ON refresh_tokens (user_id);
+CREATE INDEX ix_refresh_tokens_user ON identity.refresh_tokens (user_id);
 
-INSERT INTO permissions (code, module, description) VALUES
+INSERT INTO identity.permissions (code, module, description) VALUES
     ('users:read',  'identity', 'View staff users and their roles'),
     ('users:write', 'identity', 'Create, update, activate and deactivate staff users, assign roles, reset passwords'),
     ('roles:read',  'identity', 'View roles and the permission catalog'),
@@ -84,7 +97,7 @@ INSERT INTO permissions (code, module, description) VALUES
 
 -- Initial roles. ADMIN is built in: it cannot be edited or deleted and holds every permission (granted at the end of
 -- this file). SALES and DELIVERY can be edited through the API. Names are in English: the frontend translates by code.
-INSERT INTO roles (id, code, name, description, built_in, created_at) VALUES
+INSERT INTO identity.roles (id, code, name, description, built_in, created_at) VALUES
     ('00000000-0000-0000-0000-000000000001', 'ADMIN',    'Administrator', 'Full access to the system', TRUE,  CURRENT_TIMESTAMP),
     ('00000000-0000-0000-0000-000000000002', 'SALES',    'Sales',         'Registers and charges remittances', FALSE, CURRENT_TIMESTAMP),
     ('00000000-0000-0000-0000-000000000003', 'DELIVERY', 'Delivery',      'Delivers remittances to beneficiaries', FALSE, CURRENT_TIMESTAMP);
@@ -95,23 +108,23 @@ INSERT INTO roles (id, code, name, description, built_in, created_at) VALUES
 -- Only La Habana for now; other provinces arrive with new migrations. A single branch in 1.0, so no branch tables yet.
 -- =====================================================================================================================
 
-CREATE TABLE provinces (
+CREATE TABLE branches.provinces (
     code   VARCHAR(2)   PRIMARY KEY,
     name   VARCHAR(100) NOT NULL,
     active BOOLEAN      NOT NULL DEFAULT TRUE
 );
 
-CREATE TABLE municipalities (
+CREATE TABLE branches.municipalities (
     code          VARCHAR(4)   PRIMARY KEY,
     province_code VARCHAR(2)   NOT NULL,
     name          VARCHAR(100) NOT NULL,
     active        BOOLEAN      NOT NULL DEFAULT TRUE,
-    CONSTRAINT fk_municipalities_province FOREIGN KEY (province_code) REFERENCES provinces (code)
+    CONSTRAINT fk_municipalities_province FOREIGN KEY (province_code) REFERENCES branches.provinces (code)
 );
 
-INSERT INTO provinces (code, name) VALUES ('23', 'La Habana');
+INSERT INTO branches.provinces (code, name) VALUES ('23', 'La Habana');
 
-INSERT INTO municipalities (code, province_code, name) VALUES
+INSERT INTO branches.municipalities (code, province_code, name) VALUES
     ('2301', '23', 'Playa'),
     ('2302', '23', 'Plaza de la Revolución'),
     ('2303', '23', 'Centro Habana'),
@@ -137,7 +150,7 @@ INSERT INTO municipalities (code, province_code, name) VALUES
 -- an identical customer (same name, phone and address) is rejected, by the application.
 -- =====================================================================================================================
 
-CREATE TABLE customers (
+CREATE TABLE customers.customers (
     id              UUID PRIMARY KEY,
     full_name       VARCHAR(150)             NOT NULL,
     phone           VARCHAR(30)              NOT NULL,
@@ -151,9 +164,9 @@ CREATE TABLE customers (
     created_by      UUID
 );
 
-CREATE INDEX ix_customers_phone ON customers (phone);
+CREATE INDEX ix_customers_phone ON customers.customers (phone);
 
-INSERT INTO permissions (code, module, description) VALUES
+INSERT INTO identity.permissions (code, module, description) VALUES
     ('customers:read',  'customers', 'View customers and beneficiaries'),
     ('customers:write', 'customers', 'Create and update customers and beneficiaries, link beneficiaries to customers'),
     ('customers:export', 'customers', 'Export every customer with their beneficiaries (personal data)'),
@@ -167,7 +180,7 @@ INSERT INTO permissions (code, module, description) VALUES
 -- because remittances point at it.
 -- =====================================================================================================================
 
-CREATE TABLE beneficiaries (
+CREATE TABLE beneficiaries.beneficiaries (
     id                UUID PRIMARY KEY,
     full_name         VARCHAR(150)             NOT NULL,
     phone             VARCHAR(30)              NOT NULL,
@@ -183,22 +196,22 @@ CREATE TABLE beneficiaries (
     active            BOOLEAN                  NOT NULL DEFAULT TRUE,
     created_at        TIMESTAMP WITH TIME ZONE NOT NULL,
     created_by        UUID,
-    CONSTRAINT fk_beneficiaries_municipality FOREIGN KEY (municipality_code) REFERENCES municipalities (code)
+    CONSTRAINT fk_beneficiaries_municipality FOREIGN KEY (municipality_code) REFERENCES branches.municipalities (code)
 );
 
-CREATE INDEX ix_beneficiaries_phone ON beneficiaries (phone);
-CREATE INDEX ix_beneficiaries_municipality ON beneficiaries (municipality_code);
+CREATE INDEX ix_beneficiaries_phone ON beneficiaries.beneficiaries (phone);
+CREATE INDEX ix_beneficiaries_municipality ON beneficiaries.beneficiaries (municipality_code);
 
-CREATE TABLE customer_beneficiaries (
+CREATE TABLE beneficiaries.customer_beneficiaries (
     customer_id    UUID                     NOT NULL,
     beneficiary_id UUID                     NOT NULL,
     linked_at      TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT pk_customer_beneficiaries PRIMARY KEY (customer_id, beneficiary_id),
-    CONSTRAINT fk_customer_beneficiaries_customer FOREIGN KEY (customer_id) REFERENCES customers (id),
-    CONSTRAINT fk_customer_beneficiaries_beneficiary FOREIGN KEY (beneficiary_id) REFERENCES beneficiaries (id)
+    CONSTRAINT fk_customer_beneficiaries_customer FOREIGN KEY (customer_id) REFERENCES customers.customers (id),
+    CONSTRAINT fk_customer_beneficiaries_beneficiary FOREIGN KEY (beneficiary_id) REFERENCES beneficiaries.beneficiaries (id)
 );
 
-CREATE INDEX ix_customer_beneficiaries_beneficiary ON customer_beneficiaries (beneficiary_id);
+CREATE INDEX ix_customer_beneficiaries_beneficiary ON beneficiaries.customer_beneficiaries (beneficiary_id);
 
 -- =====================================================================================================================
 -- configuration · every value the business can change without a deploy, managed from one place
@@ -213,14 +226,14 @@ CREATE INDEX ix_customer_beneficiaries_beneficiary ON customer_beneficiaries (be
 -- default_delivery_days: days from registration to the expected delivery date
 -- exchange_rate_tolerance_percent: a courier exchange whose rate strays more than this from the configured delivery
 --   rate is recorded but flagged for review
-CREATE TABLE settings (
+CREATE TABLE configuration.settings (
     setting_key   VARCHAR(50)              PRIMARY KEY,
     setting_value VARCHAR(255)             NOT NULL,
     updated_at    TIMESTAMP WITH TIME ZONE,
     updated_by    UUID
 );
 
-CREATE TABLE corridors (
+CREATE TABLE configuration.corridors (
     code              VARCHAR(7)     PRIMARY KEY,
     source_currency   VARCHAR(3)     NOT NULL,
     target_currency   VARCHAR(3)     NOT NULL,
@@ -231,21 +244,21 @@ CREATE TABLE corridors (
     CONSTRAINT ck_corridors_rounding CHECK (delivery_rounding > 0)
 );
 
-CREATE TABLE exchange_rates (
+CREATE TABLE configuration.exchange_rates (
     id              UUID PRIMARY KEY,
     corridor_code   VARCHAR(7)               NOT NULL,
     remittance_type VARCHAR(20)              NOT NULL,
     rate            NUMERIC(19, 6)           NOT NULL,
     valid_from      TIMESTAMP WITH TIME ZONE NOT NULL,
     created_by      UUID,
-    CONSTRAINT fk_exchange_rates_corridor FOREIGN KEY (corridor_code) REFERENCES corridors (code),
+    CONSTRAINT fk_exchange_rates_corridor FOREIGN KEY (corridor_code) REFERENCES configuration.corridors (code),
     CONSTRAINT ck_exchange_rates_rate CHECK (rate > 0),
     CONSTRAINT ck_exchange_rates_remittance_type CHECK (remittance_type IN ('DELIVERY', 'PICKUP'))
 );
 
-CREATE INDEX ix_exchange_rates_corridor ON exchange_rates (corridor_code, remittance_type, valid_from);
+CREATE INDEX ix_exchange_rates_corridor ON configuration.exchange_rates (corridor_code, remittance_type, valid_from);
 
-CREATE TABLE fee_rules (
+CREATE TABLE configuration.fee_rules (
     id              UUID PRIMARY KEY,
     corridor_code   VARCHAR(7)               NOT NULL,
     remittance_type VARCHAR(20)              NOT NULL,
@@ -256,38 +269,38 @@ CREATE TABLE fee_rules (
     max_fee         NUMERIC(19, 2),
     valid_from      TIMESTAMP WITH TIME ZONE NOT NULL,
     created_by      UUID,
-    CONSTRAINT fk_fee_rules_corridor FOREIGN KEY (corridor_code) REFERENCES corridors (code),
+    CONSTRAINT fk_fee_rules_corridor FOREIGN KEY (corridor_code) REFERENCES configuration.corridors (code),
     CONSTRAINT ck_fee_rules_remittance_type CHECK (remittance_type IN ('DELIVERY', 'PICKUP')),
     CONSTRAINT ck_fee_rules_type CHECK (type IN ('PERCENTAGE', 'FIXED')),
     CONSTRAINT ck_fee_rules_value CHECK (fee_value >= 0)
 );
 
-CREATE INDEX ix_fee_rules_corridor ON fee_rules (corridor_code, remittance_type, valid_from);
+CREATE INDEX ix_fee_rules_corridor ON configuration.fee_rules (corridor_code, remittance_type, valid_from);
 
-INSERT INTO settings (setting_key, setting_value) VALUES
+INSERT INTO configuration.settings (setting_key, setting_value) VALUES
     ('minimum_amount', '0'),
     ('default_delivery_days', '2'),
     ('exchange_rate_tolerance_percent', '20');
 
-INSERT INTO corridors (code, source_currency, target_currency, delivery_rounding) VALUES
+INSERT INTO configuration.corridors (code, source_currency, target_currency, delivery_rounding) VALUES
     ('USD-CUP', 'USD', 'CUP', 50),
     ('USD-USD', 'USD', 'USD', 0.01);
 
 -- Same currency: the rate is always 1. Pickups start at 1 (1x1). The USD-CUP delivery rate has no value until an
 -- administrator sets one.
-INSERT INTO exchange_rates (id, corridor_code, remittance_type, rate, valid_from) VALUES
+INSERT INTO configuration.exchange_rates (id, corridor_code, remittance_type, rate, valid_from) VALUES
     ('00000000-0000-0000-0001-000000000001', 'USD-USD', 'DELIVERY', 1, CURRENT_TIMESTAMP),
     ('00000000-0000-0000-0001-000000000002', 'USD-CUP', 'PICKUP',   1, CURRENT_TIMESTAMP),
     ('00000000-0000-0000-0001-000000000003', 'USD-USD', 'PICKUP',   1, CURRENT_TIMESTAMP);
 
 -- 10 % of the amount, at least 10 USD, for deliveries and pickups alike until an administrator changes them.
-INSERT INTO fee_rules (id, corridor_code, remittance_type, type, fee_value, min_fee, valid_from) VALUES
+INSERT INTO configuration.fee_rules (id, corridor_code, remittance_type, type, fee_value, min_fee, valid_from) VALUES
     ('00000000-0000-0000-0002-000000000001', 'USD-CUP', 'DELIVERY', 'PERCENTAGE', 10, 10, CURRENT_TIMESTAMP),
     ('00000000-0000-0000-0002-000000000002', 'USD-USD', 'DELIVERY', 'PERCENTAGE', 10, 10, CURRENT_TIMESTAMP),
     ('00000000-0000-0000-0002-000000000003', 'USD-CUP', 'PICKUP',   'PERCENTAGE', 10, 10, CURRENT_TIMESTAMP),
     ('00000000-0000-0000-0002-000000000004', 'USD-USD', 'PICKUP',   'PERCENTAGE', 10, 10, CURRENT_TIMESTAMP);
 
-INSERT INTO permissions (code, module, description) VALUES
+INSERT INTO identity.permissions (code, module, description) VALUES
     ('configuration:read',  'configuration', 'View the configuration: minimum amount, delivery days, corridors, exchange rates and fee rules'),
     ('configuration:write', 'configuration', 'Change the configuration: minimum amount, delivery days, exchange rates and fee rules'),
     ('rates:read',          'rates',         'Calculate quotes');
@@ -303,7 +316,7 @@ INSERT INTO permissions (code, module, description) VALUES
 -- frontend translates statuses by code and remittance type.
 -- =====================================================================================================================
 
-CREATE TABLE remittance_statuses (
+CREATE TABLE remittances.remittance_statuses (
     code             VARCHAR(30)  PRIMARY KEY,
     name             VARCHAR(100) NOT NULL,
     position         INT          NOT NULL,
@@ -312,17 +325,17 @@ CREATE TABLE remittance_statuses (
     is_final         BOOLEAN      NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE remittance_transitions (
+CREATE TABLE remittances.remittance_transitions (
     from_status     VARCHAR(30)  NOT NULL,
     to_status       VARCHAR(30)  NOT NULL,
     permission_code VARCHAR(100) NOT NULL,
     CONSTRAINT pk_remittance_transitions PRIMARY KEY (from_status, to_status),
-    CONSTRAINT fk_remittance_transitions_from FOREIGN KEY (from_status) REFERENCES remittance_statuses (code),
-    CONSTRAINT fk_remittance_transitions_to FOREIGN KEY (to_status) REFERENCES remittance_statuses (code),
-    CONSTRAINT fk_remittance_transitions_permission FOREIGN KEY (permission_code) REFERENCES permissions (code)
+    CONSTRAINT fk_remittance_transitions_from FOREIGN KEY (from_status) REFERENCES remittances.remittance_statuses (code),
+    CONSTRAINT fk_remittance_transitions_to FOREIGN KEY (to_status) REFERENCES remittances.remittance_statuses (code),
+    CONSTRAINT fk_remittance_transitions_permission FOREIGN KEY (permission_code) REFERENCES identity.permissions (code)
 );
 
-CREATE TABLE remittances (
+CREATE TABLE remittances.remittances (
     id                            UUID PRIMARY KEY,
     code                          VARCHAR(12)              NOT NULL,
     type                          VARCHAR(20)              NOT NULL,
@@ -373,6 +386,10 @@ CREATE TABLE remittances (
     -- server time when the completion was recorded: later than completed_at for a delivery synced late from the
     -- mobile app; Sales' completed feed polls on it so it never misses one
     completion_recorded_at        TIMESTAMP WITH TIME ZONE,
+    -- voided: kept for the record (who, when, why) but counted nowhere; the cash it moved is reversed
+    voided_at                     TIMESTAMP WITH TIME ZONE,
+    voided_by                     UUID,
+    void_reason                   VARCHAR(1000),
     -- last change of any kind: the mobile app downloads what changed since its last sync
     updated_at                    TIMESTAMP WITH TIME ZONE NOT NULL,
     version                       BIGINT                   NOT NULL DEFAULT 0,
@@ -383,26 +400,26 @@ CREATE TABLE remittances (
         CHECK (open_incident_reason IN ('NOT_HOME', 'WRONG_ADDRESS', 'UNREACHABLE', 'REFUSED', 'OTHER')),
     CONSTRAINT ck_remittances_review_reason
         CHECK (review_reason IN ('DELIVERED_AFTER_REASSIGNMENT', 'PIN_MISMATCH', 'DUPLICATE_DELIVERY', 'LATE_SYNC')),
-    CONSTRAINT fk_remittances_status FOREIGN KEY (status) REFERENCES remittance_statuses (code),
-    CONSTRAINT fk_remittances_customer FOREIGN KEY (customer_id) REFERENCES customers (id),
-    CONSTRAINT fk_remittances_beneficiary FOREIGN KEY (beneficiary_id) REFERENCES beneficiaries (id),
-    CONSTRAINT fk_remittances_municipality FOREIGN KEY (beneficiary_municipality_code) REFERENCES municipalities (code),
-    CONSTRAINT fk_remittances_corridor FOREIGN KEY (corridor_code) REFERENCES corridors (code),
-    CONSTRAINT fk_remittances_courier FOREIGN KEY (courier_id) REFERENCES users (id)
+    CONSTRAINT fk_remittances_status FOREIGN KEY (status) REFERENCES remittances.remittance_statuses (code),
+    CONSTRAINT fk_remittances_customer FOREIGN KEY (customer_id) REFERENCES customers.customers (id),
+    CONSTRAINT fk_remittances_beneficiary FOREIGN KEY (beneficiary_id) REFERENCES beneficiaries.beneficiaries (id),
+    CONSTRAINT fk_remittances_municipality FOREIGN KEY (beneficiary_municipality_code) REFERENCES branches.municipalities (code),
+    CONSTRAINT fk_remittances_corridor FOREIGN KEY (corridor_code) REFERENCES configuration.corridors (code),
+    CONSTRAINT fk_remittances_courier FOREIGN KEY (courier_id) REFERENCES identity.users (id)
 );
 
-CREATE INDEX ix_remittances_status ON remittances (status, expected_date);
-CREATE INDEX ix_remittances_customer ON remittances (customer_id, created_at);
-CREATE INDEX ix_remittances_beneficiary ON remittances (beneficiary_id, created_at);
-CREATE INDEX ix_remittances_courier ON remittances (courier_id, status);
-CREATE INDEX ix_remittances_courier_updated ON remittances (courier_id, updated_at);
-CREATE INDEX ix_remittances_open_incident ON remittances (open_incident_at);
-CREATE INDEX ix_remittances_review ON remittances (review_flagged_at);
-CREATE INDEX ix_remittances_completion_recorded ON remittances (completion_recorded_at)
+CREATE INDEX ix_remittances_status ON remittances.remittances (status, expected_date);
+CREATE INDEX ix_remittances_customer ON remittances.remittances (customer_id, created_at);
+CREATE INDEX ix_remittances_beneficiary ON remittances.remittances (beneficiary_id, created_at);
+CREATE INDEX ix_remittances_courier ON remittances.remittances (courier_id, status);
+CREATE INDEX ix_remittances_courier_updated ON remittances.remittances (courier_id, updated_at);
+CREATE INDEX ix_remittances_open_incident ON remittances.remittances (open_incident_at);
+CREATE INDEX ix_remittances_review ON remittances.remittances (review_flagged_at);
+CREATE INDEX ix_remittances_completion_recorded ON remittances.remittances (completion_recorded_at)
     WHERE completion_recorded_at IS NOT NULL;
 
 -- History of a remittance: who did what and when. Never edited.
-CREATE TABLE remittance_events (
+CREATE TABLE remittances.remittance_events (
     id              UUID PRIMARY KEY,
     remittance_id   UUID                     NOT NULL,
     type            VARCHAR(30)              NOT NULL,
@@ -416,14 +433,14 @@ CREATE TABLE remittance_events (
     note            VARCHAR(1000),
     actor_id        UUID                     NOT NULL,
     occurred_at     TIMESTAMP WITH TIME ZONE NOT NULL,
-    CONSTRAINT fk_remittance_events_remittance FOREIGN KEY (remittance_id) REFERENCES remittances (id)
+    CONSTRAINT fk_remittance_events_remittance FOREIGN KEY (remittance_id) REFERENCES remittances.remittances (id)
 );
 
-CREATE INDEX ix_remittance_events_remittance ON remittance_events (remittance_id, occurred_at);
+CREATE INDEX ix_remittance_events_remittance ON remittances.remittance_events (remittance_id, occurred_at);
 
 -- Actions applied from the mobile app's offline queue, recorded with the id the phone generated in the same
 -- transaction as their effect: sending one again returns ALREADY_APPLIED. Rejected actions are not recorded.
-CREATE TABLE synced_actions (
+CREATE TABLE remittances.synced_actions (
     id            UUID PRIMARY KEY,
     user_id       UUID                     NOT NULL,
     type          VARCHAR(30)              NOT NULL,
@@ -431,13 +448,13 @@ CREATE TABLE synced_actions (
     occurred_at   TIMESTAMP WITH TIME ZONE NOT NULL,
     received_at   TIMESTAMP WITH TIME ZONE NOT NULL,
     device_id     VARCHAR(100),
-    CONSTRAINT fk_synced_actions_remittance FOREIGN KEY (remittance_id) REFERENCES remittances (id),
+    CONSTRAINT fk_synced_actions_remittance FOREIGN KEY (remittance_id) REFERENCES remittances.remittances (id),
     CONSTRAINT ck_synced_actions_type CHECK (type IN ('DELIVER', 'DELIVER_WITH_PIN', 'POSTPONE', 'REPORT_INCIDENT'))
 );
 
-CREATE INDEX ix_synced_actions_remittance ON synced_actions (remittance_id);
+CREATE INDEX ix_synced_actions_remittance ON remittances.synced_actions (remittance_id);
 
-INSERT INTO permissions (code, module, description) VALUES
+INSERT INTO identity.permissions (code, module, description) VALUES
     ('remittances:read',            'remittances', 'View every remittance, its history and customer and beneficiary statistics'),
     ('remittances:read-assigned',   'remittances', 'View the remittances assigned to oneself'),
     ('remittances:read-financials', 'remittances', 'View fee, rate and totals of pickups'),
@@ -446,15 +463,17 @@ INSERT INTO permissions (code, module, description) VALUES
     ('remittances:deliver',         'remittances', 'Mark remittances as delivered or collected; required to be a courier'),
     ('remittances:postpone',        'remittances', 'Postpone the expected date of a remittance'),
     ('remittances:report-incident', 'remittances', 'Report why a delivery or pickup could not be done; couriers only on their own remittances'),
-    ('remittances:review',          'remittances', 'Resolve remittances flagged for review after a sync from the mobile app');
+    ('remittances:review',          'remittances', 'Resolve remittances flagged for review after a sync from the mobile app'),
+    ('remittances:void',            'remittances', 'Void a remittance: it stops counting and the cash it moved is reversed'),
+    ('remittances:historical',      'remittances', 'Register old remittances and pickups, delivered on their date');
 
 -- Initial workflow: Paid → Assigned (→ reassigned) → Delivered
-INSERT INTO remittance_statuses (code, name, position, is_initial, requires_courier, is_final) VALUES
+INSERT INTO remittances.remittance_statuses (code, name, position, is_initial, requires_courier, is_final) VALUES
     ('PAID',      'Pagada',    10, TRUE,  FALSE, FALSE),
     ('ASSIGNED',  'Asignada',  20, FALSE, TRUE,  FALSE),
     ('DELIVERED', 'Entregada', 30, FALSE, FALSE, TRUE);
 
-INSERT INTO remittance_transitions (from_status, to_status, permission_code) VALUES
+INSERT INTO remittances.remittance_transitions (from_status, to_status, permission_code) VALUES
     ('PAID',     'ASSIGNED',  'remittances:assign'),
     ('ASSIGNED', 'ASSIGNED',  'remittances:assign'),
     ('ASSIGNED', 'DELIVERED', 'remittances:deliver');
@@ -474,7 +493,7 @@ INSERT INTO remittance_transitions (from_status, to_status, permission_code) VAL
 -- of the other currency per 1 USD, in both directions.
 -- =====================================================================================================================
 
-CREATE TABLE cash_accounts (
+CREATE TABLE payments.cash_accounts (
     id          UUID PRIMARY KEY,
     account_key VARCHAR(80)              NOT NULL,
     type        VARCHAR(20)              NOT NULL,
@@ -485,7 +504,7 @@ CREATE TABLE cash_accounts (
     CONSTRAINT ck_cash_accounts_type CHECK (type IN ('BUSINESS', 'COURIER', 'EXTERNAL'))
 );
 
-CREATE TABLE cash_exchanges (
+CREATE TABLE payments.cash_exchanges (
     id                UUID PRIMARY KEY,
     courier_id        UUID                     NOT NULL,
     from_currency     VARCHAR(3)               NOT NULL,
@@ -508,16 +527,16 @@ CREATE TABLE cash_exchanges (
     resolved_by       UUID,
     resolution_note   VARCHAR(1000),
     CONSTRAINT uk_cash_exchanges_client_action UNIQUE (client_action_id),
-    CONSTRAINT fk_cash_exchanges_courier FOREIGN KEY (courier_id) REFERENCES users (id),
+    CONSTRAINT fk_cash_exchanges_courier FOREIGN KEY (courier_id) REFERENCES identity.users (id),
     CONSTRAINT ck_cash_exchanges_amounts CHECK (from_amount > 0 AND to_amount > 0 AND rate > 0),
     CONSTRAINT ck_cash_exchanges_currencies CHECK (from_currency <> to_currency),
     CONSTRAINT ck_cash_exchanges_review_reason CHECK (review_reason IN ('UNUSUAL_EXCHANGE_RATE', 'LATE_SYNC'))
 );
 
-CREATE INDEX ix_cash_exchanges_courier ON cash_exchanges (courier_id, occurred_at);
-CREATE INDEX ix_cash_exchanges_review ON cash_exchanges (review_flagged_at);
+CREATE INDEX ix_cash_exchanges_courier ON payments.cash_exchanges (courier_id, occurred_at);
+CREATE INDEX ix_cash_exchanges_review ON payments.cash_exchanges (review_flagged_at);
 
-CREATE TABLE cash_movements (
+CREATE TABLE payments.cash_movements (
     id              UUID PRIMARY KEY,
     type            VARCHAR(30)              NOT NULL,
     from_account_id UUID                     NOT NULL,
@@ -531,26 +550,26 @@ CREATE TABLE cash_movements (
     note            VARCHAR(1000),
     actor_id        UUID                     NOT NULL,
     occurred_at     TIMESTAMP WITH TIME ZONE NOT NULL,
-    CONSTRAINT fk_cash_movements_from FOREIGN KEY (from_account_id) REFERENCES cash_accounts (id),
-    CONSTRAINT fk_cash_movements_to FOREIGN KEY (to_account_id) REFERENCES cash_accounts (id),
-    CONSTRAINT fk_cash_movements_remittance FOREIGN KEY (remittance_id) REFERENCES remittances (id),
-    CONSTRAINT fk_cash_movements_exchange FOREIGN KEY (exchange_id) REFERENCES cash_exchanges (id),
+    CONSTRAINT fk_cash_movements_from FOREIGN KEY (from_account_id) REFERENCES payments.cash_accounts (id),
+    CONSTRAINT fk_cash_movements_to FOREIGN KEY (to_account_id) REFERENCES payments.cash_accounts (id),
+    CONSTRAINT fk_cash_movements_remittance FOREIGN KEY (remittance_id) REFERENCES remittances.remittances (id),
+    CONSTRAINT fk_cash_movements_exchange FOREIGN KEY (exchange_id) REFERENCES payments.cash_exchanges (id),
     CONSTRAINT ck_cash_movements_amount CHECK (amount > 0),
     CONSTRAINT ck_cash_movements_accounts CHECK (from_account_id <> to_account_id)
 );
 
-CREATE INDEX ix_cash_movements_from ON cash_movements (from_account_id, occurred_at);
-CREATE INDEX ix_cash_movements_to ON cash_movements (to_account_id, occurred_at);
-CREATE INDEX ix_cash_movements_remittance ON cash_movements (remittance_id);
-CREATE INDEX ix_cash_movements_exchange ON cash_movements (exchange_id);
+CREATE INDEX ix_cash_movements_from ON payments.cash_movements (from_account_id, occurred_at);
+CREATE INDEX ix_cash_movements_to ON payments.cash_movements (to_account_id, occurred_at);
+CREATE INDEX ix_cash_movements_remittance ON payments.cash_movements (remittance_id);
+CREATE INDEX ix_cash_movements_exchange ON payments.cash_movements (exchange_id);
 
-INSERT INTO cash_accounts (id, account_key, type, currency, created_at) VALUES
+INSERT INTO payments.cash_accounts (id, account_key, type, currency, created_at) VALUES
     ('00000000-0000-0000-0003-000000000001', 'BUSINESS:USD', 'BUSINESS', 'USD', CURRENT_TIMESTAMP),
     ('00000000-0000-0000-0003-000000000002', 'BUSINESS:CUP', 'BUSINESS', 'CUP', CURRENT_TIMESTAMP),
     ('00000000-0000-0000-0003-000000000003', 'EXTERNAL:USD', 'EXTERNAL', 'USD', CURRENT_TIMESTAMP),
     ('00000000-0000-0000-0003-000000000004', 'EXTERNAL:CUP', 'EXTERNAL', 'CUP', CURRENT_TIMESTAMP);
 
-INSERT INTO permissions (code, module, description) VALUES
+INSERT INTO identity.permissions (code, module, description) VALUES
     ('cash:read',     'payments', 'View the business cash, every courier''s cash and all movements'),
     ('cash:read-own', 'payments', 'View one''s own cash as a courier'),
     ('cash:write',    'payments', 'Hand cash to couriers and register the cash they return'),
@@ -566,7 +585,7 @@ INSERT INTO permissions (code, module, description) VALUES
 -- deleted. details is a JSON object with what changed; it never contains secrets.
 -- =====================================================================================================================
 
-CREATE TABLE audit_log (
+CREATE TABLE reporting.audit_log (
     id           UUID PRIMARY KEY,
     occurred_at  TIMESTAMP WITH TIME ZONE NOT NULL,
     actor_id     UUID,
@@ -577,23 +596,47 @@ CREATE TABLE audit_log (
     details      TEXT                     NOT NULL
 );
 
-CREATE INDEX ix_audit_log_occurred ON audit_log (occurred_at);
-CREATE INDEX ix_audit_log_target ON audit_log (target_type, target_id, occurred_at);
-CREATE INDEX ix_audit_log_actor ON audit_log (actor_id, occurred_at);
+CREATE INDEX ix_audit_log_occurred ON reporting.audit_log (occurred_at);
+CREATE INDEX ix_audit_log_target ON reporting.audit_log (target_type, target_id, occurred_at);
+CREATE INDEX ix_audit_log_actor ON reporting.audit_log (actor_id, occurred_at);
 
-INSERT INTO permissions (code, module, description) VALUES
+INSERT INTO identity.permissions (code, module, description) VALUES
     ('audit:read',   'reporting', 'View the audit log: who changed users, roles and other audited records, and when'),
     ('reports:read', 'reporting', 'View the business reports, such as the monthly sales report');
+
+-- =====================================================================================================================
+-- apps · mobile app releases (contract: docs/contracts/app-version.md)
+--
+-- One row per published build; never edited nor deleted. Rows are inserted by data scripts (scripts/data/app-releases),
+-- never by an endpoint, so no credential can announce a fake mandatory update. The download link is not stored: the
+-- server builds it from a fixed base per platform. Latest build = highest of its platform; minimum = highest mandatory.
+-- =====================================================================================================================
+
+CREATE TABLE apps.app_releases (
+    id           UUID PRIMARY KEY,
+    platform     VARCHAR(10)              NOT NULL,
+    -- versionCode (Android) / CFBundleVersion (iOS): grows with every build
+    build        INT                      NOT NULL,
+    -- what people see, e.g. 1.0.0-rc.2
+    version_name VARCHAR(30)              NOT NULL,
+    -- clients with a lower build must update
+    mandatory    BOOLEAN                  NOT NULL DEFAULT FALSE,
+    notes        VARCHAR(1000),
+    released_at  TIMESTAMP WITH TIME ZONE NOT NULL,
+    CONSTRAINT uk_app_releases_platform_build UNIQUE (platform, build),
+    CONSTRAINT ck_app_releases_platform CHECK (platform IN ('ANDROID', 'IOS')),
+    CONSTRAINT ck_app_releases_build CHECK (build > 0)
+);
 
 -- =====================================================================================================================
 -- Initial grants. ADMIN holds every permission; SALES and DELIVERY start with these and can be changed through the API.
 -- =====================================================================================================================
 
-INSERT INTO role_permissions (role_id, permission_code)
-SELECT r.id, p.code FROM roles r CROSS JOIN permissions p WHERE r.code = 'ADMIN';
+INSERT INTO identity.role_permissions (role_id, permission_code)
+SELECT r.id, p.code FROM identity.roles r CROSS JOIN identity.permissions p WHERE r.code = 'ADMIN';
 
-INSERT INTO role_permissions (role_id, permission_code)
-SELECT r.id, p.code FROM roles r CROSS JOIN permissions p
+INSERT INTO identity.role_permissions (role_id, permission_code)
+SELECT r.id, p.code FROM identity.roles r CROSS JOIN identity.permissions p
 WHERE r.code = 'SALES' AND p.code IN (
     'customers:read', 'customers:write',
     'configuration:read', 'rates:read',
@@ -602,8 +645,8 @@ WHERE r.code = 'SALES' AND p.code IN (
     'cash:read', 'cash:write', 'cash:review',
     'reports:read');
 
-INSERT INTO role_permissions (role_id, permission_code)
-SELECT r.id, p.code FROM roles r CROSS JOIN permissions p
+INSERT INTO identity.role_permissions (role_id, permission_code)
+SELECT r.id, p.code FROM identity.roles r CROSS JOIN identity.permissions p
 WHERE r.code = 'DELIVERY' AND p.code IN (
     'remittances:read-assigned', 'remittances:deliver', 'remittances:postpone', 'remittances:report-incident',
     'cash:read-own', 'cash:exchange-own');

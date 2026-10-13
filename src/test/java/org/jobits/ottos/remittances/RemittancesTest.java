@@ -314,7 +314,7 @@ class RemittancesTest extends ApiTestSupport {
     void aFlaggedRemittanceIsListedAndResolvedWithANote() throws Exception {
         String id = id(register("DELIVERY", "100", "CUP"));
         assign(id, courier.getId().toString());
-        jdbc.update("UPDATE remittances SET review_reason = 'PIN_MISMATCH', review_flagged_at = CURRENT_TIMESTAMP WHERE id = ?",
+        jdbc.update("UPDATE remittances.remittances SET review_reason = 'PIN_MISMATCH', review_flagged_at = CURRENT_TIMESTAMP WHERE id = ?",
                 UUID.fromString(id));
 
         mvc.perform(get("/api/v1/remittances").param("review", "true").header("Authorization", bearer(salesToken)))
@@ -435,10 +435,10 @@ class RemittancesTest extends ApiTestSupport {
 
     @Test
     void statusesAndTransitionsComeFromTheDatabase() throws Exception {
-        jdbc.update("INSERT INTO remittance_statuses (code, name, position) VALUES ('ON_THE_WAY', 'En camino', 25)");
-        jdbc.update("INSERT INTO remittance_transitions VALUES ('ASSIGNED', 'ON_THE_WAY', 'remittances:deliver')");
-        jdbc.update("INSERT INTO remittance_transitions VALUES ('ON_THE_WAY', 'DELIVERED', 'remittances:deliver')");
-        jdbc.update("DELETE FROM remittance_transitions WHERE from_status = 'ASSIGNED' AND to_status = 'DELIVERED'");
+        jdbc.update("INSERT INTO remittances.remittance_statuses (code, name, position) VALUES ('ON_THE_WAY', 'En camino', 25)");
+        jdbc.update("INSERT INTO remittances.remittance_transitions VALUES ('ASSIGNED', 'ON_THE_WAY', 'remittances:deliver')");
+        jdbc.update("INSERT INTO remittances.remittance_transitions VALUES ('ON_THE_WAY', 'DELIVERED', 'remittances:deliver')");
+        jdbc.update("DELETE FROM remittances.remittance_transitions WHERE from_status = 'ASSIGNED' AND to_status = 'DELIVERED'");
         try {
             String id = id(register("DELIVERY", "100", "CUP"));
             assign(id, courier.getId().toString());
@@ -455,12 +455,12 @@ class RemittancesTest extends ApiTestSupport {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("DELIVERED"));
         } finally {
-            jdbc.update("INSERT INTO remittance_transitions VALUES ('ASSIGNED', 'DELIVERED', 'remittances:deliver')");
-            jdbc.update("DELETE FROM remittance_transitions WHERE 'ON_THE_WAY' IN (from_status, to_status)");
-            jdbc.update("DELETE FROM cash_movements");
-            jdbc.update("DELETE FROM remittance_events");
-            jdbc.update("DELETE FROM remittances");
-            jdbc.update("DELETE FROM remittance_statuses WHERE code = 'ON_THE_WAY'");
+            jdbc.update("INSERT INTO remittances.remittance_transitions VALUES ('ASSIGNED', 'DELIVERED', 'remittances:deliver')");
+            jdbc.update("DELETE FROM remittances.remittance_transitions WHERE 'ON_THE_WAY' IN (from_status, to_status)");
+            jdbc.update("DELETE FROM payments.cash_movements");
+            jdbc.update("DELETE FROM remittances.remittance_events");
+            jdbc.update("DELETE FROM remittances.remittances");
+            jdbc.update("DELETE FROM remittances.remittance_statuses WHERE code = 'ON_THE_WAY'");
         }
     }
 

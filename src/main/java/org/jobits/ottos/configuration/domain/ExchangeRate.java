@@ -19,7 +19,7 @@ import java.util.UUID;
  * Never edited.
  */
 @Entity
-@Table(name = "exchange_rates")
+@Table(name = "exchange_rates", schema = "configuration")
 public class ExchangeRate {
 
     @Id

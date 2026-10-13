@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /** One entry of a remittance's history: who did what and when. Never edited. */
 @Entity
-@Table(name = "remittance_events")
+@Table(name = "remittance_events", schema = "remittances")
 public class RemittanceEvent {
 
     @Id

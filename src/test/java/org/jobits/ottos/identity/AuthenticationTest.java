@@ -279,7 +279,7 @@ class AuthenticationTest extends ApiTestSupport {
 
     /** Moves the use of every consumed refresh token back beyond ottos.security.refresh-reuse-grace. */
     private void usedTokensAreOlderThanTheGracePeriod() {
-        jdbc.update("UPDATE refresh_tokens SET revoked_at = ? WHERE revoked_at IS NOT NULL",
+        jdbc.update("UPDATE identity.refresh_tokens SET revoked_at = ? WHERE revoked_at IS NOT NULL",
                 Timestamp.from(Instant.now().minus(Duration.ofMinutes(5))));
     }
 }

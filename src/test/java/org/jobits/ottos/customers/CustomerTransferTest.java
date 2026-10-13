@@ -44,9 +44,9 @@ class CustomerTransferTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.summary.customersCreated").value(1))
                 .andExpect(jsonPath("$.summary.linksCreated").value(1));
 
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customers", Integer.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM beneficiaries", Integer.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM audit_log", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customers.customers", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM beneficiaries.beneficiaries", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM reporting.audit_log", Integer.class)).isZero();
     }
 
     @Test
@@ -88,7 +88,7 @@ class CustomerTransferTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.summary.beneficiariesRejected").value(2))
                 .andExpect(jsonPath("$.summary.linksCreated").value(2));
 
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customers WHERE phone = '+13055550101'", Integer.class))
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customers.customers WHERE phone = '+13055550101'", Integer.class))
                 .isEqualTo(2);
         mvc.perform(get("/api/v1/audit").param("action", "CUSTOMERS_IMPORTED").header("Authorization", bearer(adminToken)))
                 .andExpect(jsonPath("$.totalItems").value(2))
@@ -106,7 +106,7 @@ class CustomerTransferTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.results[0].status").value("CREATED"))
                 .andExpect(jsonPath("$.results[0].customerId").isNotEmpty())
                 .andExpect(jsonPath("$.results[0].beneficiaries[0].code").value("BENEFICIARY_INACTIVE"));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customers WHERE full_name = 'Luis Gómez'", Integer.class))
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customers.customers WHERE full_name = 'Luis Gómez'", Integer.class))
                 .isEqualTo(1);
     }
 
@@ -151,7 +151,7 @@ class CustomerTransferTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.results[0].status").value("CREATED"))
                 .andExpect(jsonPath("$.results[0].beneficiaryId").doesNotExist());
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM beneficiaries", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM beneficiaries.beneficiaries", Integer.class)).isZero();
 
         importBeneficiaries(false, ROSA,
                 """
@@ -164,7 +164,7 @@ class CustomerTransferTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.results[1].code").value("VALIDATION_FAILED"));
         importBeneficiaries(false, ROSA)
                 .andExpect(jsonPath("$.results[0].status").value("EXISTING"));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customer_beneficiaries", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM beneficiaries.customer_beneficiaries", Integer.class)).isZero();
         mvc.perform(get("/api/v1/audit").param("action", "BENEFICIARIES_IMPORTED").header("Authorization", bearer(adminToken)))
                 .andExpect(jsonPath("$.totalItems").value(2));
 
@@ -191,7 +191,7 @@ class CustomerTransferTest extends ApiTestSupport {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.phone").value("5352223344"))
                 .andExpect(jsonPath("$.municipalityName").value("Plaza de la Revolución"));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM customer_beneficiaries", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM beneficiaries.customer_beneficiaries", Integer.class)).isZero();
     }
 
     private ResultActions importBeneficiaries(boolean dryRun, String... beneficiaries) throws Exception {

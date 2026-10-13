@@ -12,7 +12,7 @@ import org.hibernate.annotations.Immutable;
  */
 @Entity
 @Immutable
-@Table(name = "permissions")
+@Table(name = "permissions", schema = "identity")
 public class Permission {
 
     @Id

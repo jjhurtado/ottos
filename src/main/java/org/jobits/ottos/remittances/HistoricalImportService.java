@@ -24,9 +24,13 @@ public interface HistoricalImportService {
 
     /**
      * Registers one old remittance or pickup by hand, completed on its date, with no courier and moving no cash.
-     * Audited (HISTORICAL_REMITTANCE_CREATED).
+     * Audited (HISTORICAL_REMITTANCE_CREATED). With a ref, repeating it returns the first one (created = false).
      */
-    RemittanceView create(NewHistorical remittance, Viewer viewer);
+    Created create(NewHistorical remittance, Viewer viewer);
+
+    /** created: false when the ref had already been registered and the existing remittance is returned. */
+    record Created(RemittanceView remittance, boolean created) {
+    }
 
     /**
      * @param targetCurrency  USD or CUP; a pickup only in USD
@@ -34,8 +38,9 @@ public interface HistoricalImportService {
      * @param fee             USD, ≥ 0
      * @param rate            CUP per USD; required for CUP, ignored for USD (1)
      * @param amountToDeliver CUP handed over, as on the ticket; required for CUP, ignored for USD (= amount)
+     * @param ref             optional id of the ticket in the old records; registering the same ref again is harmless
      */
-    record NewHistorical(RemittanceType type, UUID customerId, UUID beneficiaryId, LocalDateTime occurredAt,
+    record NewHistorical(String ref, RemittanceType type, UUID customerId, UUID beneficiaryId, LocalDateTime occurredAt,
                          String targetCurrency, BigDecimal amount, BigDecimal fee, BigDecimal rate,
                          BigDecimal amountToDeliver, String notes) {
     }

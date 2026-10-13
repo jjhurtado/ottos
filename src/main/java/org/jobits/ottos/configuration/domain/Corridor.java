@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 
 /** A currency pair money is sent through, e.g. USD-CUP; the amount to deliver is rounded down to deliveryRounding. */
 @Entity
-@Table(name = "corridors")
+@Table(name = "corridors", schema = "configuration")
 public class Corridor {
 
     @Id
