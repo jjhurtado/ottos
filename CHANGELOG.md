@@ -5,6 +5,8 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+## [1.0.0-rc.3] - 2026-10-13
+
 ### Añadido
 - `POST /api/v1/remittances/{id}/void` (permiso `remittances:void`, ADMIN): anula cualquier remesa con un motivo; deja
   de contar en informes, estadísticas, listas, el aviso a Ventas y la sincronización, y su caja se deshace con
