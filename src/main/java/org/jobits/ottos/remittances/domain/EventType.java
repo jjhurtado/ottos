@@ -6,5 +6,6 @@ public enum EventType {
     POSTPONED,
     INCIDENT_REPORTED,
     REVIEW_FLAGGED,
-    REVIEW_RESOLVED
+    REVIEW_RESOLVED,
+    VOIDED
 }

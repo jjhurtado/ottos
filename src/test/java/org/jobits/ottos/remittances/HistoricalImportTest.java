@@ -112,6 +112,82 @@ class HistoricalImportTest extends ApiTestSupport {
     }
 
     @Test
+    void anAdminRegistersAnOldCupDeliveryOrPickupByHand() throws Exception {
+        // The configured USD-CUP rate is kept only as a reference; the remittance keeps the ticket's own rate
+        mvc.perform(post("/api/v1/configuration/corridors/USD-CUP/rates").header("Authorization", bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"rate\": 410}"));
+        mvc.perform(post("/api/v1/remittances/historical").header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type": "DELIVERY", "customerId": "%s", "beneficiaryId": "%s",
+                                 "occurredAt": "2025-03-10T10:00:00", "targetCurrency": "CUP", "amount": 100, "fee": 10,
+                                 "rate": 300, "amountToDeliver": 30000}""".formatted(placeholderId, rosaId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("DELIVERED"))
+                .andExpect(jsonPath("$.targetCurrency").value("CUP"))
+                .andExpect(jsonPath("$.amountToDeliver").value(30000.00))
+                .andExpect(jsonPath("$.rate").value(300))
+                .andExpect(jsonPath("$.createdAt").value("2025-03-10T14:00:00Z"));
+        mvc.perform(post("/api/v1/remittances/historical").header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type": "PICKUP", "customerId": "%s", "beneficiaryId": "%s",
+                                 "occurredAt": "2025-03-11T10:00:00", "amount": 2500, "fee": 0}""".formatted(placeholderId, rosaId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("PICKUP"))
+                .andExpect(jsonPath("$.cashAmount").value(2500.00));
+        // CUP needs its rate and amount; a pickup is in USD
+        mvc.perform(post("/api/v1/remittances/historical").header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type": "DELIVERY", "customerId": "%s", "beneficiaryId": "%s",
+                                 "occurredAt": "2025-03-10T10:00:00", "targetCurrency": "CUP", "amount": 100, "fee": 10}
+                                """.formatted(placeholderId, rosaId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements", Integer.class)).isZero();
+        mvc.perform(get("/api/v1/audit").param("action", "HISTORICAL_REMITTANCE_CREATED")
+                        .header("Authorization", bearer(adminToken)))
+                .andExpect(jsonPath("$.totalItems").value(2));
+        String salesToken = tokenFor("sales@ottos.test", "SALES");
+        mvc.perform(post("/api/v1/remittances/historical").header("Authorization", bearer(salesToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type": "PICKUP", "customerId": "%s", "beneficiaryId": "%s",
+                                 "occurredAt": "2025-03-11T10:00:00", "amount": 2500, "fee": 0}""".formatted(placeholderId, rosaId)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void theDataFixVoidsTheImportedPickupsAndRegistersThemAgainAsPickups() throws Exception {
+        importRows(false, TICKET.replace("chat-20240603-153047", "chat-20261006-210318")
+                .replace("2024-06-03T15:30:47", "2026-10-06T21:03:18").replace("\"amountDelivered\": 200", "\"amountDelivered\": 2500")
+                .replace("\"fee\": 20", "\"fee\": 250"));
+
+        String fix = new String(getClass().getResourceAsStream("/db/migration/V5__fix_imported_pickups.sql").readAllBytes());
+        jdbc.execute(fix);
+        jdbc.execute(fix);   // running it again changes nothing
+
+        assertThat(jdbc.queryForObject(
+                "SELECT void_reason IS NOT NULL FROM remittances WHERE idempotency_key = 'historical:chat-20261006-210318'",
+                Boolean.class)).isTrue();
+        assertThat(jdbc.queryForList(
+                "SELECT type, fee, amount, created_at FROM remittances WHERE idempotency_key = 'historical:chat-20261006-210318:pickup'"))
+                .singleElement()
+                .satisfies(row -> {
+                    assertThat(row.get("type")).isEqualTo("PICKUP");
+                    assertThat(row.get("fee").toString()).isEqualTo("0.00");
+                    assertThat(row.get("amount").toString()).isEqualTo("2500.00");
+                });
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements", Integer.class)).isZero();
+        mvc.perform(get("/api/v1/reports/monthly").param("month", "2026-10").header("Authorization", bearer(adminToken)))
+                .andExpect(jsonPath("$.remittances.delivery").value(0))
+                .andExpect(jsonPath("$.pickups.collected").value(2500.00))
+                .andExpect(jsonPath("$.pickups.fees").value(0));
+    }
+
+    @Test
     void onlyAdminsImport() throws Exception {
         String salesToken = tokenFor("sales@ottos.test", "SALES");
         mvc.perform(post("/api/v1/remittances/import").header("Authorization", bearer(salesToken))

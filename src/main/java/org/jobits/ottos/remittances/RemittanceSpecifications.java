@@ -50,12 +50,16 @@ final class RemittanceSpecifications {
             if (f.review() != null) {
                 where.add(f.review() ? cb.isNotNull(root.get("reviewReason")) : cb.isNull(root.get("reviewReason")));
             }
+            if (f.voided() != null) {
+                where.add(f.voided() ? cb.isNotNull(root.get("voidedAt")) : cb.isNull(root.get("voidedAt")));
+            }
             if (f.incident() != null) {
                 where.add(f.incident() ? cb.isNotNull(root.get("openIncidentReason"))
                         : cb.isNull(root.get("openIncidentReason")));
             }
             if (f.late() != null) {
                 Predicate late = cb.and(
+                        cb.isNull(root.get("voidedAt")),
                         cb.lessThan(root.get("expectedDate"), today),
                         finals.isEmpty() ? cb.conjunction() : cb.not(root.get("status").in(finals)));
                 where.add(f.late() ? late : cb.not(late));

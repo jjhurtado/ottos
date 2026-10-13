@@ -5,6 +5,21 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+## [1.0.0-rc.3] - 2026-10-13
+
+### Añadido
+- `POST /api/v1/remittances/{id}/void` (permiso `remittances:void`, ADMIN): anula cualquier remesa con un motivo; deja
+  de contar en informes, estadísticas, listas, el aviso a Ventas y la sincronización, y su caja se deshace con
+  movimientos `REMITTANCE_VOID_REVERSAL`. `RemittanceView.voided`, filtro `voided` en `GET /remittances`, códigos
+  `REMITTANCE_VOIDED` y `REMITTANCE_ALREADY_VOIDED` ([contrato](docs/contracts/void-and-historical.md)).
+- `POST /api/v1/remittances/historical` (permiso `remittances:historical`, ADMIN): registra a mano una remesa (USD o
+  CUP) o recogida (USD) antigua, completada en su fecha, sin repartidor ni caja.
+- `GET /api/v1/customers` y `GET /api/v1/beneficiaries` con `page` (desde 0) y `size` (1–100, por defecto 50):
+  devuelven una página `{items, page, size, totalItems}`, la más reciente primero. Sin `page`, la lista de siempre
+  ([contrato](docs/contracts/customer-beneficiary-pages.md)).
+- Versión de la app móvil Android 1.0.0-rc.3 (build 4), no obligatoria: `GET /app/version?platform=ANDROID` la anuncia
+  como la última (migración `V3__app_release_android_1_0_0_rc_3.sql`).
+
 ## [1.0.0-rc.2] - 2026-10-13
 
 ### Añadido
@@ -21,6 +36,9 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
   nuevos: `BENEFICIARY_NOT_FOUND`, `AMBIGUOUS_BENEFICIARY` ([contrato](docs/contracts/historical-import.md)).
 
 ### Cambiado
+- Datos: tres remesas importadas que eran recogidas (`chat-20261006-210318`, `chat-20260609-132726`,
+  `chat-20260731-111256`) quedan anuladas y registradas de nuevo como recogidas en su fecha, sin comisión
+  (`V5__fix_imported_pickups.sql`).
 - Caja del negocio: registrar una remesa ya no crea el movimiento `REMITTANCE_PAYMENT`. La caja del negocio es el
   efectivo disponible en Cuba: sube con entradas y con lo que devuelven los repartidores (incluido lo recogido) y baja
   con fondeos y retiradas. Lo cobrado a los remitentes, que pagan fuera, se ve en el informe mensual. Los

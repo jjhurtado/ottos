@@ -56,6 +56,7 @@ class RemittanceOperations {
      * status requires one, and on a final status completes it and lets the cash module move the money.
      */
     RemittanceView apply(Remittance r, RemittanceTransition t, UUID courierId, String note, Viewer viewer, Instant at) {
+        requireNotVoided(r);
         if (!viewer.has(t.getPermissionCode())) {
             throw ApiException.forbidden("TRANSITION_FORBIDDEN", "Moving to " + t.getToStatus() + " requires " + t.getPermissionCode());
         }
@@ -119,7 +120,15 @@ class RemittanceOperations {
         return workflow.status(r.getStatus()).isFinalStatus();
     }
 
+    /** A voided remittance is kept only for the record: nothing changes it any more. */
+    void requireNotVoided(Remittance r) {
+        if (r.isVoided()) {
+            throw ApiException.conflict("REMITTANCE_VOIDED", "Remittance " + r.getCode() + " was voided");
+        }
+    }
+
     private void requireOpen(Remittance r) {
+        requireNotVoided(r);
         if (isCompleted(r)) {
             throw ApiException.conflict("REMITTANCE_ALREADY_COMPLETED", "Remittance " + r.getCode() + " is already completed");
         }

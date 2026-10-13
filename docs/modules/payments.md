@@ -40,6 +40,8 @@ para incluir la caja del repartidor en la descarga de la app móvil.
   que devuelven los repartidores (`COURIER_RETURN`, incluido lo recogido), y baja con fondeos (`COURIER_FUNDING`) y
   retiradas (`BUSINESS_WITHDRAWAL`). `REMITTANCE_PAYMENT` ya no se crea; queda solo en movimientos anteriores.
 - **Movimientos automáticos** (en la misma transacción que la remesa):
+  - anular una remesa → `REMITTANCE_VOID_REVERSAL`: el espejo de cada movimiento que causó (mismo monto, cuentas al
+    revés), así que todas las cajas quedan como si no hubiera ocurrido;
   - completar una entrega → `DELIVERY_PAYOUT`: el monto a entregar sale de la caja del repartidor;
   - completar una recogida → `PICKUP_COLLECTION`: los USD recogidos entran en la caja del repartidor.
 - La primera cuenta de un repartidor se crea al vuelo y sin colisiones (`INSERT … ON CONFLICT DO NOTHING`).

@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** Builds {@link RemittanceView}s, resolving names once per batch and hiding what the viewer may not see. */
 @Component
@@ -52,16 +53,18 @@ class RemittanceViews {
         Map<UUID, CustomerInfo> customerById = viewer.has(Viewer.READ)
                 ? customers.findAll(remittances.stream().map(Remittance::getCustomerId).collect(Collectors.toSet()))
                 : Map.of();
-        Set<UUID> courierIds = remittances.stream().map(Remittance::getCourierId).filter(Objects::nonNull)
+        Set<UUID> staffIds = remittances.stream()
+                .flatMap(r -> Stream.of(r.getCourierId(), r.getVoidedBy()))
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<UUID, String> courierNames = courierIds.isEmpty() ? Map.of() : staff.names(courierIds);
+        Map<UUID, String> staffNames = staffIds.isEmpty() ? Map.of() : staff.names(staffIds);
         LocalDate today = LocalDate.now(clock);
 
         return remittances.stream().map(r -> {
             RemittanceStatus status = statusByCode.get(r.getStatus());
             boolean financials = viewer.seesFinancials(r);
             Optional<CustomerInfo> customer = Optional.ofNullable(customerById.get(r.getCustomerId()));
-            String courierName = r.getCourierId() == null ? null : courierNames.get(r.getCourierId());
+            String courierName = r.getCourierId() == null ? null : staffNames.get(r.getCourierId());
             return new RemittanceView(
                     r.getId(), r.getCode(), r.getType(), r.getStatus(), status.getName(),
                     r.getCustomerId(),
@@ -82,9 +85,11 @@ class RemittanceViews {
                     viewer.seesPin() ? r.getPin() : null,
                     r.getCourierId(), courierName,
                     r.getExpectedDate(),
-                    !status.isFinalStatus() && r.getExpectedDate().isBefore(today),
+                    !r.isVoided() && !status.isFinalStatus() && r.getExpectedDate().isBefore(today),
                     r.getPostponements(), incident(r), review(r), r.getNotes(), r.getCreatedAt(), r.getCreatedBy(),
-                    r.getCompletedAt());
+                    r.getCompletedAt(),
+                    r.isVoided() ? new RemittanceView.Voided(r.getVoidedAt(), r.getVoidedBy(),
+                            staffNames.get(r.getVoidedBy()), r.getVoidReason()) : null);
         }).toList();
     }
 

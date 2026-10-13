@@ -1,6 +1,7 @@
 package org.jobits.ottos.remittances;
 
 import org.jobits.ottos.ApiException;
+import org.jobits.ottos.AuditEvent;
 import org.jobits.ottos.beneficiaries.BeneficiaryService;
 import org.jobits.ottos.beneficiaries.BeneficiaryService.BeneficiaryInfo;
 import org.jobits.ottos.configuration.ConfigurationService;
@@ -9,12 +10,14 @@ import org.jobits.ottos.customers.CustomerService;
 import org.jobits.ottos.customers.CustomerService.CustomerInfo;
 import org.jobits.ottos.identity.StaffDirectoryService;
 import org.jobits.ottos.rates.QuoteService;
+import org.jobits.ottos.remittances.RemittanceEvents.RemittanceVoided;
 import org.jobits.ottos.remittances.domain.Remittance;
 import org.jobits.ottos.remittances.domain.RemittanceEvent;
 import org.jobits.ottos.remittances.domain.RemittanceEventRepository;
 import org.jobits.ottos.remittances.domain.RemittanceRepository;
 import org.jobits.ottos.remittances.domain.RemittanceStatus;
 import org.jobits.ottos.remittances.domain.RemittanceTransition;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -58,6 +61,7 @@ class RemittanceServiceImpl implements RemittanceService {
     private final BeneficiaryService beneficiaries;
     private final QuoteService quotes;
     private final StaffDirectoryService staff;
+    private final ApplicationEventPublisher publisher;
     private final TransactionTemplate transactions;
     private final Clock clock;
 
@@ -65,7 +69,7 @@ class RemittanceServiceImpl implements RemittanceService {
                           RemittanceOperations operations, RemittanceCodes codes, ConfigurationService configuration,
                           Workflow workflow,
                           RemittanceViews views, CustomerService customers, BeneficiaryService beneficiaries,
-                          QuoteService quotes, StaffDirectoryService staff,
+                          QuoteService quotes, StaffDirectoryService staff, ApplicationEventPublisher publisher,
                           PlatformTransactionManager transactionManager, Clock clock) {
         this.remittances = remittances;
         this.events = events;
@@ -78,6 +82,7 @@ class RemittanceServiceImpl implements RemittanceService {
         this.beneficiaries = beneficiaries;
         this.quotes = quotes;
         this.staff = staff;
+        this.publisher = publisher;
         this.transactions = new TransactionTemplate(transactionManager);
         this.clock = clock;
     }
@@ -187,8 +192,26 @@ class RemittanceServiceImpl implements RemittanceService {
 
     @Override
     @Transactional
+    public RemittanceView voidRemittance(UUID id, String reason, Viewer viewer) {
+        Remittance r = operations.findVisible(id, viewer);
+        if (r.isVoided()) {
+            throw ApiException.conflict("REMITTANCE_ALREADY_VOIDED", "Remittance " + r.getCode() + " is already voided");
+        }
+        Instant now = clock.instant();
+        String why = reason.trim();
+        r.voidIt(now, viewer.userId(), why);
+        events.save(RemittanceEvent.voided(r, viewer.userId(), now, why));
+        publisher.publishEvent(new RemittanceVoided(r.getId(), r.getCode(), viewer.userId(), now));
+        publisher.publishEvent(new AuditEvent("REMITTANCE_VOIDED", "REMITTANCE", r.getId().toString(), r.getCode(),
+                viewer.userId(), now, Map.of("code", r.getCode(), "reason", why)));
+        return views.of(r, viewer);
+    }
+
+    @Override
+    @Transactional
     public RemittanceView resolveReview(UUID id, String note, Viewer viewer) {
         Remittance r = operations.findVisible(id, viewer);
+        operations.requireNotVoided(r);
         if (r.getReviewReason() == null) {
             throw ApiException.conflict("REVIEW_NOT_PENDING", "Remittance " + r.getCode() + " has nothing to review");
         }
@@ -202,7 +225,7 @@ class RemittanceServiceImpl implements RemittanceService {
     @Override
     @Transactional(readOnly = true)
     public SalesSummary salesSummary(Instant from, Instant to) {
-        return SalesSummaries.of(remittances.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(from, to), to);
+        return SalesSummaries.of(remittances.findByVoidedAtIsNullAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(from, to), to);
     }
 
     @Override
@@ -235,7 +258,7 @@ class RemittanceServiceImpl implements RemittanceService {
     @Override
     @Transactional(readOnly = true)
     public List<RemittanceView> assignedTo(Viewer viewer) {
-        return views.of(remittances.findByCourierIdAndStatusNotInOrderByExpectedDateAsc(viewer.userId(),
+        return views.of(remittances.findByCourierIdAndVoidedAtIsNullAndStatusNotInOrderByExpectedDateAsc(viewer.userId(),
                 workflow.finalCodes()), viewer);
     }
 
@@ -248,7 +271,7 @@ class RemittanceServiceImpl implements RemittanceService {
             return new CompletedFeed(since == null ? until : since, false, List.of());
         }
         List<Remittance> found = remittances
-                .findByCompletionRecordedAtGreaterThanAndCompletionRecordedAtLessThanEqualOrderByCompletionRecordedAtAscIdAsc(
+                .findByVoidedAtIsNullAndCompletionRecordedAtGreaterThanAndCompletionRecordedAtLessThanEqualOrderByCompletionRecordedAtAscIdAsc(
                         since, until, PageRequest.of(0, FEED_LIMIT + 1));
         boolean hasMore = found.size() > FEED_LIMIT;
         List<Remittance> page = hasMore ? found.subList(0, FEED_LIMIT) : found;

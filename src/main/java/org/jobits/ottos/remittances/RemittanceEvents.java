@@ -12,6 +12,10 @@ public final class RemittanceEvents {
     private RemittanceEvents() {
     }
 
+    /** A remittance was voided: the cash ledger reverses whatever it moved. */
+    public record RemittanceVoided(UUID remittanceId, String code, UUID actorId, Instant occurredAt) {
+    }
+
     /**
      * A remittance reached a final status: the courier handed over (DELIVERY) or collected (PICKUP) the cash.
      *

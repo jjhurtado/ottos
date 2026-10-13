@@ -22,6 +22,8 @@ historial y estadísticas.
 | Endpoint | Permiso |
 | --- | --- |
 | `POST /remittances` (cabecera `Idempotency-Key`) | `remittances:create` |
+| `POST /remittances/{id}/void` (anular; contrato `docs/contracts/void-and-historical.md`) | `remittances:void` (ADMIN) |
+| `POST /remittances/historical` (una remesa o recogida antigua a mano) | `remittances:historical` (ADMIN) |
 | `POST /remittances/import` (remesas antiguas, entregadas en su fecha; `dryRun`; contrato `docs/contracts/historical-import.md`) | `customers:import` (ADMIN) |
 | `GET /remittances?status=&type=&late=&incident=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/code/{code}` | `remittances:read` |
 | `GET /remittances/{id}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:read` o `read-assigned` |
@@ -53,6 +55,9 @@ historial y estadísticas.
   `rateOverridden` y `feeOverridden`. El repartidor solo recoge `amount`; en una recogida no se entrega nada
   (`amountToDeliver` no significa nada y la tasa es informativa) y la comisión es ingreso del negocio que nunca pasa por
   la caja del repartidor. Las entregas siempre usan la tasa y la comisión configuradas.
+- **Anular** (`voidRemittance`): cualquier remesa, en cualquier estado; queda guardada con quién, cuándo y por qué, deja
+  de contar en informes, estadísticas, listas, el aviso a Ventas y la sincronización, y no se puede cambiar más
+  (`REMITTANCE_VOIDED`). Publica `RemittanceVoided`, con el que `payments` deshace sus movimientos de caja.
 - **Remesas antiguas** (`HistoricalImportService`): entran entregadas en la fecha del ticket, en USD, sin repartidor,
   con un cliente comodín; no mueven ninguna caja. Cada lote se audita. No hay columna ni marca propia: se reconocen por el cliente comodín y la nota.
 - **Asignar:** el repartidor debe estar activo, tener `remittances:deliver` y no ser administrador (la misma regla que

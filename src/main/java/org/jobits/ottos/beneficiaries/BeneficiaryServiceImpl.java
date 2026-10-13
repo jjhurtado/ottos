@@ -10,7 +10,9 @@ import org.jobits.ottos.branches.ZoneService;
 import org.jobits.ottos.branches.ZoneService.MunicipalityInfo;
 import org.jobits.ottos.customers.CustomerService;
 import org.jobits.ottos.customers.CustomerService.CustomerInfo;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -86,6 +88,23 @@ class BeneficiaryServiceImpl implements BeneficiaryService {
                     : beneficiaries.searchByNameOrPhone(text.trim(), phone, page);
         }
         return infos(found);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BeneficiaryPage page(String text, int page, int size) {
+        PageRequest request = PageRequest.of(page, size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+        Page<Beneficiary> found;
+        if (text == null || text.isBlank()) {
+            found = beneficiaries.findByActiveTrue(request);
+        } else {
+            String phone = Phones.normalize(text);
+            found = phone == null
+                    ? beneficiaries.pageByName(text.trim(), request)
+                    : beneficiaries.pageByNameOrPhone(text.trim(), phone, request);
+        }
+        return new BeneficiaryPage(infos(found.getContent()), page, size, found.getTotalElements());
     }
 
     @Override

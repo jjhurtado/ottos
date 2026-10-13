@@ -8,6 +8,8 @@ public enum MovementType {
      */
     @Deprecated
     REMITTANCE_PAYMENT,
+    /** The mirror of a remittance's movement when the remittance is voided: undoes it, same amount, accounts swapped. */
+    REMITTANCE_VOID_REVERSAL,
     /** Business → courier: cash handed to a courier. */
     COURIER_FUNDING,
     /** Courier → external: cash delivered to a beneficiary. */

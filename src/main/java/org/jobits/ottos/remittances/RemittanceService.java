@@ -39,6 +39,13 @@ public interface RemittanceService {
     /** Sales figures of the remittances registered in [from, to); "completed" means completed before to. */
     SalesSummary salesSummary(Instant from, Instant to);
 
+    /**
+     * Voids a remittance, whatever its status: it stays for the record (who, when, why) but stops counting in
+     * reports, statistics, work lists, the completed feed and the mobile sync, and the cash it moved is reversed.
+     * A voided remittance cannot be changed again (REMITTANCE_ALREADY_VOIDED / REMITTANCE_VOIDED).
+     */
+    RemittanceView voidRemittance(UUID id, String reason, Viewer viewer);
+
     /** Clears the pending review of a remittance, leaving the note in its history. */
     RemittanceView resolveReview(UUID id, String note, Viewer viewer);
 
