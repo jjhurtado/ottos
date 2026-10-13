@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -151,6 +152,49 @@ class CustomersAndBeneficiariesTest extends ApiTestSupport {
         String ana = id(registerCustomer("Ana Pérez", "+13055550101"));
 
         createBeneficiary(ana, "9999").andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void customersAndBeneficiariesComeAPageAtATimeWithTheTotal() throws Exception {
+        for (int i = 1; i <= 3; i++) {
+            String customer = id(registerCustomer("Cliente " + i, "+1305555000" + i));
+            createBeneficiary(customer, "2309");
+            clock.advance(Duration.ofMinutes(1));
+        }
+
+        mvc.perform(get("/api/v1/customers").param("page", "0").param("size", "2")
+                        .header("Authorization", bearer(salesToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(3))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.items", hasSize(2)))
+                .andExpect(jsonPath("$.items[0].fullName").value("Cliente 3"));
+        mvc.perform(get("/api/v1/customers").param("page", "1").param("size", "2")
+                        .header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.items", hasSize(1)))
+                .andExpect(jsonPath("$.items[0].fullName").value("Cliente 1"));
+        mvc.perform(get("/api/v1/customers").param("page", "5").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.items", hasSize(0)))
+                .andExpect(jsonPath("$.totalItems").value(3));
+        mvc.perform(get("/api/v1/customers").param("q", "cliente 2").param("page", "0")
+                        .header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.totalItems").value(1));
+        mvc.perform(get("/api/v1/customers").param("page", "0").param("size", "101")
+                        .header("Authorization", bearer(salesToken)))
+                .andExpect(status().isBadRequest());
+        // Without page, the plain list as before
+        mvc.perform(get("/api/v1/customers").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$", hasSize(3)));
+
+        mvc.perform(get("/api/v1/beneficiaries").param("page", "0").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.totalItems").value(3))
+                .andExpect(jsonPath("$.items", hasSize(3)));
+        mvc.perform(get("/api/v1/beneficiaries").param("q", "5222").param("page", "0")
+                        .header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.totalItems").value(3));
+        mvc.perform(get("/api/v1/beneficiaries").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$", hasSize(3)));
     }
 
     @Test

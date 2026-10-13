@@ -1,5 +1,6 @@
 package org.jobits.ottos.customers.domain;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -23,4 +24,14 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
     List<Customer> searchByNameOrPhone(String name, String phone, Pageable page);
 
     List<Customer> findAllByOrderByCreatedAtDesc(Pageable page);
+
+    // Paged lists: the order comes from the Pageable (newest first, id as tiebreak)
+
+    @Query("select c from Customer c where lower(c.fullName) like lower(concat('%', :name, '%'))")
+    Page<Customer> pageByName(String name, Pageable page);
+
+    @Query("""
+            select c from Customer c
+            where lower(c.fullName) like lower(concat('%', :name, '%')) or c.phone like concat('%', :phone, '%')""")
+    Page<Customer> pageByNameOrPhone(String name, String phone, Pageable page);
 }

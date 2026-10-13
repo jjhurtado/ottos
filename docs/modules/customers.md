@@ -16,7 +16,7 @@ App Cliente, Fase 2).
 
 | Endpoint | Permiso |
 | --- | --- |
-| `GET /customers?q=`, `GET /customers/{id}` | `customers:read` |
+| `GET /customers?q=` (con `page`/`size`, una página con `totalItems`; contrato `docs/contracts/customer-beneficiary-pages.md`), `GET /customers/{id}` | `customers:read` |
 | `POST /customers`, `PUT /customers/{id}` | `customers:write` |
 
 Las estadísticas de un cliente (`GET /customers/{id}/stats`) viven en `remittances`.

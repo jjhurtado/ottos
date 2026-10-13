@@ -6,6 +6,9 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 ## [Unreleased]
 
 ### Añadido
+- `GET /api/v1/customers` y `GET /api/v1/beneficiaries` con `page` (desde 0) y `size` (1–100, por defecto 50):
+  devuelven una página `{items, page, size, totalItems}`, la más reciente primero. Sin `page`, la lista de siempre
+  ([contrato](docs/contracts/customer-beneficiary-pages.md)).
 - Versión de la app móvil Android 1.0.0-rc.3 (build 4), no obligatoria: `GET /app/version?platform=ANDROID` la anuncia
   como la última (migración `V3__app_release_android_1_0_0_rc_3.sql`).
 

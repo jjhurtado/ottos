@@ -4,7 +4,9 @@ import org.jobits.ottos.ApiException;
 import org.jobits.ottos.Phones;
 import org.jobits.ottos.customers.domain.Customer;
 import org.jobits.ottos.customers.domain.CustomerRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -67,6 +69,24 @@ class CustomerServiceImpl implements CustomerService {
                     : customers.searchByNameOrPhone(text.trim(), phone, page);
         }
         return found.stream().map(CustomerInfo::of).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CustomerPage page(String text, int page, int size) {
+        PageRequest request = PageRequest.of(page, size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+        Page<Customer> found;
+        if (text == null || text.isBlank()) {
+            found = customers.findAll(request);
+        } else {
+            String phone = Phones.normalize(text);
+            found = phone == null
+                    ? customers.pageByName(text.trim(), request)
+                    : customers.pageByNameOrPhone(text.trim(), phone, request);
+        }
+        return new CustomerPage(found.getContent().stream().map(CustomerInfo::of).toList(), page, size,
+                found.getTotalElements());
     }
 
     @Override
