@@ -32,4 +32,6 @@ public interface BeneficiaryRepository extends JpaRepository<Beneficiary, UUID> 
     List<Beneficiary> findByActiveTrueOrderByCreatedAtDesc(Pageable page);
 
     List<Beneficiary> findByPhone(String phone);
+
+    List<Beneficiary> findByPhoneEndingWith(String suffix);
 }

@@ -31,6 +31,8 @@ import static org.jobits.ottos.Texts.blankToNull;
 class BeneficiaryServiceImpl implements BeneficiaryService {
 
     private static final int SEARCH_LIMIT = 50;
+    /** Cuban phone numbers: 8 digits after the country code. */
+    private static final int PHONE_MATCH_DIGITS = 8;
 
     private final BeneficiaryRepository beneficiaries;
     private final CustomerBeneficiaryRepository links;
@@ -84,6 +86,16 @@ class BeneficiaryServiceImpl implements BeneficiaryService {
                     : beneficiaries.searchByNameOrPhone(text.trim(), phone, page);
         }
         return infos(found);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BeneficiaryInfo> findByPhone(String phone) {
+        String digits = phone == null ? "" : phone.replaceAll("\\D", "");
+        if (digits.length() < PHONE_MATCH_DIGITS) {
+            return List.of();
+        }
+        return infos(beneficiaries.findByPhoneEndingWith(digits.substring(digits.length() - PHONE_MATCH_DIGITS)));
     }
 
     @Override
