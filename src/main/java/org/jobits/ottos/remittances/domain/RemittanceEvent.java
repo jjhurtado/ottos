@@ -112,6 +112,13 @@ public class RemittanceEvent {
         return e;
     }
 
+    public static RemittanceEvent voided(Remittance r, UUID actorId, Instant at, String reason) {
+        RemittanceEvent e = new RemittanceEvent(r.getId(), EventType.VOIDED, actorId, at, reason);
+        e.fromStatus = r.getStatus();
+        e.toStatus = r.getStatus();
+        return e;
+    }
+
     public static RemittanceEvent reviewResolved(Remittance r, UUID actorId, Instant at, String note) {
         return new RemittanceEvent(r.getId(), EventType.REVIEW_RESOLVED, actorId, at, note);
     }

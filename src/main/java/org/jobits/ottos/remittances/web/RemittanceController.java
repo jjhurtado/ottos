@@ -78,6 +78,7 @@ class RemittanceController {
                     @RequestParam(required = false) Boolean late,
                     @RequestParam(required = false) Boolean incident,
                     @RequestParam(required = false) Boolean review,
+                    @RequestParam(required = false) Boolean voided,
                     @RequestParam(required = false) UUID courierId,
                     @RequestParam(required = false) UUID customerId,
                     @RequestParam(required = false) UUID beneficiaryId,
@@ -87,7 +88,7 @@ class RemittanceController {
                     @RequestParam(defaultValue = "0") @Min(0) int page,
                     @RequestParam(defaultValue = "50") @Min(1) @Max(200) int size,
                     @AuthenticationPrincipal Jwt jwt) {
-        RemittanceFilter filter = new RemittanceFilter(status, type, late, incident, review, courierId,
+        RemittanceFilter filter = new RemittanceFilter(status, type, late, incident, review, voided, courierId,
                 customerId, beneficiaryId, municipality, from, to);
         return remittances.search(filter, page, size, Viewers.from(jwt));
     }
@@ -174,6 +175,14 @@ class RemittanceController {
         return remittances.reportIncident(id, request.reason(), request.note(), Viewers.from(jwt));
     }
 
+    @PostMapping("/remittances/{id}/void")
+    @PreAuthorize("hasAuthority('remittances:void')")
+    @Operation(summary = "Void a remittance, whatever its status: it stops counting and the cash it moved is reversed")
+    RemittanceView voidRemittance(@PathVariable UUID id, @Valid @RequestBody VoidRequest request,
+                                  @AuthenticationPrincipal Jwt jwt) {
+        return remittances.voidRemittance(id, request.reason(), Viewers.from(jwt));
+    }
+
     @PostMapping("/remittances/{id}/review/resolve")
     @PreAuthorize("hasAuthority('remittances:review')")
     @Operation(summary = "Resolve a remittance flagged for review after a sync from the mobile app; the note stays in the history")
@@ -207,7 +216,10 @@ class RemittanceController {
                                 @Size(max = 1000) String notes) {
     }
 
-    record AssignRequest(@NotNull UUID courierId, @Size(max = 1000) String note) {
+    record VoidRequest(@NotBlank @Size(max = 1000) String reason) {
+    }
+
+        record AssignRequest(@NotNull UUID courierId, @Size(max = 1000) String note) {
     }
 
     record NoteRequest(@Size(max = 1000) String note) {
