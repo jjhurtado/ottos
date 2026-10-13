@@ -208,6 +208,11 @@ Ideas ya habladas, sin compromiso de fecha; se ordenan al planificar cada fase.
 - Cierre de caja diario, conciliación, prueba de entrega con foto o firma, devoluciones (Fase 3).
 - Límites acumulados por cliente, según la revisión legal.
 - Informes adicionales (por día, por repartidor) y KPIs (Fase 4).
+- **Aviso de beneficiarios duplicados al importar.** Hoy un beneficiario ya existe solo si coinciden nombre, teléfono,
+  calle, número y municipio; con la dirección escrita distinto se crea otro sin avisar (pasó en producción el
+  2026-10-13 con "Daisy Aranda", y la importación de remesas antiguas lo detectó como `AMBIGUOUS_BENEFICIARY`).
+  Propuesta: que la importación marque como aviso los que comparten nombre y teléfono con uno existente, para revisarlos
+  antes de crear.
 - **Por decidir: remesas sin cliente.** Hoy toda remesa exige un cliente (`customerId` obligatorio en la API y en la
   base). Opciones: usar un cliente comodín ("Cliente sin identificar"), que funciona ya sin cambios, o hacer el cliente
   opcional (migración, API, vistas, estadísticas y formulario). Planteado el 2026-10-13; se decide cuando haya un caso
