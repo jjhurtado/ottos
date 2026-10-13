@@ -5,6 +5,8 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+## [1.0.0-rc.2] - 2026-10-13
+
 ### Añadido
 - `GET /api/v1/app/version?platform=ANDROID|IOS` (público): último build, build mínimo y enlace de descarga de la app
   móvil, para avisar de que hay versión nueva u obligar a actualizar. Las versiones se publican solo por migración
