@@ -142,7 +142,7 @@ class SyncTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.results[0].status").value("ALREADY_APPLIED"))
                 .andExpect(jsonPath("$.results[0].remittance.status").value("DELIVERED"));
         mvc.perform(get("/api/v1/cash/remittances/{id}/movements", id).header("Authorization", bearer(adminToken)))
-                .andExpect(jsonPath("$", hasSize(2)));
+                .andExpect(jsonPath("$", hasSize(1)));
     }
 
     @Test

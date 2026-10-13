@@ -34,8 +34,12 @@ para incluir la caja del repartidor en la descarga de la app móvil.
   y nunca se guardan.
 - **Cuentas:** `BUSINESS` (la caja del negocio, una por moneda; una sola sucursal en 1.0), `COURIER` (una por
   repartidor y moneda, puede quedar en negativo) y `EXTERNAL` (el mundo exterior).
+- **La caja del negocio es el efectivo disponible en Cuba para entregar**, no lo que se cobra (decisión del usuario,
+  2026-10-13). Los remitentes pagan fuera del país, así que registrar una remesa no mueve ninguna caja; lo cobrado se
+  ve en los informes, calculado desde las remesas. La caja del negocio sube con entradas (`BUSINESS_DEPOSIT`) y con lo
+  que devuelven los repartidores (`COURIER_RETURN`, incluido lo recogido), y baja con fondeos (`COURIER_FUNDING`) y
+  retiradas (`BUSINESS_WITHDRAWAL`). `REMITTANCE_PAYMENT` ya no se crea; queda solo en movimientos anteriores.
 - **Movimientos automáticos** (en la misma transacción que la remesa):
-  - registrar una entrega → `REMITTANCE_PAYMENT`: el total cobrado entra en la caja del negocio;
   - completar una entrega → `DELIVERY_PAYOUT`: el monto a entregar sale de la caja del repartidor;
   - completar una recogida → `PICKUP_COLLECTION`: los USD recogidos entran en la caja del repartidor.
 - La primera cuenta de un repartidor se crea al vuelo y sin colisiones (`INSERT … ON CONFLICT DO NOTHING`).

@@ -13,16 +13,6 @@ public final class RemittanceEvents {
     }
 
     /**
-     * A remittance was registered.
-     *
-     * @param amountCharged what the sender paid when registering it (amount + fee); zero for pickups,
-     *                      which are paid through the courier
-     */
-    public record RemittanceRegistered(UUID remittanceId, String code, RemittanceType type, String currency,
-                                       BigDecimal amountCharged, UUID actorId, Instant occurredAt) {
-    }
-
-    /**
      * A remittance reached a final status: the courier handed over (DELIVERY) or collected (PICKUP) the cash.
      *
      * @param cashAmount   amount that changed hands

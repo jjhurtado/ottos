@@ -101,6 +101,9 @@ Cada módulo tiene su documento en [docs/modules](docs/modules/README.md); lo ac
 
 **Dinero y tasas**
 
+- **La caja del negocio es el efectivo disponible en Cuba para entregar**, no lo cobrado: los remitentes pagan fuera
+  del país. Sube con entradas de efectivo y con lo que devuelven los repartidores (incluidas las recogidas) y baja con
+  fondeos y retiradas. Lo cobrado y las comisiones se ven en el informe mensual.
 - El negocio trabaja en **USD**: todo se cobra en USD. Si hay que entregar en CUP, el repartidor cambia los USD durante
   el viaje a la tasa que consigue y lo registra; un cambio que se aleja más del 20 % (configurable) de la tasa
   configurada se guarda igual pero queda marcado para revisión.

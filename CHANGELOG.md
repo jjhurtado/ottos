@@ -14,11 +14,15 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
   426 `APP_UPDATE_REQUIRED` (con `minimumBuild`, `latestBuild`, `latestVersion`, `downloadUrl`). Login, refresh,
   logout y `POST /sync/actions` siguen permitidos para vaciar la cola offline. Sin las cabeceras no se comprueba nada.
 - `POST /api/v1/remittances/import` (permiso `customers:import`, ADMIN): importa remesas antiguas como entregadas en su
-  fecha real, en USD, sin repartidor y con un cliente comodín; registra el cobro en la caja del negocio en esa fecha,
-  no mueve ninguna caja de mensajero y cada lote queda en la auditoría (`HISTORICAL_REMITTANCES_IMPORTED`). Códigos
+  fecha real, en USD, sin repartidor y con un cliente comodín; no mueve ninguna caja y cada lote queda en la auditoría
+  (`HISTORICAL_REMITTANCES_IMPORTED`). Códigos
   nuevos: `BENEFICIARY_NOT_FOUND`, `AMBIGUOUS_BENEFICIARY` ([contrato](docs/contracts/historical-import.md)).
 
 ### Cambiado
+- Caja del negocio: registrar una remesa ya no crea el movimiento `REMITTANCE_PAYMENT`. La caja del negocio es el
+  efectivo disponible en Cuba: sube con entradas y con lo que devuelven los repartidores (incluido lo recogido) y baja
+  con fondeos y retiradas. Lo cobrado a los remitentes, que pagan fuera, se ve en el informe mensual. Los
+  `REMITTANCE_PAYMENT` ya registrados se quedan como están.
 - Base de datos: `V1__baseline.sql` queda congelada desde que hay producción. Los cambios de esquema llegan en
   migraciones nuevas (`V2__app_releases.sql`), que staging y producción aplican solos al desplegar, sin recrear la base.
 - Git Flow: `main` (producción) solo recibe ramas `release/` y `hotfix/` con su tag; las features van a `develop`
