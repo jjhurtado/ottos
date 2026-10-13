@@ -138,7 +138,7 @@ class BeneficiaryController {
                               @Size(max = 30) String houseNumber,
                               @Size(max = 150) String betweenStreets,
                               @Size(max = 100) String neighborhood,
-                              @NotBlank @Size(max = 4) String municipalityCode,
+                              @NotBlank @Size(max = 20) String municipalityCode,
                               @Size(max = 255) String reference,
                               @Size(max = 50) String documentNumber,
                               @Size(max = 1000) String notes) {

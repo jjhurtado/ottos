@@ -64,7 +64,7 @@ class HistoricalImportController {
     }
 
     record HistoricalRequest(@Size(max = 100) String ref, @NotNull RemittanceType type, @NotNull UUID customerId, @NotNull UUID beneficiaryId,
-                             @NotNull LocalDateTime occurredAt, @Pattern(regexp = "USD|CUP") String targetCurrency,
+                             @NotNull LocalDateTime occurredAt, @Pattern(regexp = "[A-Z]{3}") String targetCurrency,
                              @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal amount,
                              @NotNull @DecimalMin("0") @Digits(integer = 15, fraction = 2) BigDecimal fee,
                              @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate,

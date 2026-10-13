@@ -39,7 +39,7 @@ public class Beneficiary {
     @Column(length = 100)
     private String neighborhood;
 
-    @Column(name = "municipality_code", nullable = false, length = 4)
+    @Column(name = "municipality_code", nullable = false, length = 20)
     private String municipalityCode;
 
     @Column

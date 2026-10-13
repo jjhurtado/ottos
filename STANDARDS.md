@@ -260,6 +260,13 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
   partir de todas las migraciones estructurales hasta la 1.0.0-rc.3, y staging y producción se recrearon desde cero
   (aún sin clientes reales). **Desde entonces `V1` está congelada para siempre:** una migración aplicada no se edita
   nunca y cada cambio estructural va en una migración nueva (`V2__…`), que staging y producción aplican solos.
+- **Ningún dato de un lugar, una moneda o un negocio concreto en la V1 ni en el código.** La V1 solo lleva la
+  estructura y el catálogo que el código necesita (permisos, rol ADMIN, flujo de estados, ajustes neutros). Lo propio
+  de cada instalación (moneda del negocio, regla de teléfonos, zonas, corredores, tasas y comisiones iniciales, roles
+  Ventas y Repartidor) va en su script de alta, `scripts/data/seed/<instalación>.sql` (hoy `cuba-la-habana.sql`), que
+  infraestructura ejecuta una vez tras crear cada entorno. La zona horaria es `OTTOS_TIMEZONE`, sin valor por defecto.
+  El código lee esos valores de la configuración (`ConfigurationService.businessCurrency()`, `phoneMatchDigits()`,
+  `currencies()`); no escribe "USD", "CUP" ni nada de un país.
 - **Las migraciones son solo para cambios estructurales** (tablas, columnas, restricciones, índices y los permisos que
   el código necesita). Las operaciones sobre datos (registrar una versión de la app, corregir filas) van en un script
   de `scripts/data/`, idempotente, que infraestructura ejecuta en cada entorno con una copia antes (regla del usuario,

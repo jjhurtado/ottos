@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -14,12 +15,6 @@ import java.util.UUID;
  */
 public interface ConfigurationService {
 
-    /**
-     * The business works in USD: every remittance is charged in it, the minimum amount is in it, couriers exchange to
-     * and from it and the reports are in it.
-     */
-    String BUSINESS_CURRENCY = "USD";
-
     /** Everything at once, for the configuration screen. */
     ConfigurationView get();
 
@@ -29,7 +24,19 @@ public interface ConfigurationService {
     SettingsView updateSettings(BigDecimal minimumAmount, Integer defaultDeliveryDays,
                                 BigDecimal exchangeRateTolerancePercent, UUID actorId);
 
-    /** Smallest amount a remittance can send, in {@link #BUSINESS_CURRENCY}; zero means no minimum. */
+    /**
+     * The currency the business charges in and keeps its accounts in (USD in Cuba): the minimum amount and the reports
+     * are in it, and couriers exchange to and from it. Set by the installation's setup script, never through the API.
+     */
+    String businessCurrency();
+
+    /** Trailing digits that identify a phone when matching old records (8 in Cuba). Set by the setup script. */
+    int phoneMatchDigits();
+
+    /** Currencies of the active corridors: the ones the business handles. */
+    Set<String> currencies();
+
+    /** Smallest amount a remittance can send, in the business currency; zero means no minimum. */
     BigDecimal minimumAmount();
 
     /** Days from registration to the expected delivery date of a remittance. */

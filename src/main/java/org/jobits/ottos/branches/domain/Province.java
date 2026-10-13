@@ -12,7 +12,7 @@ import org.hibernate.annotations.Immutable;
 public class Province {
 
     @Id
-    @Column(length = 2)
+    @Column(length = 20)
     private String code;
 
     @Column(nullable = false, length = 100)

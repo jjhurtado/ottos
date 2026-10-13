@@ -15,7 +15,7 @@ import org.hibernate.annotations.Immutable;
 public class Municipality {
 
     @Id
-    @Column(length = 4)
+    @Column(length = 20)
     private String code;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
