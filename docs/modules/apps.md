@@ -28,15 +28,16 @@ por debajo del mínimo, salvo login, refresh, logout, `POST /sync/actions` y la 
 
 ## Reglas
 
-- **Solo se publica por migración.** No hay endpoint para registrar versiones: una credencial robada podría anunciar
-  una "actualización obligatoria" falsa a todos los clientes o bloquearlos a todos.
+- **Solo se publica con un script de datos** (`scripts/data/app-releases/`), que ejecuta infraestructura. No hay
+  endpoint para registrar versiones: una credencial robada podría anunciar una "actualización obligatoria" falsa a
+  todos los clientes o bloquearlos a todos.
 - El enlace de descarga no se guarda; se construye con `ottos.apps.android-download-url` (con `{version}`) y
   `ottos.apps.ios-download-url`, así que solo puede apuntar a la dirección configurada.
 - Último build = el más alto; mínimo = el más alto obligatorio (0 si ninguno).
-- Las versiones se leen una vez y se guardan en memoria: solo cambian con una migración, es decir, con un despliegue
-  y un reinicio. El bloqueo no consulta la base en cada petición.
+- Las versiones se guardan en memoria y se releen como mucho una vez por minuto: el bloqueo no consulta la base en
+  cada petición y una versión nueva se ve en un minuto sin reiniciar.
 
 ## Dónde tocar
 
-- Publicar una versión: una migración nueva con su `INSERT`.
+- Publicar una versión: un script en `scripts/data/app-releases/` con su `INSERT`.
 - Qué rutas se permiten a un build viejo: `AppBuildFilter.ALWAYS_ALLOWED`.

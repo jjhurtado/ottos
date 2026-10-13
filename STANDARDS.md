@@ -255,6 +255,10 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
   porque ningún entorno tenía datos reales. **Desde el 2026-10-12, con producción en marcha, `V1` está congelada:**
   una migración aplicada no se edita nunca y cada cambio de esquema va en una migración nueva (`V2__app_releases.sql`,
   `V3__…`), que staging y producción aplican solos al desplegar, sin recrear la base.
+- **Las migraciones son solo para cambios estructurales** (tablas, columnas, restricciones, índices y los permisos que
+  el código necesita). Las operaciones sobre datos (registrar una versión de la app, corregir filas) van en un script
+  de `scripts/data/`, idempotente, que infraestructura ejecuta en cada entorno con una copia antes (regla del usuario,
+  2026-10-13).
 - Dinero siempre en `BigDecimal`; las tasas y comisiones nunca se editan, se inserta una fila nueva.
 - Concurrencia: `@Version` en entidades que se modifican desde varias peticiones.
 
