@@ -17,6 +17,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
+import java.util.stream.Collectors;
+import java.util.TreeSet;
+import java.util.Set;
 import java.util.UUID;
 
 /** Implementation of {@link ConfigurationService}. */
@@ -51,7 +55,7 @@ class ConfigurationServiceImpl implements ConfigurationService {
     @Override
     @Transactional(readOnly = true)
     public SettingsView settings() {
-        return new SettingsView(minimumAmount(), BUSINESS_CURRENCY, defaultDeliveryDays(),
+        return new SettingsView(minimumAmount(), businessCurrency(), defaultDeliveryDays(),
                 exchangeRateTolerancePercent());
     }
 
@@ -71,6 +75,27 @@ class ConfigurationServiceImpl implements ConfigurationService {
                     .change(exchangeRateTolerancePercent.setScale(2).toPlainString(), now, actorId);
         }
         return settings();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String businessCurrency() {
+        return setting(Setting.BUSINESS_CURRENCY).getValue().trim().toUpperCase();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int phoneMatchDigits() {
+        return Integer.parseInt(setting(Setting.PHONE_MATCH_DIGITS).getValue().trim());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> currencies() {
+        return corridors.findAll().stream()
+                .filter(Corridor::isActive)
+                .flatMap(c -> Stream.of(c.getSourceCurrency(), c.getTargetCurrency()))
+                .collect(Collectors.toCollection(TreeSet::new));
     }
 
     @Override
@@ -165,7 +190,8 @@ class ConfigurationServiceImpl implements ConfigurationService {
 
     private Setting setting(String key) {
         return settings.findById(key)
-                .orElseThrow(() -> new IllegalStateException("Setting " + key + " missing; check the Flyway migrations"));
+                .orElseThrow(() -> new IllegalStateException(
+                        "Setting " + key + " missing: run the installation's setup script (scripts/data/seed)"));
     }
 
     private Corridor find(String code) {

@@ -12,7 +12,7 @@ import java.io.Serializable;
 /** An allowed move between two statuses and the permission it requires. */
 @Entity
 @Immutable
-@Table(name = "remittance_transitions")
+@Table(name = "remittance_transitions", schema = "remittances")
 public class RemittanceTransition {
 
     @EmbeddedId

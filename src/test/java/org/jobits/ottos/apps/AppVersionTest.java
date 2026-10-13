@@ -44,7 +44,7 @@ class AppVersionTest extends ApiTestSupport {
 
     @Test
     void aPlatformWithoutReleasesAsksForNothing() throws Exception {
-        jdbc.update("DELETE FROM app_releases WHERE platform = 'IOS'");
+        jdbc.update("DELETE FROM apps.app_releases WHERE platform = 'IOS'");
         appVersions.reload();
 
         mvc.perform(get("/api/v1/app/version").param("platform", "IOS"))
@@ -80,7 +80,7 @@ class AppVersionTest extends ApiTestSupport {
 
     private void release(String platform, int build, String version, boolean mandatory) {
         jdbc.update("""
-                INSERT INTO app_releases (id, platform, build, version_name, mandatory, notes, released_at)
+                INSERT INTO apps.app_releases (id, platform, build, version_name, mandatory, notes, released_at)
                 VALUES (gen_random_uuid(), ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
                 platform, build, version, mandatory, "Notes of " + version);
     }

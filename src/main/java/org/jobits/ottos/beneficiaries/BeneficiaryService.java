@@ -27,8 +27,9 @@ public interface BeneficiaryService {
     BeneficiaryPage page(String text, int page, int size);
 
     /**
-     * Beneficiaries (active or not) whose phone ends with the same last 8 digits as this one, however it is written
-     * ("56733312", "+53 5 4752090"): Cuban numbers are 8 digits after the country code. For matching old records.
+     * Beneficiaries (active or not) whose phone ends with the same last digits as this one, however it is written
+     * ("56733312", "+53 5 4752090"); how many digits is the installation's phone_match_digits setting (8 in Cuba).
+     * For matching old records.
      */
     List<BeneficiaryInfo> findByPhone(String phone);
 

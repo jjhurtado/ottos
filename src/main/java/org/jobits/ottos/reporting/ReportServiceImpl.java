@@ -1,5 +1,6 @@
 package org.jobits.ottos.reporting;
 
+import org.jobits.ottos.configuration.ConfigurationService;
 import org.jobits.ottos.remittances.RemittanceService;
 import org.jobits.ottos.remittances.SalesSummary;
 import org.springframework.stereotype.Service;
@@ -14,10 +15,12 @@ import java.time.ZoneId;
 class ReportServiceImpl implements ReportService {
 
     private final RemittanceService remittances;
+    private final ConfigurationService configuration;
     private final Clock clock;
 
-    ReportServiceImpl(RemittanceService remittances, Clock clock) {
+    ReportServiceImpl(RemittanceService remittances, ConfigurationService configuration, Clock clock) {
         this.remittances = remittances;
+        this.configuration = configuration;
         this.clock = clock;
     }
 
@@ -28,7 +31,7 @@ class ReportServiceImpl implements ReportService {
         Instant to = month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant();
         SalesSummary s = remittances.salesSummary(from, to);
         return new MonthlyReport(month.toString(), month.atDay(1), month.atEndOfMonth(), clock.instant(),
-                s.remittances(), s.collected(), s.fees(), s.deliveredUsd(), s.difference(), s.roundingMargin(), s.pickups(), s.delivered(),
-                s.byCurrency(), s.byType());
+                configuration.businessCurrency(), s.remittances(), s.collected(), s.fees(), s.deliveredCurrency(),
+                s.difference(), s.roundingMargin(), s.pickups(), s.delivered(), s.byCurrency(), s.byType());
     }
 }

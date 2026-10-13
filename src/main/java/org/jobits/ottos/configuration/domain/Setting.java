@@ -10,10 +10,14 @@ import java.util.UUID;
 
 /** One configurable value of the business, stored as text and read through a typed accessor. */
 @Entity
-@Table(name = "settings")
+@Table(name = "settings", schema = "configuration")
 public class Setting {
 
-    /** Smallest amount a remittance can send, in USD. 0 means no minimum. */
+    /** The currency the business charges in and keeps its accounts in; set by the installation's setup script. */
+    public static final String BUSINESS_CURRENCY = "business_currency";
+    /** Trailing digits that identify a phone when matching old records; set by the installation's setup script. */
+    public static final String PHONE_MATCH_DIGITS = "phone_match_digits";
+    /** Smallest amount a remittance can send, in the business currency. 0 means no minimum. */
     public static final String MINIMUM_AMOUNT = "minimum_amount";
     /** Days from registration to the expected delivery date. */
     public static final String DEFAULT_DELIVERY_DAYS = "default_delivery_days";

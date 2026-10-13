@@ -25,7 +25,7 @@ los clientes que les envían. Un beneficiario puede estar vinculado a varios cli
 
 ## Datos
 
-`beneficiaries`, `customer_beneficiaries` (`V1__baseline.sql`, sección *beneficiaries*).
+`beneficiaries`, `customer_beneficiaries` (esquema `beneficiaries`, `V1__baseline.sql`, sección *beneficiaries*).
 
 ## Reglas
 

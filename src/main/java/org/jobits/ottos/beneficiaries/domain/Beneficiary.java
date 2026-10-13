@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "beneficiaries")
+@Table(name = "beneficiaries", schema = "beneficiaries")
 public class Beneficiary {
 
     @Id
@@ -39,7 +39,7 @@ public class Beneficiary {
     @Column(length = 100)
     private String neighborhood;
 
-    @Column(name = "municipality_code", nullable = false, length = 4)
+    @Column(name = "municipality_code", nullable = false, length = 20)
     private String municipalityCode;
 
     @Column

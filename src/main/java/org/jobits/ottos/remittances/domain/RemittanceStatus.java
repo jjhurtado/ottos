@@ -9,7 +9,7 @@ import org.hibernate.annotations.Immutable;
 /** A step of the workflow. Defined in the database; the code relies only on its flags. */
 @Entity
 @Immutable
-@Table(name = "remittance_statuses")
+@Table(name = "remittance_statuses", schema = "remittances")
 public class RemittanceStatus {
 
     @Id

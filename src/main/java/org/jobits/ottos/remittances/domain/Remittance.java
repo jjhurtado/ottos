@@ -25,7 +25,7 @@ import java.util.UUID;
  * so later changes to rates, fees or the beneficiary never alter it.
  */
 @Entity
-@Table(name = "remittances")
+@Table(name = "remittances", schema = "remittances")
 public class Remittance {
 
     @Id
@@ -60,7 +60,7 @@ public class Remittance {
     @Column(name = "beneficiary_address", nullable = false, length = 500)
     private String beneficiaryAddress;
 
-    @Column(name = "beneficiary_municipality_code", nullable = false, length = 4)
+    @Column(name = "beneficiary_municipality_code", nullable = false, length = 20)
     private String beneficiaryMunicipalityCode;
 
     @Column(name = "beneficiary_reference")

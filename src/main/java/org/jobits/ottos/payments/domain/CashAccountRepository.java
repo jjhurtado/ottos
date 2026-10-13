@@ -20,7 +20,7 @@ public interface CashAccountRepository extends JpaRepository<CashAccount, UUID> 
      */
     @Modifying
     @Query(value = """
-            INSERT INTO cash_accounts (id, account_key, type, owner_id, currency, created_at)
+            INSERT INTO payments.cash_accounts (id, account_key, type, owner_id, currency, created_at)
             VALUES (:id, :key, :type, :ownerId, :currency, :createdAt)
             ON CONFLICT DO NOTHING""", nativeQuery = true)
     void insertIfAbsent(UUID id, String key, String type, UUID ownerId, String currency, Instant createdAt);

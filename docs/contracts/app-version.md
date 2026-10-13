@@ -1,9 +1,9 @@
 # Contrato: aviso y bloqueo de versiones de la app móvil
 
-Estado: **implementado en develop** (2026-10-12; migración `V2__app_releases.sql`, módulo `apps`). Decisiones del
-usuario: la app Android se distribuye como APK directo y la de iOS por TestFlight; las versiones viejas se bloquean
-también en el servidor; las versiones las registra el backend por migración, nunca un usuario o un script con
-credenciales.
+Estado: **en producción desde 1.0.0-rc.2** (tabla `apps.app_releases` en `V1__baseline.sql`, módulo `apps`). Decisiones del
+usuario: Android se distribuye por Play Store (antes APK directo) e iOS por TestFlight; las versiones viejas se
+bloquean también en el servidor; las versiones las registra el backend con un script de datos que ejecuta
+infraestructura, nunca un usuario o un script con credenciales de la API.
 
 ## Qué sabe el backend
 
@@ -68,16 +68,20 @@ y la app muestra la pantalla de actualizar.
 
 ## 3. Publicar una versión
 
-Lo hace el backend, no la app: una migración nueva con su fila, por ejemplo
+Lo hace el backend, no la app, con un **script de datos** (`scripts/data/app-releases/AAAAMMDD-<plataforma>-<versión>.sql`)
+que inserta su fila:
 
 ```sql
-INSERT INTO app_releases (id, platform, build, version_name, mandatory, notes, released_at)
-VALUES (gen_random_uuid(), 'ANDROID', 14, '1.0.0-rc.2', TRUE, 'Arreglo de la pantalla de inicio', CURRENT_TIMESTAMP);
+INSERT INTO apps.app_releases (id, platform, build, version_name, mandatory, notes, released_at)
+SELECT gen_random_uuid(), 'IOS', 5, '1.0.0-rc.3', FALSE, 'Notas…', CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM apps.app_releases WHERE platform = 'IOS' AND build = 5);
 ```
 
-El frontend avisa al backend con plataforma, build, nombre de versión, si es obligatoria y las notas; la migración
-pasa por develop y staging y llega a producción con una release del backend. Una versión es obligatoria cuando las
-anteriores ya no funcionan bien con el backend (por ejemplo, un cambio del contrato).
+El frontend avisa al backend con plataforma, build, nombre de versión, si es obligatoria y las notas; el script entra
+por una rama a `develop` y lo ejecuta infraestructura en staging y en producción (con la orden del usuario). El
+backend lo recoge en como mucho un minuto, sin reiniciar. No hay endpoint ni credencial para publicar versiones.
+Una versión es obligatoria cuando las anteriores ya no funcionan bien con el backend (por ejemplo, un cambio del
+contrato). La primera versión (Android 1.0.0-rc.3) está en `scripts/data/app-releases/20261013-android-1.0.0-rc.3.sql`.
 
 ## Códigos nuevos
 

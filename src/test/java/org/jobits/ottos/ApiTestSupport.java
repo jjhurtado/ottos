@@ -25,6 +25,9 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,27 +46,27 @@ public abstract class ApiTestSupport {
     protected static final String PASSWORD = "test-password-123";
 
     private static final List<String> RESET = List.of(
-            "DELETE FROM app_releases",
-            "DELETE FROM cash_movements",
-            "DELETE FROM cash_exchanges",
-            "DELETE FROM cash_accounts WHERE account_key NOT IN ('BUSINESS:USD', 'BUSINESS:CUP', 'EXTERNAL:USD', 'EXTERNAL:CUP')",
-            "DELETE FROM audit_log",
-            "DELETE FROM synced_actions",
-            "DELETE FROM remittance_events",
-            "DELETE FROM remittances",
-            "DELETE FROM customer_beneficiaries",
-            "DELETE FROM beneficiaries",
-            "DELETE FROM customers",
-            "DELETE FROM refresh_tokens",
-            "DELETE FROM user_roles",
-            "DELETE FROM users",
-            "DELETE FROM role_permissions WHERE role_id IN (SELECT id FROM roles WHERE code NOT IN ('ADMIN', 'SALES', 'DELIVERY'))",
-            "DELETE FROM roles WHERE code NOT IN ('ADMIN', 'SALES', 'DELIVERY')",
-            "DELETE FROM exchange_rates WHERE id NOT IN ('00000000-0000-0000-0001-000000000001', '00000000-0000-0000-0001-000000000002', '00000000-0000-0000-0001-000000000003')",
-            "DELETE FROM fee_rules WHERE id NOT IN ('00000000-0000-0000-0002-000000000001', '00000000-0000-0000-0002-000000000002', '00000000-0000-0000-0002-000000000003', '00000000-0000-0000-0002-000000000004')",
-            "UPDATE settings SET setting_value = '0', updated_at = NULL, updated_by = NULL WHERE setting_key = 'minimum_amount'",
-            "UPDATE settings SET setting_value = '2', updated_at = NULL, updated_by = NULL WHERE setting_key = 'default_delivery_days'",
-            "UPDATE settings SET setting_value = '20', updated_at = NULL, updated_by = NULL WHERE setting_key = 'exchange_rate_tolerance_percent'");
+            "DELETE FROM apps.app_releases",
+            "DELETE FROM payments.cash_movements",
+            "DELETE FROM payments.cash_exchanges",
+            "DELETE FROM payments.cash_accounts",
+            "DELETE FROM reporting.audit_log",
+            "DELETE FROM remittances.synced_actions",
+            "DELETE FROM remittances.remittance_events",
+            "DELETE FROM remittances.remittances",
+            "DELETE FROM beneficiaries.customer_beneficiaries",
+            "DELETE FROM beneficiaries.beneficiaries",
+            "DELETE FROM customers.customers",
+            "DELETE FROM identity.refresh_tokens",
+            "DELETE FROM identity.user_roles",
+            "DELETE FROM identity.users",
+            "DELETE FROM identity.role_permissions WHERE role_id IN (SELECT id FROM identity.roles WHERE code NOT IN ('ADMIN', 'SALES', 'DELIVERY'))",
+            "DELETE FROM identity.roles WHERE code NOT IN ('ADMIN', 'SALES', 'DELIVERY')",
+            "DELETE FROM configuration.exchange_rates WHERE id NOT IN ('00000000-0000-0000-0001-000000000001', '00000000-0000-0000-0001-000000000002', '00000000-0000-0000-0001-000000000003')",
+            "DELETE FROM configuration.fee_rules WHERE id NOT IN ('00000000-0000-0000-0002-000000000001', '00000000-0000-0000-0002-000000000002', '00000000-0000-0000-0002-000000000003', '00000000-0000-0000-0002-000000000004')",
+            "UPDATE configuration.settings SET setting_value = '0', updated_at = NULL, updated_by = NULL WHERE setting_key = 'minimum_amount'",
+            "UPDATE configuration.settings SET setting_value = '2', updated_at = NULL, updated_by = NULL WHERE setting_key = 'default_delivery_days'",
+            "UPDATE configuration.settings SET setting_value = '20', updated_at = NULL, updated_by = NULL WHERE setting_key = 'exchange_rate_tolerance_percent'");
 
     @Autowired
     protected MockMvc mvc;
@@ -95,8 +98,13 @@ public abstract class ApiTestSupport {
     @Autowired
     protected AppVersionServiceImpl appVersions;
 
+    /** The installation the tests run as: the current business's setup script (Cuba, La Habana, USD). */
+    private static final Path SETUP_SCRIPT = Path.of("scripts/data/seed/cuba-la-habana.sql");
+
     @BeforeEach
-    void resetDatabaseAndClock() {
+    void resetDatabaseAndClock() throws IOException {
+        // Idempotent: the first test sets the installation up, the rest find it done
+        jdbc.execute(Files.readString(SETUP_SCRIPT));
         RESET.forEach(jdbc::update);
         clock.reset();
         loginAttempts.clear();

@@ -31,7 +31,11 @@ Regla del proyecto (`STANDARDS.md` › Configuración): los demás módulos leen
 
 ## Datos
 
-`settings`, `corridors`, `exchange_rates`, `fee_rules` (`V1__baseline.sql`, sección *configuration*).
+`settings`, `corridors`, `exchange_rates`, `fee_rules` (esquema `configuration`, `V1__baseline.sql`, sección *configuration*).
+La V1 solo siembra los ajustes neutros (monto mínimo 0, 2 días, tolerancia 20 %). La moneda del negocio
+(`business_currency`), la regla de teléfonos (`phone_match_digits`), los corredores y sus tasas y comisiones iniciales
+vienen del script de alta de la instalación (`scripts/data/seed/`). `businessCurrency()` y `phoneMatchDigits()` no se
+cambian por la API; `currencies()` son las monedas de los corredores activos.
 
 ## Reglas
 

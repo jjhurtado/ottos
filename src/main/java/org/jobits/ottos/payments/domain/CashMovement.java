@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /** Money moving from one account to another. Never edited; a mistake is fixed with an opposite movement. */
 @Entity
-@Table(name = "cash_movements")
+@Table(name = "cash_movements", schema = "payments")
 public class CashMovement {
 
     @Id

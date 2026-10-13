@@ -10,7 +10,7 @@ import java.util.UUID;
 
 /** An action from the mobile app's offline queue that was applied; its id makes resending it harmless. */
 @Entity
-@Table(name = "synced_actions")
+@Table(name = "synced_actions", schema = "remittances")
 public class SyncedAction {
 
     @Id

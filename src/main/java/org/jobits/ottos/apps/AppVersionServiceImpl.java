@@ -5,6 +5,9 @@ import org.jobits.ottos.apps.domain.AppReleaseRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
@@ -12,21 +15,27 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Implementation of {@link AppVersionService}. Releases only change through migrations, that is with a deploy and a
- * restart, so they are read once and kept in memory: the minimum build is checked on every mobile request without
- * touching the database. {@link #reload()} rereads them (tests insert releases directly).
+ * Implementation of {@link AppVersionService}. Releases are rows that a data script inserts now and then
+ * (scripts/data/app-releases), so they are kept in memory and reread at most once a minute: the minimum build is
+ * checked on every mobile request without touching the database each time, and a new release shows within a minute
+ * without a restart. {@link #reload()} rereads them at once (tests insert releases directly).
  */
 @Service
 public class AppVersionServiceImpl implements AppVersionService {
 
+    private static final Duration REFRESH = Duration.ofMinutes(1);
+
     private final AppReleaseRepository releases;
     private final Map<Platform, String> downloadUrls = new EnumMap<>(Platform.class);
+    private final Clock clock;
     private volatile Map<Platform, AppVersionView> current;
+    private volatile Instant loadedAt = Instant.MIN;
 
-    AppVersionServiceImpl(AppReleaseRepository releases,
+    AppVersionServiceImpl(AppReleaseRepository releases, Clock clock,
                           @Value("${ottos.apps.android-download-url:}") String androidDownloadUrl,
                           @Value("${ottos.apps.ios-download-url:}") String iosDownloadUrl) {
         this.releases = releases;
+        this.clock = clock;
         downloadUrls.put(Platform.ANDROID, androidDownloadUrl);
         downloadUrls.put(Platform.IOS, iosDownloadUrl);
     }
@@ -48,13 +57,15 @@ public class AppVersionServiceImpl implements AppVersionService {
 
     private Map<Platform, AppVersionView> views() {
         Map<Platform, AppVersionView> views = current;
-        if (views == null) {
+        Instant now = clock.instant();
+        if (views == null || loadedAt.isBefore(now.minus(REFRESH))) {
             List<AppRelease> all = releases.findAll();
             views = new EnumMap<>(Platform.class);
             for (Platform platform : Platform.values()) {
                 views.put(platform, view(platform, all));
             }
             current = views;
+            loadedAt = now;
         }
         return views;
     }

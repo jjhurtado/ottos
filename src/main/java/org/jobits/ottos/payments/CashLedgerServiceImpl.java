@@ -22,8 +22,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.jobits.ottos.configuration.ConfigurationService.BUSINESS_CURRENCY;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -90,7 +88,7 @@ class CashLedgerServiceImpl implements CashLedgerService {
             CashAccount from = accounts.findById(m.getToAccountId()).orElseThrow();
             CashAccount to = accounts.findById(m.getFromAccountId()).orElseThrow();
             record(MovementType.REMITTANCE_VOID_REVERSAL, from, to, m.getAmount(), event.remittanceId(),
-                    "Anulación de " + event.code(), event.actorId(), event.occurredAt());
+                    "Void of " + event.code(), event.actorId(), event.occurredAt());
         }
     }
 
@@ -217,13 +215,13 @@ class CashLedgerServiceImpl implements CashLedgerService {
                                   UUID actionId, boolean late) {
         String fromCurrency = e.fromCurrency() == null ? null : e.fromCurrency().toUpperCase();
         String toCurrency = e.toCurrency() == null ? null : e.toCurrency().toUpperCase();
-        Set<String> handled = accounts.findByTypeOrderByCurrency(AccountType.BUSINESS).stream()
-                .map(CashAccount::getCurrency).collect(Collectors.toSet());
+        Set<String> handled = configuration.currencies();
+        String businessCurrency = configuration.businessCurrency();
         if (fromCurrency == null || toCurrency == null || fromCurrency.equals(toCurrency)
                 || !handled.contains(fromCurrency) || !handled.contains(toCurrency)
-                || !(BUSINESS_CURRENCY.equals(fromCurrency) || BUSINESS_CURRENCY.equals(toCurrency))) {
-            throw ApiException.badRequest("INVALID_CURRENCY",
-                    "Exchange between two different currencies of " + new TreeSet<>(handled) + ", one of them USD");
+                || !(businessCurrency.equals(fromCurrency) || businessCurrency.equals(toCurrency))) {
+            throw ApiException.badRequest("INVALID_CURRENCY", "Exchange between two different currencies of "
+                    + handled + ", one of them " + businessCurrency);
         }
         if (e.fromAmount() == null || e.fromAmount().signum() <= 0 || e.fromAmount().stripTrailingZeros().scale() > 2) {
             throw ApiException.badRequest("INVALID_AMOUNT", "Amount must be positive with at most 2 decimals");
@@ -232,14 +230,14 @@ class CashLedgerServiceImpl implements CashLedgerService {
             throw ApiException.badRequest("INVALID_RATE", "Rate must be positive with at most 6 decimals");
         }
         BigDecimal fromAmount = e.fromAmount().setScale(2, RoundingMode.UNNECESSARY);
-        BigDecimal toAmount = BUSINESS_CURRENCY.equals(fromCurrency)
+        BigDecimal toAmount = businessCurrency.equals(fromCurrency)
                 ? fromAmount.multiply(e.rate()).setScale(2, RoundingMode.HALF_UP)
                 : fromAmount.divide(e.rate(), 2, RoundingMode.HALF_UP);
         if (toAmount.signum() <= 0) {
             throw ApiException.badRequest("INVALID_AMOUNT", "The amount is too small to exchange at that rate");
         }
-        String other = BUSINESS_CURRENCY.equals(fromCurrency) ? toCurrency : fromCurrency;
-        BigDecimal configured = configuration.deliveryRateAt(BUSINESS_CURRENCY, other, occurredAt).orElse(null);
+        String other = businessCurrency.equals(fromCurrency) ? toCurrency : fromCurrency;
+        BigDecimal configured = configuration.deliveryRateAt(businessCurrency, other, occurredAt).orElse(null);
         BigDecimal deviation = configured == null ? null
                 : e.rate().subtract(configured).abs().multiply(HUNDRED).divide(configured, 2, RoundingMode.HALF_UP);
         String note = Texts.blankToNull(e.note());
@@ -327,9 +325,12 @@ class CashLedgerServiceImpl implements CashLedgerService {
         return movements.save(new CashMovement(type, from, to, amount, remittanceId, note, actorId, at));
     }
 
+    /** The business box of a currency it handles (one of the active corridors), created the first time it is used. */
     private CashAccount business(String currency) {
-        return accounts.findByKey(CashAccount.keyOf(AccountType.BUSINESS, null, currency))
-                .orElseThrow(() -> ApiException.badRequest("NO_BUSINESS_CASH", "The business has no " + currency + " cash"));
+        if (!configuration.currencies().contains(currency)) {
+            throw ApiException.badRequest("NO_BUSINESS_CASH", "The business has no " + currency + " cash");
+        }
+        return findOrCreate(AccountType.BUSINESS, null, currency);
     }
 
     private CashAccount external(String currency) {

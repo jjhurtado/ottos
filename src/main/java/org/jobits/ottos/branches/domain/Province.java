@@ -8,11 +8,11 @@ import org.hibernate.annotations.Immutable;
 
 @Entity
 @Immutable
-@Table(name = "provinces")
+@Table(name = "provinces", schema = "branches")
 public class Province {
 
     @Id
-    @Column(length = 2)
+    @Column(length = 20)
     private String code;
 
     @Column(nullable = false, length = 100)

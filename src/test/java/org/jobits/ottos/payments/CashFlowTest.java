@@ -160,7 +160,7 @@ class CashFlowTest extends ApiTestSupport {
         mvc.perform(post("/api/v1/remittances/{id}/deliver", id).header("Authorization", bearer(adminToken)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("REMITTANCE_VOIDED"));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements WHERE remittance_id = ?::uuid",
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM payments.cash_movements WHERE remittance_id = ?::uuid",
                 Integer.class, id)).isZero();
     }
 

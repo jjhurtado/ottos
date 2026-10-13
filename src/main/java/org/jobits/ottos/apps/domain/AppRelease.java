@@ -13,7 +13,7 @@ import java.util.UUID;
 
 /** One published build of the mobile app. Inserted by migrations; never edited. */
 @Entity
-@Table(name = "app_releases")
+@Table(name = "app_releases", schema = "apps")
 public class AppRelease {
 
     @Id

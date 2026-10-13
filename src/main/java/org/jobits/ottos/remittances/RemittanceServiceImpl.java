@@ -123,7 +123,7 @@ class RemittanceServiceImpl implements RemittanceService {
         // Sending to a beneficiary links them to the customer (beneficiaries loaded without a customer get linked here)
         beneficiaries.link(customer.id(), beneficiary.id());
         QuoteService.Quote quote = quotes.quote(ServiceType.valueOf(request.type().name()),
-                ConfigurationService.BUSINESS_CURRENCY, request.targetCurrency(), request.amount(), request.rate(),
+                configuration.businessCurrency(), request.targetCurrency(), request.amount(), request.rate(),
                 request.fee());
 
         Instant now = clock.instant();

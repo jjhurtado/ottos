@@ -36,6 +36,14 @@ Reglas:
 - Una rama, un propósito. Si aparece otro tema, va en otra rama.
 - Antes de fusionar: build y tests en verde (`./gradlew build`) y la rama actualizada con su rama base.
 - Al cerrar una release o un hotfix se crea el tag de la versión en `main` (GitKraken lo hace al terminar el flujo).
+- **Cerrar una `release/` o un `hotfix/`** (como GitKraken, igual que el frontend; regla desde el 2026-10-13):
+  1. `git checkout main && git merge --no-ff release/<versión>` y `git tag -a <versión>`;
+  2. `git checkout develop && git merge --no-ff release/<versión>`: a `develop` vuelve **la rama de la release**,
+     nunca `main` ni su tag;
+  3. borrar la rama y subir `main`, `develop` y el tag.
+
+  Así el historial de `develop` no recibe merges desde `main`. Las releases hasta la `1.0.0-rc.3` se cerraron
+  fusionando el tag en `develop` ("Merge tag … into develop"); el contenido es el mismo y no se reescribe.
 - Las ramas terminadas se borran.
 
 ### Nombres de rama
@@ -128,7 +136,7 @@ interna, refactor sin efecto), no añade entrada. Quien revisa el merge comprueb
    ordenan las entradas acumuladas.
 2. Se añade encima un `## [Unreleased]` nuevo y vacío.
 3. Se sube la versión en `build.gradle` a la misma `<versión>`.
-4. Al terminar la release, `main` recibe el tag `<versión>` y `develop` recibe el merge de vuelta.
+4. Al terminar la release, `main` recibe el tag `<versión>` y `develop` recibe el merge de la rama `release/`.
 
 **Al fusionar un `hotfix/` en `main`:** el hotfix añade directamente su sección `## [<versión de parche>] - <fecha>`
 (por ejemplo `1.0.1`) con sus entradas en `Corregido` o `Seguridad`, debajo de `[Unreleased]`; al volver a `develop`
@@ -251,10 +259,26 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 - Entidades JPA con constructor protegido para JPA, sin setters públicos: el estado cambia con métodos con nombre
   (`assignTo`, `complete`, `postpone`).
 - El esquema solo cambia con migraciones Flyway (`V<n>__<descripcion>.sql`); `ddl-auto: validate`.
-- `V1__baseline.sql` es el esquema de la versión 1.0: las migraciones de las betas y de la rc.1 se fusionaron en ella
-  porque ningún entorno tenía datos reales. **Desde el 2026-10-12, con producción en marcha, `V1` está congelada:**
-  una migración aplicada no se edita nunca y cada cambio de esquema va en una migración nueva (`V2__app_releases.sql`,
-  `V3__…`), que staging y producción aplican solos al desplegar, sin recrear la base.
+- **Un esquema por módulo**, con el nombre del módulo (`identity`, `branches`, `customers`, `beneficiaries`,
+  `configuration`, `remittances`, `payments`, `reporting`, `apps`); `public` solo guarda el historial de Flyway
+  (`SchemaLayoutTest`). Cada entidad declara su esquema (`@Table(name = …, schema = "<módulo>")`) y todo SQL escrito a
+  mano (consultas nativas, migraciones, scripts de datos, tests) pone el esquema delante: `payments.cash_movements`.
+  Las claves foráneas entre esquemas se mantienen: son las dependencias entre módulos.
+- `V1__baseline.sql` es toda la estructura de la base. Se rehízo el 2026-10-13, ya con los esquemas por módulo, a
+  partir de todas las migraciones estructurales hasta la 1.0.0-rc.3, y staging y producción se recrearon desde cero
+  (aún sin clientes reales). **Desde entonces `V1` está congelada para siempre:** una migración aplicada no se edita
+  nunca y cada cambio estructural va en una migración nueva (`V2__…`), que staging y producción aplican solos.
+- **Ningún dato de un lugar, una moneda o un negocio concreto en la V1 ni en el código.** La V1 solo lleva la
+  estructura y el catálogo que el código necesita (permisos, rol ADMIN, flujo de estados, ajustes neutros). Lo propio
+  de cada instalación (moneda del negocio, regla de teléfonos, zonas, corredores, tasas y comisiones iniciales, roles
+  Ventas y Repartidor) va en su script de alta, `scripts/data/seed/<instalación>.sql` (hoy `cuba-la-habana.sql`), que
+  infraestructura ejecuta una vez tras crear cada entorno. La zona horaria es `OTTOS_TIMEZONE`, sin valor por defecto.
+  El código lee esos valores de la configuración (`ConfigurationService.businessCurrency()`, `phoneMatchDigits()`,
+  `currencies()`); no escribe "USD", "CUP" ni nada de un país.
+- **Las migraciones son solo para cambios estructurales** (tablas, columnas, restricciones, índices y los permisos que
+  el código necesita). Las operaciones sobre datos (registrar una versión de la app, corregir filas) van en un script
+  de `scripts/data/`, idempotente, que infraestructura ejecuta en cada entorno con una copia antes (regla del usuario,
+  2026-10-13).
 - Dinero siempre en `BigDecimal`; las tasas y comisiones nunca se editan, se inserta una fila nueva.
 - Concurrencia: `@Version` en entidades que se modifican desde varias peticiones.
 

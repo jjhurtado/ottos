@@ -16,7 +16,7 @@ import java.util.UUID;
  * courier's cash. rate is always units of the other currency per 1 USD. Never edited, except to resolve its review.
  */
 @Entity
-@Table(name = "cash_exchanges")
+@Table(name = "cash_exchanges", schema = "payments")
 public class CashExchange {
 
     @Id

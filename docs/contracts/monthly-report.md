@@ -1,6 +1,7 @@
 # Contrato: informe mensual de ventas
 
-Estado: **cerrado con el frontend e implementado** (2026-10-11; módulo `reporting`, cifras de `remittances`). Decisiones del negocio en
+Estado: **cerrado con el frontend e implementado**; desde 1.0.0-rc.4 `deliveredUsd` se llama `deliveredCurrency` (lo
+entregado convertido a la moneda del negocio) y la respuesta lleva `businessCurrency` (2026-10-11; módulo `reporting`, cifras de `remittances`). Decisiones del negocio en
 [ROADMAP.md › Reglas del negocio decididas en 1.0](../../ROADMAP.md).
 
 El informe más importante para el negocio. El backend devuelve los números en JSON y el panel genera el PDF.
@@ -24,7 +25,7 @@ GET /api/v1/reports/monthly?month=2026-10        permiso reports:read (nuevo; AD
 - **Comisiones / ganancias** (`fees`): suma de comisiones, de entregas **y de recogidas**.
 - **Entregado** (`delivered`): el monto a entregar de cada entrega del mes, **completada o no**, en su moneda (CUP o
   USD). Así la diferencia es coherente con lo cobrado; las pendientes se ven en `remittances.open`.
-- **Entregado en USD** (`deliveredUsd`): cada monto entregado convertido con **la tasa de su propia remesa**
+- **Entregado en USD** (`deliveredCurrency`): cada monto entregado convertido con **la tasa de su propia remesa**
   (`montoAEntregar ÷ tasa`, 2 decimales, mitad hacia arriba, y luego sumado).
 - **Diferencia** (`difference`): `cobrado − entregado en USD` de las entregas. Equivale a las comisiones de las
   entregas más el margen del redondeo a 50 CUP.
@@ -40,17 +41,18 @@ Forma acordada con el frontend:
 ```json
 {
   "month": "2026-10", "from": "2026-10-01", "to": "2026-10-31", "generatedAt": "2026-11-01T13:05:00Z",
+  "businessCurrency": "USD",
   "remittances": { "total": 24, "delivery": 18, "pickup": 6, "completed": 21, "open": 3, "withIncident": 1 },
   "collected": 1980.00,
   "fees": 220.00,
-  "deliveredUsd": 1799.00,
+  "deliveredCurrency": 1799.00,
   "difference": 181.00,
   "roundingMargin": 1.00,
   "pickups": { "remittances": 6, "collected": 30000.00, "fees": 40.00 },
   "delivered": [ { "currency": "CUP", "amount": 737950.00 } ],
   "byCurrency": [
     { "currency": "CUP", "remittances": 18, "sent": 1800.00, "fees": 180.00, "collected": 1980.00,
-      "delivered": 737950.00, "deliveredUsd": 1799.00 }
+      "delivered": 737950.00, "deliveredCurrency": 1799.00 }
   ],
   "byType": [ { "type": "DELIVERY", "remittances": 18, "collected": 1980.00, "fees": 180.00 },
               { "type": "PICKUP", "remittances": 6, "collected": 30000.00, "fees": 40.00 } ]
@@ -59,12 +61,13 @@ Forma acordada con el frontend:
 
 | Campo | Contenido |
 | --- | --- |
+| `businessCurrency` | La moneda del negocio de la instalación (USD en Cuba): todos los importes del informe están en ella salvo `delivered` y `byCurrency[].delivered` |
 | `remittances` | Remesas registradas en el mes: `total`, por tipo (`delivery`, `pickup`), `completed` = completadas hasta el último instante del mes, `open` = el resto, `withIncident` = con una incidencia abierta en el momento de pedir el informe |
-| `collected`, `deliveredUsd`, `difference`, `roundingMargin` | En USD, solo entregas, según las reglas de arriba |
+| `collected`, `deliveredCurrency`, `difference`, `roundingMargin` | En USD, solo entregas, según las reglas de arriba |
 | `fees` | Ganancias en USD: comisiones de entregas y recogidas |
 | `pickups` | Recogidas: `remittances`, `collected` (lo recogido, USD) y `fees` |
 | `delivered` | Monto a entregar de **todas** las entregas del mes (completadas o no), por moneda de entrega, en su moneda |
-| `byCurrency` | Entregas por moneda de entrega: `sent` (montos enviados, USD), `fees`, `collected`, `delivered` (en su moneda) y `deliveredUsd` |
+| `byCurrency` | Entregas por moneda de entrega: `sent` (montos enviados, USD), `fees`, `collected`, `delivered` (en su moneda) y `deliveredCurrency` |
 | `byType` | Por tipo de remesa, en USD; `collected` es monto + comisión en las entregas y lo recogido en las recogidas |
 
 - Todo en USD salvo `delivered` y `byCurrency[].delivered`, que van en su propia moneda.

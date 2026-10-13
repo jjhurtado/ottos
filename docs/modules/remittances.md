@@ -40,7 +40,7 @@ historial y estadísticas.
 ## Datos
 
 `remittances`, `remittance_events`, `remittance_statuses`, `remittance_transitions`, `synced_actions`
-(`V1__baseline.sql`, sección *remittances*).
+(esquema `remittances`, `V1__baseline.sql`, sección *remittances*).
 
 ## Reglas
 

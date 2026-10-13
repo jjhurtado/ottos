@@ -70,9 +70,9 @@ class QuoteServiceImpl implements QuoteService {
                 feeRule.id());
     }
 
-    /** The configured minimum is in USD and applies to every corridor sending USD; zero means no minimum. */
+    /** The configured minimum is in the business currency and applies to corridors sending it; zero means no minimum. */
     private void requireMinimum(BigDecimal amount, String currency) {
-        if (!ConfigurationService.BUSINESS_CURRENCY.equals(currency)) {
+        if (!configuration.businessCurrency().equals(currency)) {
             return;
         }
         BigDecimal minimum = configuration.minimumAmount();

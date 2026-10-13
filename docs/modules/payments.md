@@ -26,7 +26,7 @@ para incluir la caja del repartidor en la descarga de la app móvil.
 
 ## Datos
 
-`cash_accounts`, `cash_movements` y `cash_exchanges` (`V1__baseline.sql`, sección *payments*).
+`cash_accounts`, `cash_movements` y `cash_exchanges` (esquema `payments`, `V1__baseline.sql`, sección *payments*).
 
 ## Reglas
 
@@ -44,7 +44,8 @@ para incluir la caja del repartidor en la descarga de la app móvil.
     revés), así que todas las cajas quedan como si no hubiera ocurrido;
   - completar una entrega → `DELIVERY_PAYOUT`: el monto a entregar sale de la caja del repartidor;
   - completar una recogida → `PICKUP_COLLECTION`: los USD recogidos entran en la caja del repartidor.
-- La primera cuenta de un repartidor se crea al vuelo y sin colisiones (`INSERT … ON CONFLICT DO NOTHING`).
+- La caja del negocio de cada moneda que maneja (las de los corredores activos) se crea al usarla por primera vez;
+  una moneda sin corredor da `NO_BUSINESS_CASH`. La primera cuenta de un repartidor también se crea al vuelo y sin colisiones (`INSERT … ON CONFLICT DO NOTHING`).
 - **Cambio de moneda del repartidor** (contrato: `docs/contracts/courier-exchange.md`): el negocio trabaja en USD y el
   repartidor cambia durante el viaje. Un cambio son dos movimientos dentro de su caja (`COURIER_EXCHANGE_OUT` y
   `COURIER_EXCHANGE_IN`, con el mismo `exchangeId` y la tasa); la caja del negocio no cambia. `rate` es siempre

@@ -11,11 +11,11 @@ import org.hibernate.annotations.Immutable;
 
 @Entity
 @Immutable
-@Table(name = "municipalities")
+@Table(name = "municipalities", schema = "branches")
 public class Municipality {
 
     @Id
-    @Column(length = 4)
+    @Column(length = 20)
     private String code;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
