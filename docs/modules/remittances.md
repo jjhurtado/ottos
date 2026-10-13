@@ -12,8 +12,8 @@ historial y estadísticas.
 
 ## API pública
 
-- `RemittanceType`, `IncidentReason`, `ReviewReason` y los eventos de `RemittanceEvents` (`RemittanceRegistered`,
-  `RemittanceCompleted`), que escucha `payments` para mover la caja en la misma transacción.
+- `RemittanceType`, `IncidentReason`, `ReviewReason` y el evento `RemittanceEvents.RemittanceCompleted`, que escucha
+  `payments` para mover la caja del repartidor en la misma transacción. Registrar una remesa no mueve ninguna caja.
 - `RemittanceService` con `RemittanceView`, `Viewer` y `WorkflowView`, y `salesSummary` (lo usa `reporting`).
 - `RemittanceSyncService` con los tipos de sincronización (`SyncAction`, `SyncOutcome`…), que usa solo `sync`.
 
@@ -54,8 +54,7 @@ historial y estadísticas.
   (`amountToDeliver` no significa nada y la tasa es informativa) y la comisión es ingreso del negocio que nunca pasa por
   la caja del repartidor. Las entregas siempre usan la tasa y la comisión configuradas.
 - **Remesas antiguas** (`HistoricalImportService`): entran entregadas en la fecha del ticket, en USD, sin repartidor,
-  con un cliente comodín; registran su cobro en la caja del negocio en esa fecha y no mueven ninguna caja de
-  mensajero. Cada lote se audita. No hay columna ni marca propia: se reconocen por el cliente comodín y la nota.
+  con un cliente comodín; no mueven ninguna caja. Cada lote se audita. No hay columna ni marca propia: se reconocen por el cliente comodín y la nota.
 - **Asignar:** el repartidor debe estar activo, tener `remittances:deliver` y no ser administrador (la misma regla que
   lista `GET /couriers`).
 - **Completar:** exige repartidor asignado. Los repartidores pueden completar sin PIN (`/deliver`) o con PIN

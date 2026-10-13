@@ -41,7 +41,7 @@ class HistoricalImportTest extends ApiTestSupport {
     }
 
     @Test
-    void anOldTicketBecomesADeliveredRemittanceOnItsDateAndTheBusinessCashRecordsItsPayment() throws Exception {
+    void anOldTicketBecomesADeliveredRemittanceOnItsDateWithoutTouchingAnyCash() throws Exception {
         importRows(true, TICKET).andExpect(jsonPath("$.results[0].status").value("CREATED"))
                 .andExpect(jsonPath("$.results[0].remittanceId").doesNotExist());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM remittances", Integer.class)).isZero();
@@ -69,14 +69,8 @@ class HistoricalImportTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.courierId").doesNotExist())
                 .andExpect(jsonPath("$.createdAt").value("2024-06-03T19:30:47Z"))
                 .andExpect(jsonPath("$.completedAt").value("2024-06-03T19:30:47Z"));
-        // The business was paid then; no courier's cash moved
-        mvc.perform(get("/api/v1/cash/remittances/{id}/movements", id).header("Authorization", bearer(adminToken)))
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].type").value("REMITTANCE_PAYMENT"))
-                .andExpect(jsonPath("$[0].amount").value(220.00))
-                .andExpect(jsonPath("$[0].occurredAt").value("2024-06-03T19:30:47Z"));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_accounts WHERE type = 'COURIER'", Integer.class))
-                .isZero();
+        // Paid abroad and delivered long ago: no cash box moves
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements", Integer.class)).isZero();
         // It shows in its old month and never in Sales' completed feed
         mvc.perform(get("/api/v1/reports/monthly").param("month", "2024-06").header("Authorization", bearer(adminToken)))
                 .andExpect(jsonPath("$.remittances.total").value(1))
@@ -89,7 +83,7 @@ class HistoricalImportTest extends ApiTestSupport {
 
         // Importing the same ticket again changes nothing
         importRows(false, TICKET).andExpect(jsonPath("$.results[0].status").value("EXISTING"));
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM cash_movements", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM remittances", Integer.class)).isEqualTo(1);
     }
 
     @Test

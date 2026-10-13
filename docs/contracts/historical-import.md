@@ -2,8 +2,9 @@
 
 Estado: **implementado en develop** (2026-10-12). Decisiones del usuario: las remesas de los tickets del chat de
 WhatsApp (junio de 2024 en adelante) entran como remesas entregadas en su fecha real, sin cambiar el esquema; todas
-están pagadas; solo las de USD (las de CUP, EUR y MLC las trata el usuario a mano); afectan la caja del negocio, no la
-de ningún mensajero; el endpoint queda permanente y cada uso queda en la auditoría y en la caja.
+están pagadas; solo las de USD (las de CUP, EUR y MLC las trata el usuario a mano); no mueven ninguna caja (la caja del
+negocio es el efectivo en Cuba, no lo cobrado; decisión del 2026-10-13); el endpoint queda permanente y cada uso queda
+en la auditoría.
 
 ## Petición
 
@@ -54,9 +55,8 @@ Máximo 500 filas por petición; cada fila en su propia transacción y un rechaz
   total = monto + comisión. Sin repartidor. PIN aleatorio (nunca se usa). Tasa y regla de comisión vigentes de USD-USD
   solo como referencia. Nota: "Imported from the old records (ref)". Clave de idempotencia `historical:<ref>`.
 - Su historial: un evento `CREATED` en esa fecha.
-- **Caja del negocio:** un cobro (`REMITTANCE_PAYMENT`) por el total, con la fecha del ticket, como cualquier
-  registro. Ninguna caja de mensajero se mueve. Al terminar la importación, el admin ajusta la caja del negocio con
-  una retirada con nota (`POST /cash/business/withdrawals`).
+- **Caja:** ninguna se mueve. Como en cualquier remesa, lo cobrado no entra en la caja del negocio (que es el efectivo
+  en Cuba) y, sin repartidor, ninguna caja de mensajero cambia. No hace falta ningún ajuste después de importar.
 - **Auditoría:** una entrada por lote real (`HISTORICAL_REMITTANCES_IMPORTED`) con el cliente, cuántas filas se crearon,
   existían o se rechazaron y el total cobrado. La vista previa no se audita.
 - No se vincula el beneficiario al cliente comodín.
@@ -69,5 +69,5 @@ completadas a Ventas ni en la caja o las estadísticas de ningún repartidor.
 
 ## Por qué es seguro dejarlo
 
-Usarlo de nuevo no puede pasar desapercibido: cada lote queda en la auditoría con quién lo hizo, y cada remesa mete su
-cobro en la caja del negocio, que dejaría de cuadrar. Solo un ADMIN puede usarlo.
+Usarlo de nuevo no pasa desapercibido: cada lote queda en la auditoría con quién lo hizo, cuántas remesas creó y el
+total cobrado, y las remesas importadas se reconocen por el cliente comodín y la nota. Solo un ADMIN puede usarlo.

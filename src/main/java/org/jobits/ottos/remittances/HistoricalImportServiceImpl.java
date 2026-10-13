@@ -10,7 +10,6 @@ import org.jobits.ottos.configuration.ConfigurationService.FeeRuleView;
 import org.jobits.ottos.configuration.ConfigurationService.RateView;
 import org.jobits.ottos.configuration.ServiceType;
 import org.jobits.ottos.customers.CustomerService;
-import org.jobits.ottos.remittances.RemittanceEvents.RemittanceRegistered;
 import org.jobits.ottos.remittances.domain.Remittance;
 import org.jobits.ottos.remittances.domain.RemittanceEvent;
 import org.jobits.ottos.remittances.domain.RemittanceEventRepository;
@@ -152,9 +151,6 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
                 row.occurredAt().toLocalDate(), actorId);
         remittances.saveAndFlush(r);
         events.save(RemittanceEvent.created(r, actorId, occurredAt));
-        // The business was paid then: the cash records it on that date. No courier, so no courier's cash moves
-        publisher.publishEvent(new RemittanceRegistered(r.getId(), r.getCode(), r.getType(), BUSINESS_CURRENCY, total,
-                actorId, occurredAt));
         return new RowResult(index, ref, RowStatus.CREATED, dryRun ? null : r.getId(), null, null);
     }
 
