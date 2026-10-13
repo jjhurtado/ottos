@@ -5,6 +5,11 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+### Cambiado
+- Versiones de la app: se publican con un script de datos (`scripts/data/app-releases/`) en vez de una migración, y
+  `GET /app/version` las recoge en como mucho un minuto sin reiniciar. Las correcciones de datos también van en
+  scripts; las migraciones quedan solo para cambios estructurales.
+
 ## [1.0.0-rc.3] - 2026-10-13
 
 ### Añadido
