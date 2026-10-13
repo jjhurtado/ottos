@@ -5,6 +5,8 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+## [1.0.0-rc.4] - 2026-10-13
+
 ### Cambiado
 - **Incompatible:** `GET /api/v1/reports/monthly`: `deliveredUsd` se llama `deliveredCurrency` (también en
   `byCurrency[]`) y la respuesta lleva `businessCurrency`. El frontend tiene que leer el campo nuevo.
