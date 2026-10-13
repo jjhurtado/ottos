@@ -1,5 +1,6 @@
 package org.jobits.ottos.beneficiaries.domain;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -30,6 +31,20 @@ public interface BeneficiaryRepository extends JpaRepository<Beneficiary, UUID> 
     List<Beneficiary> findByCustomer(UUID customerId);
 
     List<Beneficiary> findByActiveTrueOrderByCreatedAtDesc(Pageable page);
+
+    // Paged lists of active beneficiaries: the order comes from the Pageable (newest first, id as tiebreak)
+
+    Page<Beneficiary> findByActiveTrue(Pageable page);
+
+    @Query("select b from Beneficiary b where b.active = true and lower(b.fullName) like lower(concat('%', :name, '%'))")
+    Page<Beneficiary> pageByName(String name, Pageable page);
+
+    @Query("""
+            select b from Beneficiary b
+            where b.active = true
+              and (lower(b.fullName) like lower(concat('%', :name, '%'))
+                   or b.phone like concat('%', :phone, '%') or b.alternatePhone like concat('%', :phone, '%'))""")
+    Page<Beneficiary> pageByNameOrPhone(String name, String phone, Pageable page);
 
     List<Beneficiary> findByPhone(String phone);
 

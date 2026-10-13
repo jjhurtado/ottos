@@ -22,6 +22,9 @@ public interface CustomerService {
     /** Matches a fragment of the name or of the phone; without text, the most recent customers. */
     List<CustomerInfo> search(String text);
 
+    /** Same matches as {@link #search}, a page at a time, newest first, with the total of matches. */
+    CustomerPage page(String text, int page, int size);
+
     /** Fails with CUSTOMER_ALREADY_REGISTERED if an identical customer (same name, phone and address) exists. */
     CustomerInfo register(CustomerData data, UUID actorId);
 
@@ -43,6 +46,9 @@ public interface CustomerService {
         Customer.Details toDetails() {
             return new Customer.Details(fullName, phone, email, documentType, documentNumber, address, notes);
         }
+    }
+
+    record CustomerPage(List<CustomerInfo> items, int page, int size, long totalItems) {
     }
 
     record CustomerInfo(UUID id, String fullName, String phone, String email, String documentType,

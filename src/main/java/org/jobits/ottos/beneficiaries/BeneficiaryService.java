@@ -23,6 +23,9 @@ public interface BeneficiaryService {
 
     List<BeneficiaryInfo> search(String text);
 
+    /** Same matches as {@link #search} (active only), a page at a time, newest first, with the total of matches. */
+    BeneficiaryPage page(String text, int page, int size);
+
     /**
      * Beneficiaries (active or not) whose phone ends with the same last 8 digits as this one, however it is written
      * ("56733312", "+53 5 4752090"): Cuban numbers are 8 digits after the country code. For matching old records.
@@ -66,6 +69,9 @@ public interface BeneficiaryService {
             return new Beneficiary.Details(fullName, phone, alternatePhone, street, houseNumber, betweenStreets,
                     neighborhood, municipalityCode, reference, documentNumber, notes);
         }
+    }
+
+    record BeneficiaryPage(List<BeneficiaryInfo> items, int page, int size, long totalItems) {
     }
 
     record BeneficiaryInfo(UUID id, String fullName, String phone, String alternatePhone, String street,

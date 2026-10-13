@@ -16,7 +16,7 @@ los clientes que les envían. Un beneficiario puede estar vinculado a varios cli
 
 | Endpoint | Permiso |
 | --- | --- |
-| `GET /beneficiaries?q=`, `GET /beneficiaries/{id}`, `GET /customers/{id}/beneficiaries` | `customers:read` |
+| `GET /beneficiaries?q=` (con `page`/`size`, una página con `totalItems`), `GET /beneficiaries/{id}`, `GET /customers/{id}/beneficiaries` | `customers:read` |
 | `POST /customers/{id}/beneficiaries` (crear y vincular), `POST /beneficiaries` (crear sin cliente), `PUT /beneficiaries/{id}` | `customers:write` |
 | `PUT` / `DELETE /customers/{id}/beneficiaries/{beneficiaryId}` (vincular / desvincular de ese cliente) | `customers:write` |
 | `DELETE /beneficiaries/{id}` (borrar para todos), `POST /beneficiaries/{id}/restore` | `customers:write` |
