@@ -208,6 +208,10 @@ Ideas ya habladas, sin compromiso de fecha; se ordenan al planificar cada fase.
 - Cierre de caja diario, conciliación, prueba de entrega con foto o firma, devoluciones (Fase 3).
 - Límites acumulados por cliente, según la revisión legal.
 - Informes adicionales (por día, por repartidor) y KPIs (Fase 4).
+- **Por decidir: remesas sin cliente.** Hoy toda remesa exige un cliente (`customerId` obligatorio en la API y en la
+  base). Opciones: usar un cliente comodín ("Cliente sin identificar"), que funciona ya sin cambios, o hacer el cliente
+  opcional (migración, API, vistas, estadísticas y formulario). Planteado el 2026-10-13; se decide cuando haya un caso
+  concreto.
 
 ## 9. Riesgos
 
