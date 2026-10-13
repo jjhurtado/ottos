@@ -5,6 +5,10 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+### Añadido
+- Versión de la app móvil Android 1.0.0-rc.3 (build 4), no obligatoria: `GET /app/version?platform=ANDROID` la anuncia
+  como la última (migración `V3__app_release_android_1_0_0_rc_3.sql`).
+
 ## [1.0.0-rc.2] - 2026-10-13
 
 ### Añadido
