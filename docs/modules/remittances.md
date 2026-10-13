@@ -22,6 +22,7 @@ historial y estadísticas.
 | Endpoint | Permiso |
 | --- | --- |
 | `POST /remittances` (cabecera `Idempotency-Key`) | `remittances:create` |
+| `POST /remittances/import` (remesas antiguas, entregadas en su fecha; `dryRun`; contrato `docs/contracts/historical-import.md`) | `customers:import` (ADMIN) |
 | `GET /remittances?status=&type=&late=&incident=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/code/{code}` | `remittances:read` |
 | `GET /remittances/{id}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:read` o `read-assigned` |
 | `GET /remittances/completed?since=` (completadas que el servidor registró después de `since`, para las notificaciones de Ventas; contrato `docs/contracts/completed-feed.md`) | `remittances:read` |
@@ -52,6 +53,9 @@ historial y estadísticas.
   `rateOverridden` y `feeOverridden`. El repartidor solo recoge `amount`; en una recogida no se entrega nada
   (`amountToDeliver` no significa nada y la tasa es informativa) y la comisión es ingreso del negocio que nunca pasa por
   la caja del repartidor. Las entregas siempre usan la tasa y la comisión configuradas.
+- **Remesas antiguas** (`HistoricalImportService`): entran entregadas en la fecha del ticket, en USD, sin repartidor,
+  con un cliente comodín; registran su cobro en la caja del negocio en esa fecha y no mueven ninguna caja de
+  mensajero. Cada lote se audita. No hay columna ni marca propia: se reconocen por el cliente comodín y la nota.
 - **Asignar:** el repartidor debe estar activo, tener `remittances:deliver` y no ser administrador (la misma regla que
   lista `GET /couriers`).
 - **Completar:** exige repartidor asignado. Los repartidores pueden completar sin PIN (`/deliver`) o con PIN
