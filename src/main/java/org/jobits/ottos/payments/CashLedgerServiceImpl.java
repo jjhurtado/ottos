@@ -12,7 +12,6 @@ import org.jobits.ottos.payments.domain.CashExchangeRepository;
 import org.jobits.ottos.payments.domain.CashMovement;
 import org.jobits.ottos.payments.domain.CashMovementRepository;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceCompleted;
-import org.jobits.ottos.remittances.RemittanceEvents.RemittanceRegistered;
 import org.jobits.ottos.remittances.RemittanceType;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
@@ -75,15 +74,6 @@ class CashLedgerServiceImpl implements CashLedgerService {
     }
 
     // ---------------------------------------------------------------- from remittances
-
-    /** The sender paid the remittance (amount + fee) to the business. */
-    @EventListener
-    void on(RemittanceRegistered event) {
-        if (event.amountCharged().signum() > 0) {
-            record(MovementType.REMITTANCE_PAYMENT, external(event.currency()), business(event.currency()),
-                    event.amountCharged(), event.remittanceId(), event.code(), event.actorId(), event.occurredAt());
-        }
-    }
 
     /** The courier handed the cash over (delivery) or collected it (pickup). */
     @EventListener

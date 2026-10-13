@@ -23,6 +23,12 @@ public interface BeneficiaryService {
 
     List<BeneficiaryInfo> search(String text);
 
+    /**
+     * Beneficiaries (active or not) whose phone ends with the same last 8 digits as this one, however it is written
+     * ("56733312", "+53 5 4752090"): Cuban numbers are 8 digits after the country code. For matching old records.
+     */
+    List<BeneficiaryInfo> findByPhone(String phone);
+
     List<BeneficiaryInfo> ofCustomer(UUID customerId);
 
     /** Creates a beneficiary and links it to the customer who sends to them. */

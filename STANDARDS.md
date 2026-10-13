@@ -19,9 +19,16 @@ Usamos Git Flow tal como lo inicializa GitKraken (Preferences → Gitflow), con 
 | Hotfixes | `hotfix/` | Arreglo urgente de producción; sale de `main`, se fusiona en `main` y en `develop` |
 | Prefijo de tag | *(vacío)* | Los tags son la versión tal cual: `1.0.0-beta.1`, `1.0.0` |
 
-**Hasta la versión `1.0.0`, `develop` y `main` van juntas:** cada feature terminada se fusiona en `develop` y, a
-continuación, `develop` se lleva a `main` (fast-forward), de modo que las dos ramas apuntan siempre al mismo commit.
-Desde `1.0.0`, `main` solo recibe ramas `release/` y `hotfix/` como se describe abajo.
+**`main` solo recibe ramas `release/` y `hotfix/`**, cada una con su tag (regla desde 2026-10-11, al existir
+producción). Cada entorno despliega una rama:
+
+| Rama | Entorno | Qué llega |
+| --- | --- | --- |
+| `develop` | Staging (despliegue automático tras el CI) | Cada feature o arreglo al fusionarse |
+| `main` | Producción (despliegue automático tras el CI) | Solo versiones: una `release/` probada en staging o un `hotfix/` |
+
+Así, todo lo que llega a producción pasó antes por staging. Las features y los arreglos nunca se llevan a `main`
+directamente. Hasta esa fecha, durante las betas, `develop` y `main` iban juntas (fast-forward tras cada feature).
 
 Reglas:
 
@@ -129,8 +136,8 @@ la sección queda también allí.
 
 Nunca se editan las secciones de versiones ya publicadas.
 
-Mientras no exista la versión `1.0.0`, `CHANGELOG.md` se mantiene vacío (solo `## [Unreleased]`); las reglas de arriba
-empiezan a aplicarse con el trabajo que vaya a `1.0.0`.
+El changelog se escribe desde la primera versión en producción (`1.0.0-rc.1`, 2026-10-11), cuya sección resume todo lo
+que contenía. Antes, durante las betas, se mantenía vacío.
 
 ## 2. Arquitectura del backend
 
@@ -244,9 +251,10 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 - Entidades JPA con constructor protegido para JPA, sin setters públicos: el estado cambia con métodos con nombre
   (`assignTo`, `complete`, `postpone`).
 - El esquema solo cambia con migraciones Flyway (`V<n>__<descripcion>.sql`); `ddl-auto: validate`.
-- `V1__baseline.sql` es el esquema de la versión 1.0: las migraciones de las betas se fusionaron en ella antes del
-  primer release, porque ningún entorno tenía datos reales. Desde que un entorno tenga datos reales, una migración
-  aplicada no se edita nunca: los cambios van en una migración nueva.
+- `V1__baseline.sql` es el esquema de la versión 1.0: las migraciones de las betas y de la rc.1 se fusionaron en ella
+  porque ningún entorno tenía datos reales. **Desde el 2026-10-12, con producción en marcha, `V1` está congelada:**
+  una migración aplicada no se edita nunca y cada cambio de esquema va en una migración nueva (`V2__app_releases.sql`,
+  `V3__…`), que staging y producción aplican solos al desplegar, sin recrear la base.
 - Dinero siempre en `BigDecimal`; las tasas y comisiones nunca se editan, se inserta una fila nueva.
 - Concurrencia: `@Version` en entidades que se modifican desde varias peticiones.
 

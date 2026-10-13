@@ -9,14 +9,12 @@ import org.jobits.ottos.customers.CustomerService;
 import org.jobits.ottos.customers.CustomerService.CustomerInfo;
 import org.jobits.ottos.identity.StaffDirectoryService;
 import org.jobits.ottos.rates.QuoteService;
-import org.jobits.ottos.remittances.RemittanceEvents.RemittanceRegistered;
 import org.jobits.ottos.remittances.domain.Remittance;
 import org.jobits.ottos.remittances.domain.RemittanceEvent;
 import org.jobits.ottos.remittances.domain.RemittanceEventRepository;
 import org.jobits.ottos.remittances.domain.RemittanceRepository;
 import org.jobits.ottos.remittances.domain.RemittanceStatus;
 import org.jobits.ottos.remittances.domain.RemittanceTransition;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,8 +24,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.math.BigDecimal;
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -50,12 +46,11 @@ class RemittanceServiceImpl implements RemittanceService {
 
     static final int FEED_LIMIT = 100;
     static final Duration FEED_SETTLE = Duration.ofSeconds(5);
-    private static final String CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final RemittanceRepository remittances;
     private final RemittanceEventRepository events;
     private final RemittanceOperations operations;
+    private final RemittanceCodes codes;
     private final ConfigurationService configuration;
     private final Workflow workflow;
     private final RemittanceViews views;
@@ -63,18 +58,19 @@ class RemittanceServiceImpl implements RemittanceService {
     private final BeneficiaryService beneficiaries;
     private final QuoteService quotes;
     private final StaffDirectoryService staff;
-    private final ApplicationEventPublisher publisher;
     private final TransactionTemplate transactions;
     private final Clock clock;
 
     RemittanceServiceImpl(RemittanceRepository remittances, RemittanceEventRepository events,
-                          RemittanceOperations operations, ConfigurationService configuration, Workflow workflow,
+                          RemittanceOperations operations, RemittanceCodes codes, ConfigurationService configuration,
+                          Workflow workflow,
                           RemittanceViews views, CustomerService customers, BeneficiaryService beneficiaries,
-                          QuoteService quotes, StaffDirectoryService staff, ApplicationEventPublisher publisher,
+                          QuoteService quotes, StaffDirectoryService staff,
                           PlatformTransactionManager transactionManager, Clock clock) {
         this.remittances = remittances;
         this.events = events;
         this.operations = operations;
+        this.codes = codes;
         this.configuration = configuration;
         this.workflow = workflow;
         this.views = views;
@@ -82,7 +78,6 @@ class RemittanceServiceImpl implements RemittanceService {
         this.beneficiaries = beneficiaries;
         this.quotes = quotes;
         this.staff = staff;
-        this.publisher = publisher;
         this.transactions = new TransactionTemplate(transactionManager);
         this.clock = clock;
     }
@@ -128,7 +123,7 @@ class RemittanceServiceImpl implements RemittanceService {
 
         Instant now = clock.instant();
         Remittance remittance = new Remittance(
-                newCode(), request.type(), workflow.initial().getCode(), customer.id(),
+                codes.newCode(), request.type(), workflow.initial().getCode(), customer.id(),
                 new Remittance.BeneficiarySnapshot(beneficiary.id(), beneficiary.fullName(), beneficiary.phone(),
                         beneficiary.alternatePhone(), beneficiary.addressLine(), beneficiary.municipalityCode(),
                         beneficiary.reference()),
@@ -136,13 +131,10 @@ class RemittanceServiceImpl implements RemittanceService {
                         quote.amount(), quote.fee(), quote.feeOverridden(), quote.total(), quote.rate(),
                         quote.rateOverridden(),
                         quote.amountToDeliver(), quote.exchangeRateId(), quote.feeRuleId()),
-                newPin(), today().plusDays(configuration.defaultDeliveryDays()), blankToNull(request.notes()),
+                codes.newPin(), today().plusDays(configuration.defaultDeliveryDays()), blankToNull(request.notes()),
                 request.idempotencyKey(), now, viewer.userId());
         remittances.saveAndFlush(remittance);
         events.save(RemittanceEvent.created(remittance, viewer.userId(), now));
-        BigDecimal charged = remittance.getType() == RemittanceType.DELIVERY ? remittance.getTotal() : BigDecimal.ZERO;
-        publisher.publishEvent(new RemittanceRegistered(remittance.getId(), remittance.getCode(), remittance.getType(),
-                remittance.getSourceCurrency(), charged, viewer.userId(), now));
         return views.of(remittance, viewer);
     }
 
@@ -288,21 +280,5 @@ class RemittanceServiceImpl implements RemittanceService {
 
     private LocalDate today() {
         return LocalDate.now(clock);
-    }
-
-    private String newCode() {
-        String code;
-        do {
-            StringBuilder sb = new StringBuilder("OT-");
-            for (int i = 0; i < 6; i++) {
-                sb.append(CODE_ALPHABET.charAt(RANDOM.nextInt(CODE_ALPHABET.length())));
-            }
-            code = sb.toString();
-        } while (remittances.existsByCode(code));
-        return code;
-    }
-
-    private static String newPin() {
-        return String.format("%06d", RANDOM.nextInt(1_000_000));
     }
 }

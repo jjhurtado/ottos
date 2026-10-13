@@ -1,7 +1,12 @@
 package org.jobits.ottos.payments;
 
 public enum MovementType {
-    /** External → business: the sender paid a remittance. */
+    /**
+     * External → business: the sender paid a remittance. No longer created (2026-10-13): senders pay outside Cuba and
+     * the business box only holds the cash available in Cuba; what was charged is in the reports. Kept for the
+     * movements recorded before.
+     */
+    @Deprecated
     REMITTANCE_PAYMENT,
     /** Business → courier: cash handed to a courier. */
     COURIER_FUNDING,

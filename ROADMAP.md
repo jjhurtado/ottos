@@ -16,8 +16,8 @@ Lo que falta para `1.0.0`:
 | --- | --- | --- |
 | 1 | ~~Revisión de arquitectura y refactor sobre la RC~~ (hecha, 2026-10-11) | Usuario y backend |
 | 2 | ~~Prueba general del frontend, con las pantallas de importar/exportar y de auditoría~~ (hecha, 2026-10-11) | Frontend |
-| 3 | ~~Cerrar la rc.1~~ (2026-10-11: migraciones en `V1__baseline.sql`, tag `1.0.0-rc.1`); probar en staging | Infraestructura y frontend |
-| 4 | Entorno de producción: base de datos con copias de seguridad, dominio, CORS, secretos | Infraestructura |
+| 3 | ~~Cerrar la rc.1 y probarla en staging~~ (2026-10-11: tag `1.0.0-rc.1`; prueba general por API en `api-staging.remesadeotto.com` sin fallos del backend). Falta la revisión visual del usuario | Usuario |
+| 4 | Entorno de producción: backend listo en `api.remesadeotto.com` (2026-10-11: rc.1 desde `main`, PostgreSQL 16 propio, secretos propios, CORS solo del panel). Copias de seguridad decididas: `pg_dump` diario cifrado con age (clave privada en manos del usuario, fuera de línea) en Backblaze B2, con retención de 14 diarias, 8 semanales y 12 mensuales; falta conectar el bucket y probar la restauración en staging antes de la primera remesa real. Falta también el panel de producción | Infraestructura, usuario |
 | 5 | Datos de cada entorno: tasa USD-CUP de entrega, monto mínimo, comisión de recogida por defecto, importar los beneficiarios | Admin del negocio |
 | 6 | Revisión legal (licencias, conocer al cliente, antilavado) antes de mover dinero real | Negocio |
 | 7 | Primera remesa real en producción: hito de la Fase 1 y versión `1.0.0` | Todos |
@@ -81,6 +81,7 @@ Cada módulo tiene su documento en [docs/modules](docs/modules/README.md); lo ac
 | Caja | Libro de doble entrada: caja del negocio y de cada repartidor, fondeo y devoluciones, cambio de moneda del repartidor ([contrato](docs/contracts/courier-exchange.md)) | `payments` |
 | Sin conexión | Descarga incremental y cola de acciones sincronizada en lote, idempotente ([contrato](docs/contracts/offline-sync.md)) | `sync` |
 | Avisos | Feed de remesas completadas para las notificaciones locales de Ventas ([contrato](docs/contracts/completed-feed.md)) | `remittances` |
+| Versiones de la app | Aviso de versión nueva y bloqueo (426) de builds por debajo del mínimo; las versiones se publican por migración ([contrato](docs/contracts/app-version.md)) | `apps` |
 | Informes y auditoría | Informe mensual de ventas ([contrato](docs/contracts/monthly-report.md)); registro de quién hizo qué | `reporting` |
 
 ### Qué queda fuera, y por qué
@@ -100,6 +101,9 @@ Cada módulo tiene su documento en [docs/modules](docs/modules/README.md); lo ac
 
 **Dinero y tasas**
 
+- **La caja del negocio es el efectivo disponible en Cuba para entregar**, no lo cobrado: los remitentes pagan fuera
+  del país. Sube con entradas de efectivo y con lo que devuelven los repartidores (incluidas las recogidas) y baja con
+  fondeos y retiradas. Lo cobrado y las comisiones se ven en el informe mensual.
 - El negocio trabaja en **USD**: todo se cobra en USD. Si hay que entregar en CUP, el repartidor cambia los USD durante
   el viaje a la tasa que consigue y lo registra; un cambio que se aleja más del 20 % (configurable) de la tasa
   configurada se guarda igual pero queda marcado para revisión.

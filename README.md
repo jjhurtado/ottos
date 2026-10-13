@@ -67,6 +67,7 @@ package are its public API; sub-packages are internal.
 | Configuration (minimum amount, delivery days, corridors, exchange rates, fee rules) | `configuration` | 1 (implemented) |
 | Quotes (calculator over the configuration) | `rates` | 1 (implemented) |
 | Mobile sync (offline-first app: download and queued actions) | `sync` | 1 (implemented) |
+| Mobile app versions (update notice, outdated builds blocked) | `apps` | 1 (implemented) |
 | Beneficiaries | `beneficiaries` | 1 (implemented) |
 | Remittances (deliveries and pickups) | `remittances` | 1 (implemented) |
 | Dispatch and deliveries (routes, proof photos, assignment by zone) | `dispatch` | after 1.0; manual assignment lives in `remittances` |
@@ -87,6 +88,8 @@ services: [STANDARDS.md](STANDARDS.md). What each module does: [docs/modules](do
 | `OTTOS_JWT_SECRET` | Base64 HMAC key, at least 32 bytes (`openssl rand -base64 32`) | Required |
 | `OTTOS_ADMIN_EMAIL` / `OTTOS_ADMIN_PASSWORD` | Creates the first ADMIN if none exists | empty |
 | `PORT` | HTTP port | `8080` |
+| `OTTOS_ANDROID_DOWNLOAD_URL` | Where the latest Android APK is downloaded; `{version}` is replaced by its version name | empty: `downloadUrl` null |
+| `OTTOS_IOS_DOWNLOAD_URL` | The iOS app's TestFlight link | empty: `downloadUrl` null |
 | `OTTOS_CLIENT_IP_HEADER` | `prod` only: header the hosting's proxy sets with the client's real IP, used by the per-IP login limit | `X-Real-Ip` |
 | `OTTOS_CORS_ALLOWED_ORIGINS` | Browser origins allowed to call the API, comma-separated (the web panel's domain) | empty: no CORS |
 | `SPRING_PROFILES_ACTIVE` | `dev` locally; `prod` in staging and production | — |
@@ -146,6 +149,7 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Customers | `GET/POST /customers?q=`, `GET/PUT /customers/{id}` | `customers:read`, `customers:write` |
 | Customer import/export | `GET /customers/export`, `POST /customers/import`, `POST /beneficiaries/import` (without a customer) (`dryRun`; contract: `docs/contracts/customer-transfer.md`) | `customers:export`, `customers:import` (ADMIN) |
 | Beneficiaries | `GET /beneficiaries?q=`, `POST /beneficiaries` (without a customer), `GET/PUT/DELETE /beneficiaries/{id}` (delete deactivates it for every customer), `POST /beneficiaries/{id}/restore`, `GET/POST /customers/{id}/beneficiaries`, `PUT/DELETE /customers/{id}/beneficiaries/{beneficiaryId}` | `customers:read`, `customers:write` |
+| Historical import | `POST /remittances/import` (old records, delivered on their date; contract: `docs/contracts/historical-import.md`) | `customers:import` (ADMIN) |
 | Remittances | `POST /remittances` (header `Idempotency-Key`), `GET /remittances?status=&type=&late=&incident=&review=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/{id}`, `/remittances/code/{code}`, `/remittances/{id}/events`, `GET /remittance-workflow`, `GET /remittances/completed?since=` (feed for notifications; contract: `docs/contracts/completed-feed.md`) | `remittances:create`, `remittances:read` |
 | Courier work | `GET /remittances/assigned`, `POST /remittances/{id}/deliver`, `/deliver-with-pin` | `remittances:read-assigned`, `remittances:deliver` |
 | Incidents | `POST /remittances/{id}/incidents` (`{reason, note}`) | `remittances:report-incident` |
@@ -153,6 +157,7 @@ Full contract in Swagger UI (`/swagger-ui.html`). Summary by area, with the perm
 | Reports | `GET /reports/monthly?month=YYYY-MM` (monthly sales report; contract: `docs/contracts/monthly-report.md`) | `reports:read` (ADMIN, SALES) |
 | Audit | `GET /audit?targetType=&targetId=&actorId=&action=&from=&to=` (who changed users and roles, and when) | `audit:read` (ADMIN) |
 | Mobile sync | `GET /sync/state?since=`, `POST /sync/actions` (contract: `docs/contracts/offline-sync.md`) | authenticated; each action needs its endpoint's permission |
+| App versions | `GET /app/version?platform=ANDROID\|IOS`; mobile requests send `X-App-Platform` and `X-App-Build` (contract: `docs/contracts/app-version.md`) | public |
 | Workflow | `GET /couriers` (assignable staff and their open remittances: active, with `remittances:deliver`, not administrators), `POST /remittances/{id}/assign`, `/transitions`, `/postpone` | `remittances:assign`, the transition's permission, `remittances:postpone` |
 | Statistics | `GET /customers/{id}/stats`, `GET /beneficiaries/{id}/stats` | `remittances:read` |
 | Cash | `GET /cash/business`, `/cash/business/movements`, `/cash/couriers`, `/cash/couriers/{id}`, `/cash/remittances/{id}/movements`; `POST /cash/couriers/{id}/funding`, `/returns` | `cash:read`, `cash:write` |
@@ -184,6 +189,7 @@ Throw `ApiException.badRequest("SOME_CODE", "English detail")` (or `conflict`, `
 | 403 | `FORBIDDEN` (missing permission), `PERMISSION_ESCALATION`, `TRANSITION_FORBIDDEN` |
 | 404 | `NOT_FOUND` (unknown route), `BENEFICIARY_NOT_FOUND`, `EXCHANGE_NOT_FOUND`, `CORRIDOR_NOT_FOUND`, `CUSTOMER_NOT_FOUND`, `REMITTANCE_NOT_FOUND`, `ROLE_NOT_FOUND`, `USER_NOT_FOUND` |
 | 409 | `CONCURRENT_UPDATE` (retry), `ACTION_ID_CONFLICT` (sync), `REVIEW_NOT_PENDING`, `BENEFICIARY_INACTIVE`, `BUILT_IN_ROLE`, `CANNOT_DEACTIVATE_SELF`, `COURIER_NOT_ASSIGNED`, `EMAIL_TAKEN`, `LAST_ADMIN`, `NO_EXCHANGE_RATE`, `NO_FEE_RULE`, `CUSTOMER_ALREADY_REGISTERED` (with `customerId`), `REMITTANCE_ALREADY_COMPLETED`, `REMITTANCE_NOT_ASSIGNABLE`, `REMITTANCE_NOT_COMPLETABLE`, `ROLE_CODE_TAKEN`, `ROLE_IN_USE`, `TRANSITION_NOT_ALLOWED` |
+| 426 | `APP_UPDATE_REQUIRED` (with `minimumBuild`, `latestBuild`, `latestVersion`, `downloadUrl`) |
 | 429 | `TOO_MANY_LOGIN_ATTEMPTS` (with `retryAfterSeconds` and the `Retry-After` header) |
 
 Other framework errors get the status name as code (e.g. `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE`).

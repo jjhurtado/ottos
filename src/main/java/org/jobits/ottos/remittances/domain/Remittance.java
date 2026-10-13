@@ -252,6 +252,20 @@ public class Remittance {
         this.reviewActionId = null;
     }
 
+    /**
+     * A remittance from the business's old records, already delivered on that date: no courier, so no courier's cash
+     * moves, and no completion recorded for the completed feed (contract: docs/contracts/historical-import.md).
+     */
+    public static Remittance imported(String code, String finalStatus, UUID customerId, BeneficiarySnapshot beneficiary,
+                                      QuoteSnapshot quote, String pin, String notes, String idempotencyKey,
+                                      Instant occurredAt, LocalDate day, UUID importedBy) {
+        Remittance r = new Remittance(code, RemittanceType.DELIVERY, finalStatus, customerId, beneficiary, quote, pin,
+                day, notes, idempotencyKey, occurredAt, importedBy);
+        r.completedAt = occurredAt;
+        r.completedBy = importedBy;
+        return r;
+    }
+
     @PrePersist
     @PreUpdate
     void touch() {

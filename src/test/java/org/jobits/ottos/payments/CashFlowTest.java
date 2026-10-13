@@ -51,7 +51,7 @@ class CashFlowTest extends ApiTestSupport {
         cash("/api/v1/cash/business/deposits", adminToken, "100000", "CUP", "Compra de CUP").andExpect(status().isCreated());
         cash(courierPath("funding"), salesToken, "50000", "CUP", null).andExpect(status().isCreated());
 
-        String delivery = completed("DELIVERY", "100");   // charged 110 USD, hands over 41 000 CUP
+        String delivery = completed("DELIVERY", "100");   // charged 110 USD abroad, hands over 41 000 CUP
         String pickup = completed("PICKUP", "200");       // collects 200 USD
 
         mvc.perform(get("/api/v1/cash/me").header("Authorization", bearer(courierToken)))
@@ -71,12 +71,11 @@ class CashFlowTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.cash.balances[?(@.currency == 'USD')].amount").value(0.00));
         mvc.perform(get("/api/v1/cash/business").header("Authorization", bearer(salesToken)))
                 .andExpect(jsonPath("$[?(@.currency == 'CUP')].amount").value(59000.00))
-                .andExpect(jsonPath("$[?(@.currency == 'USD')].amount").value(310.00));
+                // What senders pay abroad never enters the box: it holds the cash in Cuba (here, the pickup's 200 USD)
+                .andExpect(jsonPath("$[?(@.currency == 'USD')].amount").value(200.00));
         mvc.perform(get("/api/v1/cash/remittances/{id}/movements", delivery).header("Authorization", bearer(salesToken)))
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].type").value("REMITTANCE_PAYMENT"))
-                .andExpect(jsonPath("$[0].amount").value(110.00))
-                .andExpect(jsonPath("$[1].type").value("DELIVERY_PAYOUT"));
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].type").value("DELIVERY_PAYOUT"));
         mvc.perform(get("/api/v1/cash/remittances/{id}/movements", pickup).header("Authorization", bearer(salesToken)))
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].type").value("PICKUP_COLLECTION"));
