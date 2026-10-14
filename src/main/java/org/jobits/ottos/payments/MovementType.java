@@ -12,9 +12,9 @@ public enum MovementType {
     REMITTANCE_VOID_REVERSAL,
     /** Business → courier: cash handed to a courier. */
     COURIER_FUNDING,
-    /** Courier → external: cash delivered to a beneficiary. */
+    /** Courier (or business, when it delivers without a courier) → external: cash delivered to a beneficiary. */
     DELIVERY_PAYOUT,
-    /** External → courier: cash collected from a beneficiary. */
+    /** External → courier (or business, when it collects without a courier): cash collected from a beneficiary. */
     PICKUP_COLLECTION,
     /** Courier → business: cash a courier returned. */
     COURIER_RETURN,

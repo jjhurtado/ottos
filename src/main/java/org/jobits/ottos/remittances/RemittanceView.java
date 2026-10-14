@@ -10,7 +10,8 @@ import java.util.UUID;
  * A remittance as a given viewer may see it. Fields the viewer is not allowed to see are null:
  * fee, total, rate and amountToDeliver (financials) and pin. cashAmount and cashCurrency are always present:
  * what the courier hands over (delivery) or collects (pickup). incident is the open incident and review
- * the pending review, null when there is none.
+ * the pending review, null when there is none. completedFromBusiness: Sales or Admin delivered or collected it
+ * without a courier, and the business cash moved.
  */
 public record RemittanceView(
         UUID id,
@@ -52,6 +53,7 @@ public record RemittanceView(
         Instant createdAt,
         UUID createdBy,
         Instant completedAt,
+        boolean completedFromBusiness,
         Voided voided) {
 
     /** Voided: it no longer counts anywhere and the cash it moved was reversed. null when it is in force. */

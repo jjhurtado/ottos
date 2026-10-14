@@ -19,6 +19,7 @@ public final class RemittanceEvents {
     /**
      * A remittance reached a final status: the courier handed over (DELIVERY) or collected (PICKUP) the cash.
      *
+     * @param courierId    null when the business did it itself (Sales or Admin): the business cash moves
      * @param cashAmount   amount that changed hands
      * @param cashCurrency currency of that amount
      */

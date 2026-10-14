@@ -27,6 +27,12 @@ public interface RemittanceService {
     /** Like {@link #complete} but the beneficiary must give the PIN the sender received. */
     RemittanceView completeWithPin(UUID id, String pin, String note, Viewer viewer);
 
+    /**
+     * Marks it delivered (or collected) by the business, without a courier, from any open status: an assigned courier
+     * is taken off and the business cash hands over or receives the money (docs/contracts/complete-from-business.md).
+     */
+    RemittanceView completeFromBusiness(UUID id, String note, Viewer viewer);
+
     /** Moves to any status allowed by remittance_transitions, e.g. a custom status added in the database. */
     RemittanceView transition(UUID id, String toStatus, UUID courierId, String note, Viewer viewer);
 

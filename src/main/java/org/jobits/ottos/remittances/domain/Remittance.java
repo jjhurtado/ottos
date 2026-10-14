@@ -285,6 +285,11 @@ public class Remittance {
         resolveReview();
     }
 
+    /** Completed by Sales or Admin without a courier; an old remittance (no completion recorded) is not. */
+    public boolean isCompletedFromBusiness() {
+        return completedAt != null && completionRecordedAt != null && courierId == null;
+    }
+
     public boolean isVoided() {
         return voidedAt != null;
     }
