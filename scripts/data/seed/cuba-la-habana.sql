@@ -72,7 +72,7 @@ WHERE r.code = 'SALES' AND p.code IN (
     'customers:read', 'customers:write',
     'configuration:read', 'rates:read',
     'remittances:read', 'remittances:create', 'remittances:assign', 'remittances:postpone',
-    'remittances:report-incident', 'remittances:review',
+    'remittances:report-incident', 'remittances:review', 'remittances:complete-from-business',
     'cash:read', 'cash:write', 'cash:review',
     'reports:read')
 ON CONFLICT DO NOTHING;

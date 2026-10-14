@@ -87,7 +87,7 @@ class RemittanceViews {
                     r.getExpectedDate(),
                     !r.isVoided() && !status.isFinalStatus() && r.getExpectedDate().isBefore(today),
                     r.getPostponements(), incident(r), review(r), r.getNotes(), r.getCreatedAt(), r.getCreatedBy(),
-                    r.getCompletedAt(),
+                    r.getCompletedAt(), r.isCompletedFromBusiness(),
                     r.isVoided() ? new RemittanceView.Voided(r.getVoidedAt(), r.getVoidedBy(),
                             staffNames.get(r.getVoidedBy()), r.getVoidReason()) : null);
         }).toList();

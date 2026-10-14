@@ -92,16 +92,17 @@ class CashLedgerServiceImpl implements CashLedgerService {
         }
     }
 
-    /** The courier handed the cash over (delivery) or collected it (pickup). */
+    /** The courier handed the cash over (delivery) or collected it (pickup); without a courier, the business did. */
     @EventListener
     void on(RemittanceCompleted event) {
-        CashAccount courier = courierAccount(event.courierId(), event.cashCurrency());
+        CashAccount holder = event.courierId() == null ? business(event.cashCurrency())
+                : courierAccount(event.courierId(), event.cashCurrency());
         CashAccount outside = external(event.cashCurrency());
         if (event.type() == RemittanceType.DELIVERY) {
-            record(MovementType.DELIVERY_PAYOUT, courier, outside, event.cashAmount(), event.remittanceId(),
+            record(MovementType.DELIVERY_PAYOUT, holder, outside, event.cashAmount(), event.remittanceId(),
                     event.code(), event.actorId(), event.occurredAt());
         } else {
-            record(MovementType.PICKUP_COLLECTION, outside, courier, event.cashAmount(), event.remittanceId(),
+            record(MovementType.PICKUP_COLLECTION, outside, holder, event.cashAmount(), event.remittanceId(),
                     event.code(), event.actorId(), event.occurredAt());
         }
     }

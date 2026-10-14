@@ -85,6 +85,22 @@ class RemittanceOperations {
         return views.of(r, viewer);
     }
 
+    /**
+     * Sales or Admin hand over (delivery) or receive (pickup) the cash themselves: the remittance reaches the final
+     * status from any open status, without a courier (an assigned one is taken off), and the business cash moves.
+     */
+    RemittanceView completeFromBusiness(Remittance r, String note, Viewer viewer, Instant at) {
+        requireOpen(r);
+        r.assignTo(null);
+        r.complete(at, viewer.userId(), clock.instant());
+        publisher.publishEvent(new RemittanceCompleted(r.getId(), r.getCode(), r.getType(), null,
+                r.cashAmount(), r.cashCurrency(), viewer.userId(), at));
+        String from = r.getStatus();
+        r.moveTo(workflow.finalStatus());
+        events.save(RemittanceEvent.statusChanged(r, from, viewer.userId(), at, blankToNull(note)));
+        return views.of(r, viewer);
+    }
+
     RemittanceTransition finalTransition(Remittance r) {
         return workflow.firstTransition(r.getStatus(), RemittanceStatus::isFinalStatus)
                 .orElseThrow(() -> ApiException.conflict("REMITTANCE_NOT_COMPLETABLE", "Remittance " + r.getCode() + " cannot be completed in status " + r.getStatus()));

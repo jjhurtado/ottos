@@ -164,6 +164,76 @@ class CashFlowTest extends ApiTestSupport {
                 Integer.class, id)).isZero();
     }
 
+    @Test
+    void theBusinessDeliversWithoutACourierFromItsOwnCash() throws Exception {
+        cash("/api/v1/cash/business/deposits", adminToken, "100000", "CUP", "Compra de CUP").andExpect(status().isCreated());
+        String id = registered("DELIVERY", "100");   // hands over 41 000 CUP
+
+        fromBusiness(id, courierToken).andExpect(status().isForbidden());
+        fromBusiness(id, salesToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DELIVERED"))
+                .andExpect(jsonPath("$.courierId").doesNotExist())
+                .andExpect(jsonPath("$.completedFromBusiness").value(true));
+
+        mvc.perform(get("/api/v1/cash/business").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$[?(@.currency == 'CUP')].amount").value(59000.00));
+        mvc.perform(get("/api/v1/cash/remittances/{id}/movements", id).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].type").value("DELIVERY_PAYOUT"));
+        fromBusiness(id, salesToken)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("REMITTANCE_ALREADY_COMPLETED"));
+
+        voidIt(id, adminToken, "Error").andExpect(status().isOk());
+        mvc.perform(get("/api/v1/cash/business").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$[?(@.currency == 'CUP')].amount").value(100000.00));
+    }
+
+    @Test
+    void theBusinessCollectsAnAssignedPickupAndTheCourierIsTakenOff() throws Exception {
+        String id = registered("PICKUP", "200");   // collects 200 USD
+        mvc.perform(post("/api/v1/remittances/{id}/assign", id).header("Authorization", bearer(salesToken))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"courierId\": \"" + courier.getId() + "\"}"))
+                .andExpect(status().isOk());
+
+        fromBusiness(id, adminToken)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.courierId").doesNotExist())
+                .andExpect(jsonPath("$.completedFromBusiness").value(true));
+
+        mvc.perform(get("/api/v1/remittances/assigned").header("Authorization", bearer(courierToken)))
+                .andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(get("/api/v1/cash/couriers/{id}", courier.getId()).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.cash.balances", hasSize(0)));
+        mvc.perform(get("/api/v1/cash/business").header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$[?(@.currency == 'USD')].amount").value(200.00));
+        mvc.perform(get("/api/v1/cash/remittances/{id}/movements", id).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$[0].type").value("PICKUP_COLLECTION"));
+    }
+
+    @Test
+    void aCourierDeliveryIsNotFromTheBusiness() throws Exception {
+        String id = completed("DELIVERY", "100");
+        mvc.perform(get("/api/v1/remittances/{id}", id).header("Authorization", bearer(salesToken)))
+                .andExpect(jsonPath("$.completedFromBusiness").value(false));
+    }
+
+    private ResultActions fromBusiness(String id, String token) throws Exception {
+        return mvc.perform(post("/api/v1/remittances/{id}/complete-from-business", id)
+                .header("Authorization", bearer(token))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"note\": \"Entregada en la oficina\"}"));
+    }
+
+    private String registered(String type, String amount) throws Exception {
+        return id(mvc.perform(post("/api/v1/remittances")
+                .header("Authorization", bearer(salesToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"type": "%s", "customerId": "%s", "beneficiaryId": "%s", "amount": %s, "targetCurrency": "CUP"}
+                        """.formatted(type, customerId, beneficiaryId, amount))));
+    }
+
     private ResultActions voidIt(String id, String token, String reason)
             throws Exception {
         return mvc.perform(post("/api/v1/remittances/{id}/void", id).header("Authorization", bearer(token))

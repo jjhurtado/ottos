@@ -159,6 +159,14 @@ class RemittanceController {
         return remittances.completeWithPin(id, request.pin(), request.note(), Viewers.from(jwt));
     }
 
+    @PostMapping("/remittances/{id}/complete-from-business")
+    @PreAuthorize("hasAuthority('remittances:complete-from-business')")
+    @Operation(summary = "Mark as delivered (or collected) by the business, without a courier: the business cash moves")
+    RemittanceView completeFromBusiness(@PathVariable UUID id, @Valid @RequestBody(required = false) NoteRequest request,
+                                        @AuthenticationPrincipal Jwt jwt) {
+        return remittances.completeFromBusiness(id, request == null ? null : request.note(), Viewers.from(jwt));
+    }
+
     @PostMapping("/remittances/{id}/transitions")
     @PreAuthorize("hasAnyAuthority('remittances:read', 'remittances:read-assigned')")
     @Operation(summary = "Move to any status allowed by the workflow; the transition defines the permission needed")

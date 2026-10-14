@@ -145,7 +145,7 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
 
         BigDecimal total = amount.add(fee);
         // The rate and fee rule in force now, only as references (the columns are required); the fee is the ticket's
-        Remittance r = Remittance.imported(codes.newCode(), RemittanceType.DELIVERY, finalStatus(), customerId,
+        Remittance r = Remittance.imported(codes.newCode(), RemittanceType.DELIVERY, workflow.finalStatus(), customerId,
                 new Remittance.BeneficiarySnapshot(beneficiary.id(), beneficiary.fullName(), beneficiary.phone(),
                         beneficiary.alternatePhone(), beneficiary.addressLine(), beneficiary.municipalityCode(),
                         beneficiary.reference()),
@@ -213,7 +213,7 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
         }
 
         String note = Texts.blankToNull(h.notes());
-        Remittance r = Remittance.imported(codes.newCode(), h.type(), finalStatus(), h.customerId(),
+        Remittance r = Remittance.imported(codes.newCode(), h.type(), workflow.finalStatus(), h.customerId(),
                 new Remittance.BeneficiarySnapshot(beneficiary.id(), beneficiary.fullName(), beneficiary.phone(),
                         beneficiary.alternatePhone(), beneficiary.addressLine(), beneficiary.municipalityCode(),
                         beneficiary.reference()),
@@ -258,14 +258,6 @@ class HistoricalImportServiceImpl implements HistoricalImportService {
                     found.size() + " beneficiaries share phone " + phone + " and the name does not tell them apart");
         }
         return found.getFirst();
-    }
-
-    private String finalStatus() {
-        List<String> finals = workflow.finalCodes();
-        if (finals.isEmpty()) {
-            throw new IllegalStateException("No final status configured");
-        }
-        return finals.getFirst();
     }
 
     private static BigDecimal money(BigDecimal value, String field, boolean zeroAllowed) {

@@ -171,6 +171,13 @@ class RemittanceServiceImpl implements RemittanceService {
 
     @Override
     @Transactional
+    public RemittanceView completeFromBusiness(UUID id, String note, Viewer viewer) {
+        Remittance r = operations.findVisible(id, viewer);
+        return operations.completeFromBusiness(r, note, viewer, clock.instant());
+    }
+
+    @Override
+    @Transactional
     public RemittanceView transition(UUID id, String toStatus, UUID courierId, String note, Viewer viewer) {
         Remittance r = operations.findVisible(id, viewer);
         RemittanceTransition t = workflow.transition(r.getStatus(), toStatus)

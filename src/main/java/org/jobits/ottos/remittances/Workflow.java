@@ -44,6 +44,16 @@ class Workflow {
         return statuses.findByFinalStatusTrue().stream().map(RemittanceStatus::getCode).toList();
     }
 
+    /** The final status a remittance reaches outside the transitions (from the business, or an old one). */
+    @Transactional(readOnly = true)
+    String finalStatus() {
+        List<String> finals = finalCodes();
+        if (finals.isEmpty()) {
+            throw new IllegalStateException("No final status configured");
+        }
+        return finals.getFirst();
+    }
+
     @Transactional(readOnly = true)
     Optional<RemittanceTransition> transition(String from, String to) {
         return transitions.findById(new RemittanceTransition.Key(from, to));
