@@ -68,7 +68,8 @@ class HistoricalImportTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.feeOverridden").value(true))
                 .andExpect(jsonPath("$.courierId").doesNotExist())
                 .andExpect(jsonPath("$.createdAt").value("2024-06-03T19:30:47Z"))
-                .andExpect(jsonPath("$.completedAt").value("2024-06-03T19:30:47Z"));
+                .andExpect(jsonPath("$.completedAt").value("2024-06-03T19:30:47Z"))
+                .andExpect(jsonPath("$.completedFromBusiness").value(false));
         // Paid abroad and delivered long ago: no cash box moves
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM payments.cash_movements", Integer.class)).isZero();
         // It shows in its old month and never in Sales' completed feed

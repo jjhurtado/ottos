@@ -8,6 +8,11 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 ### Añadido
 - Versión de la app móvil iOS 1.0.0-rc.5 (build 7), no obligatoria:
   `scripts/data/app-releases/20261013-ios-1.0.0-rc.5.sql`.
+- Entregar o recoger desde el negocio, sin repartidor: `POST /remittances/{id}/complete-from-business` (permiso nuevo
+  `remittances:complete-from-business`, ADMIN y SALES). Vale también para una remesa asignada, a la que se le quita el
+  repartidor; el dinero sale de (o entra en) la caja del negocio. `RemittanceView.completedFromBusiness`. Migración
+  `V2`; para las instalaciones existentes, `scripts/data/fixes/20261014-sales-complete-from-business.sql`. Contrato:
+  `docs/contracts/complete-from-business.md`.
 
 ## [1.0.0-rc.4] - 2026-10-13
 
