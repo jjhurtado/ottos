@@ -46,6 +46,20 @@ Reglas:
   fusionando el tag en `develop` ("Merge tag … into develop"); el contenido es el mismo y no se reescribe.
 - Las ramas terminadas se borran.
 
+**Consultar al usuario antes de tocar la lógica o los datos** (regla D-026 del usuario, 2026-10-14; está por encima
+de la "luz verde" para trabajar sin supervisión). Sus palabras: «cualquier cambio en el programa que afecte la lógica
+actual o cualquier cambio que afecte los datos o agregue datos mediante códigos o script en la base de datos debe ser
+consultado conmigo. Esto no incluye nuevas funcionalidades o nuevas tablas en la base de datos». En cualquier entorno,
+también `develop` y staging, se pregunta antes de:
+
+- cambiar el comportamiento de algo que ya existe: reglas, cálculos, validaciones, permisos o flujos;
+- cualquier migración o script que inserte, modifique o borre datos: `scripts/data/`, migraciones con
+  `INSERT`/`UPDATE`/`DELETE` (también las que añaden permisos), importaciones y correcciones.
+
+No hace falta preguntar por funcionalidades nuevas ni por tablas nuevas que no tocan lo existente. Producción sigue
+necesitando además su orden explícita en ese momento, y cada sesión (backend, infraestructura, frontend) recibe la
+suya del usuario.
+
 ### Nombres de rama
 
 `<prefijo>/<descripcion-corta>`, en minúsculas y con guiones; si hay ticket, va delante de la descripción.
