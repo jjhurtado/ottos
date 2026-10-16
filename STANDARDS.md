@@ -56,9 +56,13 @@ también `develop` y staging, se pregunta antes de:
 - cualquier migración o script que inserte, modifique o borre datos: `scripts/data/`, migraciones con
   `INSERT`/`UPDATE`/`DELETE` (también las que añaden permisos), importaciones y correcciones.
 
-No hace falta preguntar por funcionalidades nuevas ni por tablas nuevas que no tocan lo existente. Producción sigue
-necesitando además su orden explícita en ese momento, y cada sesión (backend, infraestructura, frontend) recibe la
-suya del usuario.
+Las funcionalidades nuevas y las tablas nuevas que no tocan lo existente no necesitan ese permiso, pero **toda
+funcionalidad nueva se discute con el usuario antes de implementarla** (regla del usuario, 2026-10-15): se le presenta
+el diseño con sus detalles técnicos (endpoints, datos, permisos, casos límite, efecto en el frontend y en
+infraestructura) y todas las dudas, y se implementa después de acordarlo. Sus palabras: «Siempre la funcionalidad nueva
+se discute conmigo antes de implementarla los detalles técnicos y cualquier duda que puedan tener. Luego se
+implementa». Producción sigue necesitando además su orden explícita en ese momento, y cada sesión (backend,
+infraestructura, frontend) recibe la suya del usuario.
 
 ### Nombres de rama
 
