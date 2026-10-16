@@ -1,6 +1,7 @@
 package org.jobits.ottos.remittances;
 
 import org.jobits.ottos.ApiException;
+import org.jobits.ottos.AuditEvent;
 import org.jobits.ottos.identity.StaffDirectoryService;
 import org.jobits.ottos.remittances.RemittanceEvents.RemittanceCompleted;
 import org.jobits.ottos.remittances.domain.Remittance;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.jobits.ottos.Texts.blankToNull;
@@ -91,6 +94,7 @@ class RemittanceOperations {
      */
     RemittanceView completeFromBusiness(Remittance r, String note, Viewer viewer, Instant at) {
         requireOpen(r);
+        UUID previousCourier = r.getCourierId();
         r.assignTo(null);
         r.complete(at, viewer.userId(), clock.instant());
         publisher.publishEvent(new RemittanceCompleted(r.getId(), r.getCode(), r.getType(), null,
@@ -98,6 +102,16 @@ class RemittanceOperations {
         String from = r.getStatus();
         r.moveTo(workflow.finalStatus());
         events.save(RemittanceEvent.statusChanged(r, from, viewer.userId(), at, blankToNull(note)));
+        // The business cash moved outside the courier's flow: who did it stays in the audit log
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("code", r.getCode());
+        details.put("type", r.getType().name());
+        details.put("amount", r.cashAmount());
+        details.put("currency", r.cashCurrency());
+        details.put("previousCourierId", previousCourier == null ? null : previousCourier.toString());
+        details.put("note", blankToNull(note));
+        publisher.publishEvent(new AuditEvent("REMITTANCE_COMPLETED_FROM_BUSINESS", "REMITTANCE", r.getId().toString(),
+                r.getCode(), viewer.userId(), at, details));
         return views.of(r, viewer);
     }
 

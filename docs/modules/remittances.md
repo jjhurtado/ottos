@@ -64,6 +64,10 @@ historial y estadísticas.
   lista `GET /couriers`).
 - **Completar:** exige repartidor asignado. Los repartidores pueden completar sin PIN (`/deliver`) o con PIN
   (`/deliver-with-pin`); es una decisión de producto.
+- **Completar desde el negocio** (`completeFromBusiness`, contrato `docs/contracts/complete-from-business.md`): ventas o
+  el admin la completan sin repartidor, desde cualquier estado abierto y sin PIN; si estaba asignada, se le quita el
+  repartidor. Publica `RemittanceCompleted` con `courierId` nulo, y `payments` mueve la caja del negocio en vez de la
+  de un repartidor. La vista lo marca con `completedFromBusiness`. Se audita como `REMITTANCE_COMPLETED_FROM_BUSINESS`.
 - **Atraso:** fecha prevista = día de registro + `default_delivery_days` (configuración), en hora de Cuba. Atrasada si no
   es final y pasó la fecha. Posponer exige una fecha posterior y un motivo.
 - **Incidencias:** motivo (`NOT_HOME`, `WRONG_ADDRESS`, `UNREACHABLE`, `REFUSED`, `OTHER` con nota obligatoria). La
