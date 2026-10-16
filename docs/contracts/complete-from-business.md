@@ -21,6 +21,10 @@ Responde 200 con el `RemittanceView` completado:
 
 En el historial queda un `STATUS_CHANGED` hacia el estado final, con quién lo hizo, sin repartidor y con la nota.
 
+Auditoría (desde el 2026-10-16): `REMITTANCE_COMPLETED_FROM_BUSINESS` en `GET /audit`, con `targetType` `REMITTANCE`,
+quién lo hizo y `details` `{code, type, amount, currency, previousCourierId, note}`. `amount` y `currency` son el
+efectivo que movió la caja del negocio; `previousCourierId` es el repartidor que tenía asignado, o `null`.
+
 ## Caja
 
 En la moneda de la remesa (`cashAmount`, `cashCurrency`):
