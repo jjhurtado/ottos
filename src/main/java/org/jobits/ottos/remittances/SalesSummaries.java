@@ -3,13 +3,15 @@ package org.jobits.ottos.remittances;
 import org.jobits.ottos.remittances.domain.Remittance;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-/** Adds up the {@link SalesSummary} of a set of remittances (contract: docs/contracts/monthly-report.md). */
+/**
+ * Adds up the {@link SalesSummary} of a set of remittances (contract: docs/contracts/monthly-report.md). The figures of
+ * each remittance come from {@link SaleFigures}, shared with the detail and the statistics.
+ */
 final class SalesSummaries {
 
     private SalesSummaries() {
@@ -33,10 +35,11 @@ final class SalesSummaries {
         for (Remittance r : registered) {
             completed += r.getCompletedAt() != null && r.getCompletedAt().isBefore(to) ? 1 : 0;
             withIncident += r.getOpenIncidentReason() != null ? 1 : 0;
-            byType.computeIfAbsent(r.getType(), t -> new TypeTotals()).add(r);
+            SaleFigures figures = SaleFigures.of(r);
+            byType.computeIfAbsent(r.getType(), t -> new TypeTotals()).add(r, figures);
             if (r.getType() == RemittanceType.PICKUP) {
                 // Nothing is delivered: the courier collects the amount and the fee is income (the rate is informative)
-                pickupCollected = pickupCollected.add(r.getAmount());
+                pickupCollected = pickupCollected.add(figures.collected());
                 pickupFees = pickupFees.add(r.getFee());
                 continue;
             }
@@ -46,8 +49,8 @@ final class SalesSummaries {
                 onTheHouseAmount = onTheHouseAmount.add(r.getAmount());
                 waivedFees = waivedFees.add(r.getWaivedFee());
             }
-            BigDecimal inBusiness = r.getAmountToDeliver().divide(r.getRate(), 2, RoundingMode.HALF_UP);
-            collected = collected.add(r.getTotal());
+            BigDecimal inBusiness = figures.deliveredCurrency();
+            collected = collected.add(figures.collected());
             deliveryFees = deliveryFees.add(r.getFee());
             deliveredCurrency = deliveredCurrency.add(inBusiness);
             delivery++;
@@ -95,9 +98,9 @@ final class SalesSummaries {
         private BigDecimal collected = BigDecimal.ZERO;
         private BigDecimal fees = BigDecimal.ZERO;
 
-        void add(Remittance r) {
+        void add(Remittance r, SaleFigures figures) {
             remittances++;
-            collected = collected.add(r.getType() == RemittanceType.PICKUP ? r.getAmount() : r.getTotal());
+            collected = collected.add(figures.collected());
             fees = fees.add(r.getFee());
         }
 
