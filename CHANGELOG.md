@@ -5,6 +5,8 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+## [1.0.0-rc.7] - 2026-10-22
+
 ### Cambiado
 - Imagen Docker: la JVM pasa de HotSpot (Eclipse Temurin) a Eclipse OpenJ9 (IBM Semeru Runtimes
   `open-21.0.12.10-jre-noble`) para gastar menos memoria: en local, en reposo, unos 250-285 MiB frente a 480 MiB. Las
