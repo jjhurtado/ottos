@@ -5,6 +5,22 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+### Añadido
+- Remesas «por la casa», sin comisión (contrato `docs/contracts/on-the-house.md`, migración `V3`):
+  `POST /remittances` acepta `onTheHouse` y `onTheHouseReason` (obligatorio, ≤ 500). Solo entregas; la tasa y el monto
+  mínimo se aplican como siempre, `fee` es 0, `total` = `amount` y `waivedFee` guarda la comisión que habría aplicado
+  la regla. Permiso nuevo `remittances:on-the-house`, solo ADMIN en la migración; a otros roles se da desde Roles.
+  Errores nuevos: 403 `ON_THE_HOUSE_NOT_ALLOWED`, 400 `ON_THE_HOUSE_DELIVERY_ONLY` y 400 `ON_THE_HOUSE_REASON_REQUIRED`;
+  con `fee`, 400 `FEE_NOT_ALLOWED`. No se puede marcar ni desmarcar después: se anula y se registra otra. Un cliente
+  que no envía los campos nuevos funciona exactamente igual que antes.
+- `POST /quotes` acepta `onTheHouse` y la respuesta lleva `onTheHouse` y `waivedFee`.
+- `RemittanceView`: `onTheHouse` para todos (también el repartidor, en `/remittances/assigned` y `/sync`); `waivedFee`
+  y `onTheHouseReason` solo con los datos financieros.
+- `GET /remittances?onTheHouse=true|false` filtra por ese campo.
+- `GET /audit` registra `REMITTANCE_ON_THE_HOUSE` con el código, tipo, monto, moneda, comisión no cobrada, cliente,
+  beneficiario, motivo y quién la registró.
+- `GET /reports/monthly`: bloque `onTheHouse` con `remittances`, `amount` y `waivedFees` (USD, sin anuladas).
+
 ## [1.0.0-rc.7] - 2026-10-22
 
 ### Cambiado

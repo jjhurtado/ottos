@@ -49,6 +49,7 @@ Forma acordada con el frontend:
   "difference": 181.00,
   "roundingMargin": 1.00,
   "pickups": { "remittances": 6, "collected": 30000.00, "fees": 40.00 },
+  "onTheHouse": { "remittances": 0, "amount": 0.00, "waivedFees": 0.00 },
   "delivered": [ { "currency": "CUP", "amount": 737950.00 } ],
   "byCurrency": [
     { "currency": "CUP", "remittances": 18, "sent": 1800.00, "fees": 180.00, "collected": 1980.00,
@@ -66,6 +67,7 @@ Forma acordada con el frontend:
 | `collected`, `deliveredCurrency`, `difference`, `roundingMargin` | En USD, solo entregas, según las reglas de arriba |
 | `fees` | Ganancias en USD: comisiones de entregas y recogidas |
 | `pickups` | Recogidas: `remittances`, `collected` (lo recogido, USD) y `fees` |
+| `onTheHouse` | Entregas por la casa, sin comisión (desde la `V3`; contrato `on-the-house.md`): `remittances`, `amount` (montos enviados, USD) y `waivedFees` (comisiones no cobradas, USD). Sin anuladas. Siguen contando en el resto de cifras con comisión 0 |
 | `delivered` | Monto a entregar de **todas** las entregas del mes (completadas o no), por moneda de entrega, en su moneda |
 | `byCurrency` | Entregas por moneda de entrega: `sent` (montos enviados, USD), `fees`, `collected`, `delivered` (en su moneda) y `deliveredCurrency` |
 | `byType` | Por tipo de remesa, en USD; `collected` es monto + comisión en las entregas y lo recogido en las recogidas |
