@@ -42,7 +42,7 @@ import static org.jobits.ottos.remittances.RemittanceOperations.notFound;
 
 /**
  * Implementation of {@link RemittanceService}. Changes shared with the offline queue live in
- * {@link RemittanceOperations}; the report figures in {@link SalesSummaries}; the search query in
+ * {@link RemittanceOperations}; the report figures in {@link SalesSummaries} and {@link SalesLines}; the search query in
  * {@link RemittanceSpecifications}.
  */
 @Service
@@ -58,6 +58,7 @@ class RemittanceServiceImpl implements RemittanceService {
     private final ConfigurationService configuration;
     private final Workflow workflow;
     private final RemittanceViews views;
+    private final SalesLines salesLines;
     private final CustomerService customers;
     private final BeneficiaryService beneficiaries;
     private final QuoteService quotes;
@@ -69,7 +70,8 @@ class RemittanceServiceImpl implements RemittanceService {
     RemittanceServiceImpl(RemittanceRepository remittances, RemittanceEventRepository events,
                           RemittanceOperations operations, RemittanceCodes codes, ConfigurationService configuration,
                           Workflow workflow,
-                          RemittanceViews views, CustomerService customers, BeneficiaryService beneficiaries,
+                          RemittanceViews views, SalesLines salesLines, CustomerService customers,
+                          BeneficiaryService beneficiaries,
                           QuoteService quotes, StaffDirectoryService staff, ApplicationEventPublisher publisher,
                           PlatformTransactionManager transactionManager, Clock clock) {
         this.remittances = remittances;
@@ -79,6 +81,7 @@ class RemittanceServiceImpl implements RemittanceService {
         this.configuration = configuration;
         this.workflow = workflow;
         this.views = views;
+        this.salesLines = salesLines;
         this.customers = customers;
         this.beneficiaries = beneficiaries;
         this.quotes = quotes;
@@ -282,6 +285,12 @@ class RemittanceServiceImpl implements RemittanceService {
     @Transactional(readOnly = true)
     public SalesSummary salesSummary(Instant from, Instant to) {
         return SalesSummaries.of(remittances.findByVoidedAtIsNullAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(from, to), to);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SalesDetail salesDetail(Instant from, Instant to) {
+        return salesLines.of(from, to);
     }
 
     @Override
