@@ -5,6 +5,14 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+## [1.0.0-rc.7] - 2026-10-22
+
+### Cambiado
+- Imagen Docker: la JVM pasa de HotSpot (Eclipse Temurin) a Eclipse OpenJ9 (IBM Semeru Runtimes
+  `open-21.0.12.10-jre-noble`) para gastar menos memoria: en local, en reposo, unos 250-285 MiB frente a 480 MiB. Las
+  opciones de OpenJ9 van en el `ENTRYPOINT`; `JAVA_TOOL_OPTIONS` sigue fijando el heap, y OpenJ9 ignora las opciones
+  `-XX:` de HotSpot que no conoce. La API no cambia.
+
 ## [1.0.0-rc.6] - 2026-10-22
 
 ### Cambiado
