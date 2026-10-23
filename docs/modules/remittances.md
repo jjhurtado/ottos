@@ -25,7 +25,7 @@ historial y estadísticas.
 | `POST /remittances/{id}/void` (anular; contrato `docs/contracts/void-and-historical.md`) | `remittances:void` (ADMIN) |
 | `POST /remittances/historical` (una remesa o recogida antigua a mano) | `remittances:historical` (ADMIN) |
 | `POST /remittances/import` (remesas antiguas, entregadas en su fecha; `dryRun`; contrato `docs/contracts/historical-import.md`) | `customers:import` (ADMIN) |
-| `GET /remittances?status=&type=&late=&incident=&onTheHouse=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/code/{code}` | `remittances:read` |
+| `GET /remittances?status=&type=&late=&incident=&onTheHouse=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=` (más reciente primero; a igualdad de `createdAt`, por `id`, para que las páginas no repitan ni salten ninguna), `GET /remittances/code/{code}` | `remittances:read` |
 | `GET /remittances/{id}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:read` o `read-assigned` |
 | `GET /remittances/completed?since=` (completadas que el servidor registró después de `since`, para las notificaciones de Ventas; contrato `docs/contracts/completed-feed.md`) | `remittances:read` |
 | `GET /remittances/assigned` (las mías, como repartidor) | `remittances:read-assigned` |

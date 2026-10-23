@@ -46,6 +46,13 @@ public interface RemittanceService {
     SalesSummary salesSummary(Instant from, Instant to);
 
     /**
+     * The remittances registered in [from, to), one line each, voided ones included and marked, without personal data
+     * (docs/contracts/monthly-report.md, section "Detalle"). The lines that are not voided add up to
+     * {@link #salesSummary}.
+     */
+    SalesDetail salesDetail(Instant from, Instant to);
+
+    /**
      * Voids a remittance, whatever its status: it stays for the record (who, when, why) but stops counting in
      * reports, statistics, work lists, the completed feed and the mobile sync, and the cash it moved is reversed.
      * A voided remittance cannot be changed again (REMITTANCE_ALREADY_VOIDED / REMITTANCE_VOIDED).
@@ -73,6 +80,7 @@ public interface RemittanceService {
     /** Couriers (see StaffDirectoryService#couriers), with how many open remittances each holds. */
     List<CourierView> couriers();
 
+    /** Newest first; remittances registered at the same instant go by id, so the pages never overlap or skip one. */
     PageView search(RemittanceFilter filter, int page, int size, Viewer viewer);
 
     /**
