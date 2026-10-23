@@ -32,11 +32,11 @@ class QuoteController {
 
     @PostMapping("/quotes")
     @PreAuthorize("hasAuthority('rates:read')")
-    @Operation(summary = "Calculate fee, total to charge and amount to deliver with the current configuration; remittanceType defaults to DELIVERY")
+    @Operation(summary = "Calculate fee, total to charge and amount to deliver with the current configuration; remittanceType defaults to DELIVERY; onTheHouse=true previews a delivery free of fee (fee 0, waivedFee)")
     QuoteService.Quote quote(@Valid @RequestBody QuoteRequest request) {
         ServiceType remittanceType = request.remittanceType() == null ? ServiceType.DELIVERY : request.remittanceType();
         return quotes.quote(remittanceType, request.sourceCurrency(), request.targetCurrency(), request.amount(),
-                request.rate(), request.fee());
+                request.rate(), request.fee(), Boolean.TRUE.equals(request.onTheHouse()));
     }
 
     record QuoteRequest(@NotNull @Pattern(regexp = "[A-Z]{3}") String sourceCurrency,
@@ -44,6 +44,7 @@ class QuoteController {
                         @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal amount,
                         ServiceType remittanceType,
                         @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate,
-                        @DecimalMin("0") @Digits(integer = 15, fraction = 2) BigDecimal fee) {
+                        @DecimalMin("0") @Digits(integer = 15, fraction = 2) BigDecimal fee,
+                        Boolean onTheHouse) {
     }
 }

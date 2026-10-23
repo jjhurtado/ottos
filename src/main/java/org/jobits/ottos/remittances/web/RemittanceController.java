@@ -67,7 +67,8 @@ class RemittanceController {
                             @AuthenticationPrincipal Jwt jwt) {
         return remittances.register(new RemittanceService.NewRemittance(request.type(), request.customerId(),
                 request.beneficiaryId(), request.amount(), request.targetCurrency(), request.rate(), request.fee(),
-                request.notes(), idempotencyKey), Viewers.from(jwt));
+                request.notes(), idempotencyKey, Boolean.TRUE.equals(request.onTheHouse()),
+                request.onTheHouseReason()), Viewers.from(jwt));
     }
 
     @GetMapping("/remittances")
@@ -79,6 +80,7 @@ class RemittanceController {
                     @RequestParam(required = false) Boolean incident,
                     @RequestParam(required = false) Boolean review,
                     @RequestParam(required = false) Boolean voided,
+                    @RequestParam(required = false) Boolean onTheHouse,
                     @RequestParam(required = false) UUID courierId,
                     @RequestParam(required = false) UUID customerId,
                     @RequestParam(required = false) UUID beneficiaryId,
@@ -88,8 +90,8 @@ class RemittanceController {
                     @RequestParam(defaultValue = "0") @Min(0) int page,
                     @RequestParam(defaultValue = "50") @Min(1) @Max(200) int size,
                     @AuthenticationPrincipal Jwt jwt) {
-        RemittanceFilter filter = new RemittanceFilter(status, type, late, incident, review, voided, courierId,
-                customerId, beneficiaryId, municipality, from, to);
+        RemittanceFilter filter = new RemittanceFilter(status, type, late, incident, review, voided, onTheHouse,
+                courierId, customerId, beneficiaryId, municipality, from, to);
         return remittances.search(filter, page, size, Viewers.from(jwt));
     }
 
@@ -221,7 +223,9 @@ class RemittanceController {
                                 @NotNull @Pattern(regexp = "[A-Z]{3}") String targetCurrency,
                                 @DecimalMin(value = "0", inclusive = false) @Digits(integer = 13, fraction = 6) BigDecimal rate,
                                 @DecimalMin("0") @Digits(integer = 15, fraction = 2) BigDecimal fee,
-                                @Size(max = 1000) String notes) {
+                                @Size(max = 1000) String notes,
+                                Boolean onTheHouse,
+                                @Size(max = 500) String onTheHouseReason) {
     }
 
     record VoidRequest(@NotBlank @Size(max = 1000) String reason) {

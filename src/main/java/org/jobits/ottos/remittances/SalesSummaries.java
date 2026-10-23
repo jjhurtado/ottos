@@ -25,6 +25,9 @@ final class SalesSummaries {
         long delivery = 0;
         long completed = 0;
         long withIncident = 0;
+        long onTheHouse = 0;
+        BigDecimal onTheHouseAmount = BigDecimal.ZERO;
+        BigDecimal waivedFees = BigDecimal.ZERO;
         Map<String, CurrencyTotals> byCurrency = new TreeMap<>();
         Map<RemittanceType, TypeTotals> byType = new TreeMap<>();
         for (Remittance r : registered) {
@@ -36,6 +39,12 @@ final class SalesSummaries {
                 pickupCollected = pickupCollected.add(r.getAmount());
                 pickupFees = pickupFees.add(r.getFee());
                 continue;
+            }
+            if (r.isOnTheHouse()) {
+                // Free of fee: it still counts below with fee 0 and total = amount
+                onTheHouse++;
+                onTheHouseAmount = onTheHouseAmount.add(r.getAmount());
+                waivedFees = waivedFees.add(r.getWaivedFee());
             }
             BigDecimal inBusiness = r.getAmountToDeliver().divide(r.getRate(), 2, RoundingMode.HALF_UP);
             collected = collected.add(r.getTotal());
@@ -50,6 +59,7 @@ final class SalesSummaries {
                 new SalesSummary.Counts(total, delivery, total - delivery, completed, total - completed, withIncident),
                 collected, deliveryFees.add(pickupFees), deliveredCurrency, difference, difference.subtract(deliveryFees),
                 new SalesSummary.Pickups(total - delivery, pickupCollected, pickupFees),
+                new SalesSummary.OnTheHouse(onTheHouse, onTheHouseAmount, waivedFees),
                 byCurrency.entrySet().stream()
                         .map(e -> new SalesSummary.CurrencyAmount(e.getKey(), e.getValue().delivered)).toList(),
                 byCurrency.entrySet().stream().map(e -> e.getValue().view(e.getKey())).toList(),
