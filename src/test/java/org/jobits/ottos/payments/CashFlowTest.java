@@ -210,6 +210,15 @@ class CashFlowTest extends ApiTestSupport {
                 .andExpect(jsonPath("$[?(@.currency == 'USD')].amount").value(200.00));
         mvc.perform(get("/api/v1/cash/remittances/{id}/movements", id).header("Authorization", bearer(salesToken)))
                 .andExpect(jsonPath("$[0].type").value("PICKUP_COLLECTION"));
+        mvc.perform(get("/api/v1/audit").param("action", "REMITTANCE_COMPLETED_FROM_BUSINESS")
+                        .header("Authorization", bearer(adminToken)))
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].targetId").value(id))
+                .andExpect(jsonPath("$.items[0].details.type").value("PICKUP"))
+                .andExpect(jsonPath("$.items[0].details.amount").value(200.00))
+                .andExpect(jsonPath("$.items[0].details.currency").value("USD"))
+                .andExpect(jsonPath("$.items[0].details.previousCourierId").value(courier.getId().toString()))
+                .andExpect(jsonPath("$.items[0].details.note").value("Entregada en la oficina"));
     }
 
     @Test

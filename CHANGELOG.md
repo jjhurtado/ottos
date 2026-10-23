@@ -5,6 +5,13 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+## [1.0.0-rc.6] - 2026-10-22
+
+### Cambiado
+- `POST /remittances/{id}/complete-from-business` queda auditado: `GET /audit` registra la acción
+  `REMITTANCE_COMPLETED_FROM_BUSINESS` con quién la hizo, el código, el tipo, el efectivo que movió la caja del
+  negocio, el repartidor que tenía asignado y la nota.
+
 ## [1.0.0-rc.5] - 2026-10-14
 
 ### Añadido

@@ -24,10 +24,11 @@ producción). Cada entorno despliega una rama:
 
 | Rama | Entorno | Qué llega |
 | --- | --- | --- |
-| `develop` | Staging (despliegue automático tras el CI) | Cada feature o arreglo al fusionarse |
+| `develop` | Staging (despliegue automático) | Cada feature o arreglo al fusionarse |
 | `main` | Producción (despliegue automático tras el CI) | Solo versiones: una `release/` probada en staging o un `hotfix/` |
 
-Así, todo lo que llega a producción pasó antes por staging. Las features y los arreglos nunca se llevan a `main`
+El CI (`.github/workflows/ci.yml`, `./gradlew build`) corre en cada push a `main` y a `develop` y en cada pull
+request (en `develop` desde el 2026-10-16; antes solo en `main`). Así, todo lo que llega a producción pasó antes por staging. Las features y los arreglos nunca se llevan a `main`
 directamente. Hasta esa fecha, durante las betas, `develop` y `main` iban juntas (fast-forward tras cada feature).
 
 Reglas:
@@ -35,7 +36,8 @@ Reglas:
 - Nunca se hace commit directo en `main` ni en `develop`: todo entra por una rama `feature/`, `release/` o `hotfix/`.
 - Una rama, un propósito. Si aparece otro tema, va en otra rama.
 - Antes de fusionar: build y tests en verde (`./gradlew build`) y la rama actualizada con su rama base.
-- Al cerrar una release o un hotfix se crea el tag de la versión en `main` (GitKraken lo hace al terminar el flujo).
+- Al cerrar una release o un hotfix se crea el tag de la versión en `main`, con git o con GitKraken: los pasos son
+  los de abajo y el resultado es el mismo.
 - **Cerrar una `release/` o un `hotfix/`** (como GitKraken, igual que el frontend; regla desde el 2026-10-13):
   1. `git checkout main && git merge --no-ff release/<versión>` y `git tag -a <versión>`;
   2. `git checkout develop && git merge --no-ff release/<versión>`: a `develop` vuelve **la rama de la release**,
@@ -45,6 +47,24 @@ Reglas:
   Así el historial de `develop` no recibe merges desde `main`. Las releases hasta la `1.0.0-rc.3` se cerraron
   fusionando el tag en `develop` ("Merge tag … into develop"); el contenido es el mismo y no se reescribe.
 - Las ramas terminadas se borran.
+
+**Consultar al usuario antes de tocar la lógica o los datos** (regla D-026 del usuario, 2026-10-14; está por encima
+de la "luz verde" para trabajar sin supervisión). Sus palabras: «cualquier cambio en el programa que afecte la lógica
+actual o cualquier cambio que afecte los datos o agregue datos mediante códigos o script en la base de datos debe ser
+consultado conmigo. Esto no incluye nuevas funcionalidades o nuevas tablas en la base de datos». En cualquier entorno,
+también `develop` y staging, se pregunta antes de:
+
+- cambiar el comportamiento de algo que ya existe: reglas, cálculos, validaciones, permisos o flujos;
+- cualquier migración o script que inserte, modifique o borre datos: `scripts/data/`, migraciones con
+  `INSERT`/`UPDATE`/`DELETE` (también las que añaden permisos), importaciones y correcciones.
+
+Las funcionalidades nuevas y las tablas nuevas que no tocan lo existente no necesitan ese permiso, pero **toda
+funcionalidad nueva se discute con el usuario antes de implementarla** (regla del usuario, 2026-10-15): se le presenta
+el diseño con sus detalles técnicos (endpoints, datos, permisos, casos límite, efecto en el frontend y en
+infraestructura) y todas las dudas, y se implementa después de acordarlo. Sus palabras: «Siempre la funcionalidad nueva
+se discute conmigo antes de implementarla los detalles técnicos y cualquier duda que puedan tener. Luego se
+implementa». Producción sigue necesitando además su orden explícita en ese momento, y cada sesión (backend,
+infraestructura, frontend) recibe la suya del usuario.
 
 ### Nombres de rama
 
@@ -58,10 +78,7 @@ Sin espacios, mayúsculas, guiones bajos ni nombres de personas.
 
 ### Mensajes de commit
 
-> **Pendiente de confirmar.** El estándar de referencia es el artículo
-> [Git Branch Naming and Commit Best Practices Cheatsheet](https://medium.com/@mandolkarmakarand94/git-branch-naming-and-commit-best-practices-cheatsheet-875316b9ca20),
-> que no se pudo leer desde el entorno de Claude (Medium lo bloquea). Lo de abajo es la convención habitual de ese tipo
-> de guías (Conventional Commits); hay que contrastarlo con el artículo y ajustar lo que difiera.
+[Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/):
 
 ```
 <tipo>(<ámbito opcional>): <resumen en imperativo, minúsculas, sin punto, ≤ 72 caracteres>
@@ -84,8 +101,7 @@ Sin espacios, mayúsculas, guiones bajos ni nombres de personas.
 | `ci` | Pipelines |
 | `chore` | Mantenimiento que no encaja en lo anterior |
 
-El ámbito es el módulo afectado: `identity`, `customers`, `beneficiaries`, `configuration`, `rates`, `remittances`, `payments`,
-`branches`… Ejemplos:
+El ámbito es el módulo afectado (`identity`, `customers`, `remittances`, `payments`, `apps`…). Ejemplos:
 
 - `feat(remittances): list assignable couriers`
 - `fix(rates): reject amounts that round down to nothing`
@@ -152,8 +168,11 @@ que contenía. Antes, durante las betas, se mantenía vacío.
 ### Monolito modular
 
 Un único despliegue Spring Boot dividido en módulos (Spring Modulith). Cada paquete directo bajo `org.jobits.ottos` es un
-módulo: `identity`, `branches`, `customers`, `beneficiaries`, `configuration`, `rates`, `remittances`, `dispatch`, `payments`,
-`notifications`, `reporting`. `ModularityTest` falla si un módulo usa clases internas de otro.
+módulo: `identity`, `branches`, `customers`, `beneficiaries`, `configuration`, `rates`, `remittances`, `sync`, `apps`,
+`payments` y `reporting`, más `dispatch` y `notifications`, que de momento están vacíos (reservados para después de
+la 1.0). `rates` y `sync` no tienen tablas propias; los demás con datos tienen su esquema (ver *Dominio y
+persistencia*). La lista con lo que hace cada uno y sus dependencias está en `docs/modules/README.md`.
+`ModularityTest` falla si un módulo usa clases internas de otro.
 
 Lo compartido por todos vive en el paquete raíz `org.jobits.ottos` y se mantiene mínimo: `ApiException` y `ApiErrors`
 (errores), `AuditEvent` (auditoría), `Phones` y `Texts` (normalizar teléfonos y textos opcionales) y `TimeConfig`
@@ -232,7 +251,8 @@ Todo valor que el negocio deba poder cambiar sin desplegar (montos mínimos, pla
 módulo `configuration` y se gestiona desde un solo sitio (`GET /api/v1/configuration`). Los demás módulos lo leen a
 través de `ConfigurationService`; nunca guardan sus propios ajustes. Un ajuste nuevo es: una fila en `settings` (por
 migración), una constante en `Setting`, un método tipado en `ConfigurationService` y su campo en `SettingsView` y en
-`PUT /configuration/settings`.
+`PUT /configuration/settings`. La fila va en una migración con un valor neutro (catálogo, ver *Dominio y persistencia*);
+el valor de cada instalación, si es otro, va en su script de alta.
 
 ### Documentación de cada módulo
 
@@ -275,10 +295,14 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
   infraestructura ejecuta una vez tras crear cada entorno. La zona horaria es `OTTOS_TIMEZONE`, sin valor por defecto.
   El código lee esos valores de la configuración (`ConfigurationService.businessCurrency()`, `phoneMatchDigits()`,
   `currencies()`); no escribe "USD", "CUP" ni nada de un país.
-- **Las migraciones son solo para cambios estructurales** (tablas, columnas, restricciones, índices y los permisos que
-  el código necesita). Las operaciones sobre datos (registrar una versión de la app, corregir filas) van en un script
-  de `scripts/data/`, idempotente, que infraestructura ejecuta en cada entorno con una copia antes (regla del usuario,
-  2026-10-13).
+- **Las migraciones son solo para cambios estructurales** (tablas, columnas, restricciones, índices) **y el catálogo que
+  el código necesita para funcionar**: permisos (concedidos a ADMIN en la misma migración), ajustes nuevos de
+  `settings` con un valor neutro y estados o transiciones del flujo de remesas. Ese catálogo es parte del programa:
+  sin él, el código nuevo no funciona en ningún entorno. Como inserta filas, se consulta con el usuario antes (D-026).
+  Todo lo demás son datos y va en un script de `scripts/data/`, idempotente, que infraestructura ejecuta en cada
+  entorno con una copia antes y con la confirmación del usuario: lo propio de cada instalación (`seed/`), versiones de
+  la app (`app-releases/`), correcciones de filas (`fixes/`) y conceder permisos a roles que no son ADMIN (regla del
+  usuario, 2026-10-13).
 - Dinero siempre en `BigDecimal`; las tasas y comisiones nunca se editan, se inserta una fila nueva.
 - Concurrencia: `@Version` en entidades que se modifican desde varias peticiones.
 
@@ -292,6 +316,9 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 
 - Todo cambio de datos de administración (usuarios, roles, y lo que se añada) publica un `org.jobits.ottos.AuditEvent`
   dentro de la transacción del cambio; `reporting` lo guarda en `audit_log` y lo sirve en `GET /audit`.
+- También se audita lo que ventas o el admin hacen sobre una remesa fuera del flujo normal del repartidor y que mueve
+  o deja de mover caja: anularla (`REMITTANCE_VOIDED`), registrar una antigua (`HISTORICAL_REMITTANCE_CREATED`) y
+  completarla desde el negocio (`REMITTANCE_COMPLETED_FROM_BUSINESS`).
 - `details` dice qué cambió (antes/después, añadido/quitado) y nunca lleva secretos.
 - Las `action` son códigos estables, como los de error: no se renombran.
 
@@ -304,7 +331,9 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
   (`PAID`, `ASSIGNED`, `DELIVERED`). Si llega un código sin traducción, muestra el texto del backend como respaldo.
 - Los estados de remesa se traducen por código **y tipo**: `DELIVERED` es "Entregada" en una entrega (`DELIVERY`) y
   "Recogida" en una recogida (`PICKUP`). Excepción a la regla del inglés: los nombres de estado (`statusName`) están
-  guardados en español en `remittance_statuses`; son solo el respaldo para estados personalizados sin traducción.
+  guardados en español en `remittance_statuses` (V1); son solo el respaldo para estados personalizados sin traducción.
+Se dejan así, pero es la única excepción: ninguna migración nueva lleva textos en español ni en otro idioma que no sea
+el inglés (decisión del usuario, 2026-10-16).
 - Los datos que crean los usuarios (roles personalizados, nombres de clientes, notas…) se muestran tal cual.
 - Por eso los códigos son contrato: no se renombran. Al añadir un código nuevo (error, permiso o rol semilla) se avisa
   al frontend para que añada su traducción.
@@ -312,8 +341,8 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 
 ### Seguridad
 
-- RBAC dinámico: los permisos se crean solo por migración y se conceden a ADMIN en la misma migración;
-  `PermissionCatalogTest` lo verifica.
+- RBAC dinámico: los permisos se crean solo por migración (catálogo) y se conceden a ADMIN en la misma migración;
+  `PermissionCatalogTest` lo verifica. Dárselos a otros roles es un dato: va en un script de `scripts/data/`.
 
 ### Tests
 
@@ -325,9 +354,3 @@ rama, para que el contexto no se pierda. Un módulo nuevo empieza con su documen
 - Cada funcionalidad o corrección lleva su test; los tests existentes no se cambian para que pase un cambio de
   comportamiento sin acordarlo.
 - `./gradlew build` en verde antes de fusionar.
-
-### Revisión
-
-Esta arquitectura se revisó en la primera RC (`1.0.0-rc.1`, 2026-10-11): API de los módulos en su paquete raíz, sin
-entidades en los contratos, una responsabilidad por clase, reglas compartidas definidas una vez y listas sin consultas
-N+1. Se vuelve a revisar antes de cada versión menor.
