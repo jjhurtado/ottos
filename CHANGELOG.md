@@ -20,6 +20,22 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 - `GET /audit` registra `REMITTANCE_ON_THE_HOUSE` con el código, tipo, monto, moneda, comisión no cobrada, cliente,
   beneficiario, motivo y quién la registró.
 - `GET /reports/monthly`: bloque `onTheHouse` con `remittances`, `amount` y `waivedFees` (USD, sin anuladas).
+- `GET /api/v1/reports/monthly/remittances?month=AAAA-MM`: detalle del informe mensual, una fila por remesa registrada
+  en el mes (hora de Cuba), también las anuladas con `voided` (`at`, `by`, `byName`, `reason`), ordenadas por
+  `createdAt` y `code`, sin paginar. Sin datos personales (ni nombres, teléfonos, dirección, PIN, notas, motivo de por
+  la casa ni quién la registró); con municipio y repartidor, los importes de la remesa, `collected` y
+  `deliveredCurrency`. `counts` da las filas, las anuladas y las mismas cuentas que el informe. Las filas no anuladas
+  suman lo mismo que `GET /reports/monthly`. Permiso `reports:read`. Contrato: `docs/contracts/monthly-report.md`,
+  sección «Detalle».
+- `GET /api/v1/reports/statistics?from=AAAA-MM-DD&to=AAAA-MM-DD`: estadísticas de ventas (como mucho 366 días, los
+  dos días incluidos, hora de Cuba, sin anuladas) en `totals`, `byWeek` (semanas ISO recortadas al periodo, con
+  `partial`), `byMonth`, `byDayOfWeek` y `byMunicipality`, cada una con remesas, entregas, recogidas, monto enviado,
+  importe medio, cobrado, comisiones, entregado, recogido y el bloque `onTheHouse`. Mismas cifras que el informe
+  mensual. Permiso `reports:read`. Errores: 400 `VALIDATION_FAILED`. Contrato: `docs/contracts/statistics.md`.
+
+### Corregido
+- `GET /api/v1/remittances`: las remesas registradas en el mismo instante salen siempre en el mismo orden (después de
+  `createdAt`, por `id`), así las páginas ya no repiten ni se saltan ninguna.
 
 ## [1.0.0-rc.7] - 2026-10-22
 
