@@ -11,7 +11,8 @@ import java.util.UUID;
  * fee, total, rate and amountToDeliver (financials) and pin. cashAmount and cashCurrency are always present:
  * what the courier hands over (delivery) or collects (pickup). incident is the open incident and review
  * the pending review, null when there is none. completedFromBusiness: Sales or Admin delivered or collected it
- * without a courier, and the business cash moved.
+ * without a courier, and the business cash moved. onTheHouse: a delivery free of fee, shown to everyone (also the
+ * courier); waivedFee (the fee not charged) and onTheHouseReason only with the financials, null otherwise.
  */
 public record RemittanceView(
         UUID id,
@@ -54,6 +55,9 @@ public record RemittanceView(
         UUID createdBy,
         Instant completedAt,
         boolean completedFromBusiness,
+        boolean onTheHouse,
+        BigDecimal waivedFee,
+        String onTheHouseReason,
         Voided voided) {
 
     /** Voided: it no longer counts anywhere and the cash it moved was reversed. null when it is in force. */

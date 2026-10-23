@@ -32,6 +32,6 @@ class ReportServiceImpl implements ReportService {
         SalesSummary s = remittances.salesSummary(from, to);
         return new MonthlyReport(month.toString(), month.atDay(1), month.atEndOfMonth(), clock.instant(),
                 configuration.businessCurrency(), s.remittances(), s.collected(), s.fees(), s.deliveredCurrency(),
-                s.difference(), s.roundingMargin(), s.pickups(), s.delivered(), s.byCurrency(), s.byType());
+                s.difference(), s.roundingMargin(), s.pickups(), s.onTheHouse(), s.delivered(), s.byCurrency(), s.byType());
     }
 }

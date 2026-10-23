@@ -16,8 +16,15 @@ import java.util.List;
  * @param roundingMargin difference − delivery fees
  */
 public record SalesSummary(Counts remittances, BigDecimal collected, BigDecimal fees, BigDecimal deliveredCurrency,
-                           BigDecimal difference, BigDecimal roundingMargin, Pickups pickups,
+                           BigDecimal difference, BigDecimal roundingMargin, Pickups pickups, OnTheHouse onTheHouse,
                            List<CurrencyAmount> delivered, List<ByCurrency> byCurrency, List<ByType> byType) {
+
+    /**
+     * Deliveries on the house (free of fee; docs/contracts/on-the-house.md), also counted in the rest of the figures
+     * with fee 0. amount: what was sent; waivedFees: the fees not charged. Business currency.
+     */
+    public record OnTheHouse(long remittances, BigDecimal amount, BigDecimal waivedFees) {
+    }
 
     /** collected: the cash couriers collect (amount, business currency); fees: entered by hand or from the rule, income only. */
     public record Pickups(long remittances, BigDecimal collected, BigDecimal fees) {

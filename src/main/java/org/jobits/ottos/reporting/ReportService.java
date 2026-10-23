@@ -22,7 +22,8 @@ public interface ReportService {
     record MonthlyReport(String month, LocalDate from, LocalDate to, Instant generatedAt, String businessCurrency,
                          SalesSummary.Counts remittances, BigDecimal collected, BigDecimal fees,
                          BigDecimal deliveredCurrency, BigDecimal difference, BigDecimal roundingMargin,
-                         SalesSummary.Pickups pickups, List<SalesSummary.CurrencyAmount> delivered,
+                         SalesSummary.Pickups pickups, SalesSummary.OnTheHouse onTheHouse,
+                         List<SalesSummary.CurrencyAmount> delivered,
                          List<SalesSummary.ByCurrency> byCurrency, List<SalesSummary.ByType> byType) {
     }
 }

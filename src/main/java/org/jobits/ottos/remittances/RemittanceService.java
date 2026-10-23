@@ -81,9 +81,14 @@ public interface RemittanceService {
      */
     CompletedFeed completedSince(Instant since, Viewer viewer);
 
-    /** rate and fee: entered by hand for a pickup (null uses the configured ones); not allowed for deliveries. */
+    /**
+     * rate and fee: entered by hand for a pickup (null uses the configured ones); not allowed for deliveries.
+     * onTheHouse: a delivery free of fee, with permission remittances:on-the-house and a mandatory onTheHouseReason
+     * (docs/contracts/on-the-house.md); the reason is ignored when onTheHouse is false.
+     */
     record NewRemittance(RemittanceType type, UUID customerId, UUID beneficiaryId, BigDecimal amount,
-                         String targetCurrency, BigDecimal rate, BigDecimal fee, String notes, String idempotencyKey) {
+                         String targetCurrency, BigDecimal rate, BigDecimal fee, String notes, String idempotencyKey,
+                         boolean onTheHouse, String onTheHouseReason) {
     }
 
     record CourierView(UUID id, String name, String email, long openRemittances) {

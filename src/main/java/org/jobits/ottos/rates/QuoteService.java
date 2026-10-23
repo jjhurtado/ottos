@@ -25,8 +25,19 @@ public interface QuoteService {
      * @param customFee  the fee entered by hand for a pickup (≥ 0, in the source currency); null uses the configured
      *                   fee rule. Not allowed for deliveries (FEE_NOT_ALLOWED).
      */
+    default Quote quote(ServiceType remittanceType, String sourceCurrency, String targetCurrency, BigDecimal amount,
+                        BigDecimal customRate, BigDecimal customFee) {
+        return quote(remittanceType, sourceCurrency, targetCurrency, amount, customRate, customFee, false);
+    }
+
+    /**
+     * Like {@link #quote(ServiceType, String, String, BigDecimal, BigDecimal, BigDecimal)}; onTheHouse: a delivery the
+     * business sends free of fee (docs/contracts/on-the-house.md). Rate, minimum amount and rounding apply as always;
+     * the fee is 0, the total is the amount and waivedFee is the fee the rule would have charged. Only deliveries
+     * (ON_THE_HOUSE_DELIVERY_ONLY), so never with a fee entered by hand (FEE_NOT_ALLOWED).
+     */
     Quote quote(ServiceType remittanceType, String sourceCurrency, String targetCurrency, BigDecimal amount,
-                BigDecimal customRate, BigDecimal customFee);
+                BigDecimal customRate, BigDecimal customFee, boolean onTheHouse);
 
     /**
      * @param remittanceType  delivery or pickup: whose rate and fee rule were used
@@ -37,9 +48,13 @@ public interface QuoteService {
      * @param rateOverridden  the rate was entered by hand (pickups) instead of the configured one
      * @param feeOverridden   the fee was entered by hand (pickups) instead of the configured rule
      * @param amountToDeliver amount handed over, in the target currency, after rounding
+     * @param onTheHouse      free of fee: fee 0 and total = amount
+     * @param waivedFee       on the house: the fee the rule would have charged (with its minimum and maximum); null
+     *                        otherwise
      */
     record Quote(ServiceType remittanceType, String corridor, String sourceCurrency, String targetCurrency,
                  BigDecimal amount, BigDecimal fee, boolean feeOverridden, BigDecimal total, BigDecimal rate,
-                 boolean rateOverridden, BigDecimal amountToDeliver, UUID exchangeRateId, UUID feeRuleId) {
+                 boolean rateOverridden, BigDecimal amountToDeliver, UUID exchangeRateId, UUID feeRuleId,
+                 boolean onTheHouse, BigDecimal waivedFee) {
     }
 }
