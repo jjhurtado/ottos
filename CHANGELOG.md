@@ -9,6 +9,10 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 - `POST /remittances/{id}/complete-from-business` queda auditado: `GET /audit` registra la acción
   `REMITTANCE_COMPLETED_FROM_BUSINESS` con quién la hizo, el código, el tipo, el efectivo que movió la caja del
   negocio, el repartidor que tenía asignado y la nota.
+- Imagen Docker: la JVM pasa de HotSpot (Eclipse Temurin) a Eclipse OpenJ9 (IBM Semeru Runtimes
+  `open-21.0.12.10-jre-noble`) para gastar menos memoria: en local, en reposo, unos 250-285 MiB frente a 480 MiB. Las
+  opciones de OpenJ9 van en el `ENTRYPOINT`; `JAVA_TOOL_OPTIONS` sigue fijando el heap, y OpenJ9 ignora las opciones
+  `-XX:` de HotSpot que no conoce. La API no cambia.
 
 ## [1.0.0-rc.5] - 2026-10-14
 

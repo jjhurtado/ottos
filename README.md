@@ -97,7 +97,9 @@ services: [STANDARDS.md](STANDARDS.md). What each module does: [docs/modules](do
 
 **Profile `prod`** (staging and production, `application-prod.yml`): small Tomcat (20 threads) and Hikari (5
 connections) pools, Swagger and the OpenAPI document off, health without details, JSON logs (ECS) and graceful
-shutdown. JVM flags (heap, GC) are set by the infrastructure through `JAVA_TOOL_OPTIONS`.
+shutdown. The Docker image runs on Eclipse OpenJ9 (IBM Semeru Runtimes), which needs less memory than HotSpot; its
+OpenJ9 options are in the `Dockerfile` `ENTRYPOINT`. The heap size is set by the infrastructure through
+`JAVA_TOOL_OPTIONS` (OpenJ9 ignores the HotSpot `-XX:` options it does not know).
 
 Token lifetimes: `ottos.security.access-token-ttl` (15m, web panel), `ottos.security.mobile-access-token-ttl` (14h, mobile
 app logging in with `"client": "MOBILE"`) and `ottos.security.refresh-token-ttl` (30d). Retrying a refresh within
