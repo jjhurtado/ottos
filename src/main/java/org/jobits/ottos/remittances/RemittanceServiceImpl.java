@@ -359,7 +359,7 @@ class RemittanceServiceImpl implements RemittanceService {
     public PageView search(RemittanceFilter filter, int page, int size, Viewer viewer) {
         Page<Remittance> found = remittances.findAll(
                 RemittanceSpecifications.matching(filter, workflow.finalCodes(), today(), clock.getZone()),
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id")));
         return new PageView(views.of(found.getContent(), viewer), found.getNumber(), found.getSize(),
                 found.getTotalElements());
     }

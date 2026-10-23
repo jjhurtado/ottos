@@ -80,6 +80,7 @@ public interface RemittanceService {
     /** Couriers (see StaffDirectoryService#couriers), with how many open remittances each holds. */
     List<CourierView> couriers();
 
+    /** Newest first; remittances registered at the same instant go by id, so the pages never overlap or skip one. */
     PageView search(RemittanceFilter filter, int page, int size, Viewer viewer);
 
     /**
