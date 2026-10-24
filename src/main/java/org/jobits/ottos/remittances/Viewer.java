@@ -18,6 +18,7 @@ public record Viewer(UUID userId, Set<String> permissions) {
     public static final String READ = "remittances:read";
     public static final String READ_ASSIGNED = "remittances:read-assigned";
     public static final String READ_FINANCIALS = "remittances:read-financials";
+    public static final String ON_THE_HOUSE = "remittances:on-the-house";
 
     public Viewer {
         permissions = Set.copyOf(permissions);

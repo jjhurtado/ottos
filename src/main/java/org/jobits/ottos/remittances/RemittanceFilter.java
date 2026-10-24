@@ -11,11 +11,12 @@ import java.util.UUID;
  * @param incident    true: with an open incident; false: without one
  * @param review      true: pending review; false: nothing to review
  * @param voided      true: only the voided ones; false: leave them out
+ * @param onTheHouse  true: only the ones on the house (free of fee); false: leave them out
  * @param createdFrom first day (inclusive, business timezone)
  * @param createdTo   last day (inclusive, business timezone)
  */
 public record RemittanceFilter(String status, RemittanceType type, Boolean late, Boolean incident, Boolean review,
-                               Boolean voided,
+                               Boolean voided, Boolean onTheHouse,
                                UUID courierId, UUID customerId, UUID beneficiaryId, String municipalityCode,
                                LocalDate createdFrom, LocalDate createdTo) {
 }

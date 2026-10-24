@@ -21,11 +21,11 @@ historial y estadísticas.
 
 | Endpoint | Permiso |
 | --- | --- |
-| `POST /remittances` (cabecera `Idempotency-Key`) | `remittances:create` |
+| `POST /remittances` (cabecera `Idempotency-Key`; `onTheHouse` exige además `remittances:on-the-house`, contrato `docs/contracts/on-the-house.md`) | `remittances:create` |
 | `POST /remittances/{id}/void` (anular; contrato `docs/contracts/void-and-historical.md`) | `remittances:void` (ADMIN) |
 | `POST /remittances/historical` (una remesa o recogida antigua a mano) | `remittances:historical` (ADMIN) |
 | `POST /remittances/import` (remesas antiguas, entregadas en su fecha; `dryRun`; contrato `docs/contracts/historical-import.md`) | `customers:import` (ADMIN) |
-| `GET /remittances?status=&type=&late=&incident=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=`, `GET /remittances/code/{code}` | `remittances:read` |
+| `GET /remittances?status=&type=&late=&incident=&onTheHouse=&courierId=&customerId=&beneficiaryId=&municipality=&from=&to=` (más reciente primero; a igualdad de `createdAt`, por `id`, para que las páginas no repitan ni salten ninguna), `GET /remittances/code/{code}` | `remittances:read` |
 | `GET /remittances/{id}`, `/remittances/{id}/events`, `GET /remittance-workflow` | `remittances:read` o `read-assigned` |
 | `GET /remittances/completed?since=` (completadas que el servidor registró después de `since`, para las notificaciones de Ventas; contrato `docs/contracts/completed-feed.md`) | `remittances:read` |
 | `GET /remittances/assigned` (las mías, como repartidor) | `remittances:read-assigned` |
@@ -55,6 +55,12 @@ historial y estadísticas.
   `rateOverridden` y `feeOverridden`. El repartidor solo recoge `amount`; en una recogida no se entrega nada
   (`amountToDeliver` no significa nada y la tasa es informativa) y la comisión es ingreso del negocio que nunca pasa por
   la caja del repartidor. Las entregas siempre usan la tasa y la comisión configuradas.
+- **Por la casa** (contrato `docs/contracts/on-the-house.md`, migración `V3`): una entrega sin comisión, con el permiso
+  `remittances:on-the-house` (ADMIN; a otros roles se da desde Roles) y un motivo obligatorio. Se cotiza como siempre
+  (tasa, monto mínimo, redondeo) pero con `fee` 0 y `total` = `amount`; `waivedFee` guarda la comisión que habría
+  aplicado la regla. Solo al registrar: no se marca ni desmarca después (se anula y se registra otra). La vista muestra
+  `onTheHouse` a todos y `waivedFee` y `onTheHouseReason` solo con los datos financieros. Se audita como
+  `REMITTANCE_ON_THE_HOUSE` y el informe mensual lo resume en su bloque `onTheHouse`.
 - **Anular** (`voidRemittance`): cualquier remesa, en cualquier estado; queda guardada con quién, cuándo y por qué, deja
   de contar en informes, estadísticas, listas, el aviso a Ventas y la sincronización, y no se puede cambiar más
   (`REMITTANCE_VOIDED`). Publica `RemittanceVoided`, con el que `payments` deshace sus movimientos de caja.

@@ -177,6 +177,17 @@ public class Remittance {
     @Column(name = "void_reason", length = 1000)
     private String voidReason;
 
+    /** A delivery the business sends free of fee (fee 0, total = amount); set when registering, never changed. */
+    @Column(name = "on_the_house", nullable = false, updatable = false)
+    private boolean onTheHouse;
+
+    /** On the house: the fee the rule would have charged; null otherwise. */
+    @Column(name = "waived_fee", precision = 19, scale = 2, updatable = false)
+    private BigDecimal waivedFee;
+
+    @Column(name = "on_the_house_reason", length = 500, updatable = false)
+    private String onTheHouseReason;
+
     @Version
     private long version;
 
@@ -216,6 +227,31 @@ public class Remittance {
         this.idempotencyKey = idempotencyKey;
         this.createdAt = createdAt;
         this.createdBy = createdBy;
+    }
+
+    /**
+     * Marks a new delivery, not yet saved, as on the house (docs/contracts/on-the-house.md): its quote already has fee 0
+     * and total = amount. It cannot be marked or unmarked once saved: a mistake is voided and registered again.
+     */
+    public void onTheHouse(BigDecimal waivedFee, String reason) {
+        if (id != null) {
+            throw new IllegalStateException("Only a new remittance can be marked on the house");
+        }
+        this.onTheHouse = true;
+        this.waivedFee = waivedFee;
+        this.onTheHouseReason = reason;
+    }
+
+    public boolean isOnTheHouse() {
+        return onTheHouse;
+    }
+
+    public BigDecimal getWaivedFee() {
+        return waivedFee;
+    }
+
+    public String getOnTheHouseReason() {
+        return onTheHouseReason;
     }
 
     /** Any status change (assign, reassign, complete, custom transition) acts on the open incident and closes it. */

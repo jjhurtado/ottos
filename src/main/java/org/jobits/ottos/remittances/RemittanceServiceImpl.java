@@ -32,6 +32,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -41,7 +42,7 @@ import static org.jobits.ottos.remittances.RemittanceOperations.notFound;
 
 /**
  * Implementation of {@link RemittanceService}. Changes shared with the offline queue live in
- * {@link RemittanceOperations}; the report figures in {@link SalesSummaries}; the search query in
+ * {@link RemittanceOperations}; the report figures in {@link SalesSummaries} and {@link SalesLines}; the search query in
  * {@link RemittanceSpecifications}.
  */
 @Service
@@ -57,6 +58,7 @@ class RemittanceServiceImpl implements RemittanceService {
     private final ConfigurationService configuration;
     private final Workflow workflow;
     private final RemittanceViews views;
+    private final SalesLines salesLines;
     private final CustomerService customers;
     private final BeneficiaryService beneficiaries;
     private final QuoteService quotes;
@@ -68,7 +70,8 @@ class RemittanceServiceImpl implements RemittanceService {
     RemittanceServiceImpl(RemittanceRepository remittances, RemittanceEventRepository events,
                           RemittanceOperations operations, RemittanceCodes codes, ConfigurationService configuration,
                           Workflow workflow,
-                          RemittanceViews views, CustomerService customers, BeneficiaryService beneficiaries,
+                          RemittanceViews views, SalesLines salesLines, CustomerService customers,
+                          BeneficiaryService beneficiaries,
                           QuoteService quotes, StaffDirectoryService staff, ApplicationEventPublisher publisher,
                           PlatformTransactionManager transactionManager, Clock clock) {
         this.remittances = remittances;
@@ -78,6 +81,7 @@ class RemittanceServiceImpl implements RemittanceService {
         this.configuration = configuration;
         this.workflow = workflow;
         this.views = views;
+        this.salesLines = salesLines;
         this.customers = customers;
         this.beneficiaries = beneficiaries;
         this.quotes = quotes;
@@ -114,6 +118,7 @@ class RemittanceServiceImpl implements RemittanceService {
                 return views.of(existing.get(), viewer);
             }
         }
+        String onTheHouseReason = request.onTheHouse() ? requireOnTheHouseAllowed(request, viewer) : null;
         CustomerInfo customer = customers.find(request.customerId())
                 .filter(CustomerInfo::active)
                 .orElseThrow(() -> ApiException.badRequest("CUSTOMER_UNAVAILABLE", "Unknown or inactive customer"));
@@ -124,7 +129,7 @@ class RemittanceServiceImpl implements RemittanceService {
         beneficiaries.link(customer.id(), beneficiary.id());
         QuoteService.Quote quote = quotes.quote(ServiceType.valueOf(request.type().name()),
                 configuration.businessCurrency(), request.targetCurrency(), request.amount(), request.rate(),
-                request.fee());
+                request.fee(), request.onTheHouse());
 
         Instant now = clock.instant();
         Remittance remittance = new Remittance(
@@ -138,9 +143,56 @@ class RemittanceServiceImpl implements RemittanceService {
                         quote.amountToDeliver(), quote.exchangeRateId(), quote.feeRuleId()),
                 codes.newPin(), today().plusDays(configuration.defaultDeliveryDays()), blankToNull(request.notes()),
                 request.idempotencyKey(), now, viewer.userId());
+        if (request.onTheHouse()) {
+            remittance.onTheHouse(quote.waivedFee(), onTheHouseReason);
+        }
         remittances.saveAndFlush(remittance);
         events.save(RemittanceEvent.created(remittance, viewer.userId(), now));
+        if (remittance.isOnTheHouse()) {
+            auditOnTheHouse(remittance, customer, viewer, now);
+        }
         return views.of(remittance, viewer);
+    }
+
+    /**
+     * Checks a delivery on the house can be registered (docs/contracts/on-the-house.md) and returns its reason,
+     * trimmed. The rate, the minimum amount and the rounding are checked by the quote, as always.
+     */
+    private static String requireOnTheHouseAllowed(NewRemittance request, Viewer viewer) {
+        if (!viewer.has(Viewer.ON_THE_HOUSE)) {
+            throw ApiException.forbidden("ON_THE_HOUSE_NOT_ALLOWED",
+                    "Registering remittances on the house needs the permission " + Viewer.ON_THE_HOUSE);
+        }
+        if (request.type() != RemittanceType.DELIVERY) {
+            throw ApiException.badRequest("ON_THE_HOUSE_DELIVERY_ONLY",
+                    "Only deliveries can be on the house; a pickup can carry a fee of 0 entered by hand");
+        }
+        if (request.fee() != null) {
+            throw ApiException.badRequest("FEE_NOT_ALLOWED", "A remittance on the house cannot carry a fee");
+        }
+        String reason = blankToNull(request.onTheHouseReason());
+        if (reason == null) {
+            throw ApiException.badRequest("ON_THE_HOUSE_REASON_REQUIRED",
+                    "A remittance on the house needs a reason");
+        }
+        return reason.trim();
+    }
+
+    /** Who sent what free of fee, and why: in the audit log, in the same transaction as the registration. */
+    private void auditOnTheHouse(Remittance r, CustomerInfo customer, Viewer viewer, Instant at) {
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("code", r.getCode());
+        details.put("type", r.getType().name());
+        details.put("amount", r.getAmount());
+        details.put("currency", r.getSourceCurrency());
+        details.put("waivedFee", r.getWaivedFee());
+        details.put("customerId", customer.id().toString());
+        details.put("customerName", customer.fullName());
+        details.put("beneficiaryId", r.getBeneficiaryId().toString());
+        details.put("beneficiaryName", r.getBeneficiaryName());
+        details.put("reason", r.getOnTheHouseReason());
+        publisher.publishEvent(new AuditEvent("REMITTANCE_ON_THE_HOUSE", "REMITTANCE", r.getId().toString(),
+                r.getCode(), viewer.userId(), at, details));
     }
 
     @Override
@@ -237,6 +289,12 @@ class RemittanceServiceImpl implements RemittanceService {
 
     @Override
     @Transactional(readOnly = true)
+    public SalesDetail salesDetail(Instant from, Instant to) {
+        return salesLines.of(from, to);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public RemittanceView get(UUID id, Viewer viewer) {
         return views.of(operations.findVisible(id, viewer), viewer);
     }
@@ -301,7 +359,7 @@ class RemittanceServiceImpl implements RemittanceService {
     public PageView search(RemittanceFilter filter, int page, int size, Viewer viewer) {
         Page<Remittance> found = remittances.findAll(
                 RemittanceSpecifications.matching(filter, workflow.finalCodes(), today(), clock.getZone()),
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id")));
         return new PageView(views.of(found.getContent(), viewer), found.getNumber(), found.getSize(),
                 found.getTotalElements());
     }

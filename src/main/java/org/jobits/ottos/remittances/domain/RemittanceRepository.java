@@ -53,5 +53,9 @@ public interface RemittanceRepository extends JpaRepository<Remittance, UUID>, J
     /** Remittances registered in [from, to), leaving out the voided ones. */
     List<Remittance> findByVoidedAtIsNullAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(Instant from, Instant to);
 
+    /** Remittances registered in [from, to), voided ones included, oldest first. */
+    List<Remittance> findByCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAscCodeAsc(Instant from,
+                                                                                                  Instant to);
+
     List<Remittance> findByBeneficiaryIdOrderByCreatedAtDesc(UUID beneficiaryId);
 }

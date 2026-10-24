@@ -27,7 +27,11 @@ class QuoteServiceImpl implements QuoteService {
     @Override
     @Transactional(readOnly = true)
     public Quote quote(ServiceType remittanceType, String sourceCurrency, String targetCurrency, BigDecimal amount,
-                       BigDecimal customRate, BigDecimal customFee) {
+                       BigDecimal customRate, BigDecimal customFee, boolean onTheHouse) {
+        if (onTheHouse && remittanceType != ServiceType.DELIVERY) {
+            throw ApiException.badRequest("ON_THE_HOUSE_DELIVERY_ONLY",
+                    "Only deliveries can be on the house; a pickup can carry a fee of 0 entered by hand");
+        }
         if (customRate != null && remittanceType != ServiceType.PICKUP) {
             throw ApiException.badRequest("RATE_NOT_ALLOWED", "Only pickups can carry a rate entered by hand");
         }
@@ -58,7 +62,9 @@ class QuoteServiceImpl implements QuoteService {
             throw ApiException.conflict("NO_FEE_RULE", "No " + remittanceType + " fee rule set for " + corridor.code());
         }
 
-        BigDecimal fee = customFee != null ? customFee.setScale(2, RoundingMode.UNNECESSARY) : feeFor(feeRule, sent);
+        BigDecimal ruleFee = customFee != null ? customFee.setScale(2, RoundingMode.UNNECESSARY) : feeFor(feeRule, sent);
+        // On the house nothing is charged: the fee the rule would have charged is kept as waived
+        BigDecimal fee = onTheHouse ? BigDecimal.ZERO.setScale(2) : ruleFee;
         BigDecimal applied = customRate != null ? customRate : rate.rate();
         BigDecimal toDeliver = roundForDelivery(sent.multiply(applied), corridor.deliveryRounding());
         if (toDeliver.signum() <= 0 && remittanceType == ServiceType.DELIVERY) {
@@ -67,7 +73,7 @@ class QuoteServiceImpl implements QuoteService {
         }
         return new Quote(remittanceType, corridor.code(), corridor.sourceCurrency(), corridor.targetCurrency(),
                 sent, fee, customFee != null, sent.add(fee), applied, customRate != null, toDeliver, rate.id(),
-                feeRule.id());
+                feeRule.id(), onTheHouse, onTheHouse ? ruleFee : null);
     }
 
     /** The configured minimum is in the business currency and applies to corridors sending it; zero means no minimum. */

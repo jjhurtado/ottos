@@ -53,6 +53,9 @@ final class RemittanceSpecifications {
             if (f.voided() != null) {
                 where.add(f.voided() ? cb.isNotNull(root.get("voidedAt")) : cb.isNull(root.get("voidedAt")));
             }
+            if (f.onTheHouse() != null) {
+                where.add(cb.equal(root.get("onTheHouse"), f.onTheHouse()));
+            }
             if (f.incident() != null) {
                 where.add(f.incident() ? cb.isNotNull(root.get("openIncidentReason"))
                         : cb.isNull(root.get("openIncidentReason")));

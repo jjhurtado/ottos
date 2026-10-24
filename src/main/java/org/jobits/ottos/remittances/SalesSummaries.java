@@ -3,13 +3,15 @@ package org.jobits.ottos.remittances;
 import org.jobits.ottos.remittances.domain.Remittance;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-/** Adds up the {@link SalesSummary} of a set of remittances (contract: docs/contracts/monthly-report.md). */
+/**
+ * Adds up the {@link SalesSummary} of a set of remittances (contract: docs/contracts/monthly-report.md). The figures of
+ * each remittance come from {@link SaleFigures}, shared with the detail and the statistics.
+ */
 final class SalesSummaries {
 
     private SalesSummaries() {
@@ -25,20 +27,30 @@ final class SalesSummaries {
         long delivery = 0;
         long completed = 0;
         long withIncident = 0;
+        long onTheHouse = 0;
+        BigDecimal onTheHouseAmount = BigDecimal.ZERO;
+        BigDecimal waivedFees = BigDecimal.ZERO;
         Map<String, CurrencyTotals> byCurrency = new TreeMap<>();
         Map<RemittanceType, TypeTotals> byType = new TreeMap<>();
         for (Remittance r : registered) {
             completed += r.getCompletedAt() != null && r.getCompletedAt().isBefore(to) ? 1 : 0;
             withIncident += r.getOpenIncidentReason() != null ? 1 : 0;
-            byType.computeIfAbsent(r.getType(), t -> new TypeTotals()).add(r);
+            SaleFigures figures = SaleFigures.of(r);
+            byType.computeIfAbsent(r.getType(), t -> new TypeTotals()).add(r, figures);
             if (r.getType() == RemittanceType.PICKUP) {
                 // Nothing is delivered: the courier collects the amount and the fee is income (the rate is informative)
-                pickupCollected = pickupCollected.add(r.getAmount());
+                pickupCollected = pickupCollected.add(figures.collected());
                 pickupFees = pickupFees.add(r.getFee());
                 continue;
             }
-            BigDecimal inBusiness = r.getAmountToDeliver().divide(r.getRate(), 2, RoundingMode.HALF_UP);
-            collected = collected.add(r.getTotal());
+            if (r.isOnTheHouse()) {
+                // Free of fee: it still counts below with fee 0 and total = amount
+                onTheHouse++;
+                onTheHouseAmount = onTheHouseAmount.add(r.getAmount());
+                waivedFees = waivedFees.add(r.getWaivedFee());
+            }
+            BigDecimal inBusiness = figures.deliveredCurrency();
+            collected = collected.add(figures.collected());
             deliveryFees = deliveryFees.add(r.getFee());
             deliveredCurrency = deliveredCurrency.add(inBusiness);
             delivery++;
@@ -50,6 +62,7 @@ final class SalesSummaries {
                 new SalesSummary.Counts(total, delivery, total - delivery, completed, total - completed, withIncident),
                 collected, deliveryFees.add(pickupFees), deliveredCurrency, difference, difference.subtract(deliveryFees),
                 new SalesSummary.Pickups(total - delivery, pickupCollected, pickupFees),
+                new SalesSummary.OnTheHouse(onTheHouse, onTheHouseAmount, waivedFees),
                 byCurrency.entrySet().stream()
                         .map(e -> new SalesSummary.CurrencyAmount(e.getKey(), e.getValue().delivered)).toList(),
                 byCurrency.entrySet().stream().map(e -> e.getValue().view(e.getKey())).toList(),
@@ -85,9 +98,9 @@ final class SalesSummaries {
         private BigDecimal collected = BigDecimal.ZERO;
         private BigDecimal fees = BigDecimal.ZERO;
 
-        void add(Remittance r) {
+        void add(Remittance r, SaleFigures figures) {
             remittances++;
-            collected = collected.add(r.getType() == RemittanceType.PICKUP ? r.getAmount() : r.getTotal());
+            collected = collected.add(figures.collected());
             fees = fees.add(r.getFee());
         }
 
