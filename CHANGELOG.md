@@ -5,6 +5,8 @@ versionado según [ROADMAP.md › Versionado](ROADMAP.md#3-versionado). Cómo y 
 
 ## [Unreleased]
 
+## [1.0.0-rc.8] - 2026-10-24
+
 ### Añadido
 - Remesas «por la casa», sin comisión (contrato `docs/contracts/on-the-house.md`, migración `V3`):
   `POST /remittances` acepta `onTheHouse` y `onTheHouseReason` (obligatorio, ≤ 500). Solo entregas; la tasa y el monto
